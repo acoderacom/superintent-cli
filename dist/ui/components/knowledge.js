@@ -1,0 +1,238 @@
+// Knowledge-related UI components
+import { escapeHtml } from './utils.js';
+// Helper to render knowledge view
+export function renderKnowledgeView() {
+    return `
+    <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
+      <aside class="w-full lg:w-64 shrink-0 lg:sticky lg:top-4 lg:self-start">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Filters</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white rounded-lg shadow-card p-3 lg:p-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select name="k-status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    hx-get="/partials/knowledge-list"
+                    hx-trigger="change"
+                    hx-target="#knowledge-list"
+                    hx-include="[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin']">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select name="k-category" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    hx-get="/partials/knowledge-list"
+                    hx-trigger="change"
+                    hx-target="#knowledge-list"
+                    hx-include="[name='k-status'],[name='k-namespace'],[name='k-scope'],[name='k-origin']">
+              <option value="">All</option>
+              <option value="pattern">Pattern</option>
+              <option value="truth">Truth</option>
+              <option value="principle">Principle</option>
+              <option value="architecture">Architecture</option>
+              <option value="gotcha">Gotcha</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+            <select name="k-scope" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    hx-get="/partials/knowledge-list"
+                    hx-trigger="change"
+                    hx-target="#knowledge-list"
+                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-origin']">
+              <option value="">All</option>
+              <option value="global">Global</option>
+              <option value="new-only">New Only</option>
+              <option value="backward-compatible">Backward Compatible</option>
+              <option value="legacy-frozen">Legacy Frozen</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+            <select name="k-origin" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    hx-get="/partials/knowledge-list"
+                    hx-trigger="change"
+                    hx-target="#knowledge-list"
+                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope']">
+              <option value="">All</option>
+              <option value="ticket">Ticket</option>
+              <option value="discovery">Discovery</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
+        </div>
+      </aside>
+
+      <main class="flex-1">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Knowledge Base</h1>
+        <div id="knowledge-list" hx-get="/partials/knowledge-list" hx-trigger="load, poll-refresh" hx-swap="innerHTML">
+        </div>
+      </main>
+    </div>
+  `;
+}
+// Helper to render knowledge list
+export function renderKnowledgeList(items) {
+    if (items.length === 0) {
+        return '<p class="text-gray-500 text-center py-8">No knowledge entries found</p>';
+    }
+    const categoryColors = {
+        pattern: 'purple',
+        truth: 'green',
+        principle: 'orange',
+        architecture: 'blue',
+        gotcha: 'red',
+    };
+    return `
+    <div class="space-y-3">
+      ${items.map(k => {
+        const color = categoryColors[k.category || ''] || 'gray';
+        const inactiveClass = !k.active ? 'opacity-60 border-dashed' : '';
+        return `
+          <div class="bg-white rounded-lg shadow-card p-4 hover:shadow-card-hover transition-shadow cursor-pointer ${inactiveClass}"
+               hx-get="/partials/knowledge-modal/${encodeURIComponent(k.id)}"
+               hx-target="#modal-content"
+               hx-trigger="click"
+               onclick="showModal()">
+            <div class="text-xs font-mono text-gray-400 mb-1">${escapeHtml(k.id)}</div>
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <div class="text-sm font-medium text-gray-800">${escapeHtml(k.title)}</div>
+                  ${!k.active ? '<span class="px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600">Inactive</span>' : ''}
+                </div>
+                <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(k.content.slice(0, 200))}${k.content.length > 200 ? '...' : ''}</p>
+              </div>
+              <div class="text-right flex-shrink-0 ml-4">
+                <div class="text-sm font-medium text-gray-600">${Math.round(k.confidence * 100)}%</div>
+                <div class="text-xs text-gray-400">confidence</div>
+              </div>
+            </div>
+            <div class="flex items-center mt-3 text-xs text-gray-500 gap-3">
+              <span><span class="text-gray-400">Namespace:</span> ${escapeHtml(k.namespace)}</span>
+              <span><span class="text-gray-400">Source:</span> ${k.source || 'manual'}${k.source === 'ticket' && k.origin_ticket_type ? ` (${k.origin_ticket_type})` : ''}</span>
+              ${k.category ? `<span><span class="text-gray-400">Category:</span> <span class="text-${color}-600 font-medium">${k.category}</span></span>` : ''}
+              <span><span class="text-gray-400">Scope:</span> ${k.decision_scope}</span>
+            </div>
+          </div>
+        `;
+    }).join('')}
+    </div>
+  `;
+}
+// Helper to render knowledge modal
+export function renderKnowledgeModal(knowledge) {
+    const categoryColors = {
+        pattern: 'purple',
+        truth: 'green',
+        principle: 'orange',
+        architecture: 'blue',
+        gotcha: 'red',
+    };
+    const color = categoryColors[knowledge.category || ''] || 'gray';
+    return `
+    <div class="p-6">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-mono text-gray-400">${escapeHtml(knowledge.id)}</span>
+            <button type="button"
+                    class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                    title="Copy knowledge ID"
+                    onclick="navigator.clipboard.writeText('${escapeHtml(knowledge.id)}').then(() => { const svg = this.querySelector('svg'); const originalPath = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = originalPath; this.classList.remove('text-green-600'); }, 1500); })">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+            </button>
+            <span class="px-2 py-0.5 text-xs font-medium rounded ${knowledge.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">${knowledge.active ? 'Active' : 'Inactive'}</span>
+            ${knowledge.category ? `<span class="px-2 py-0.5 text-xs font-medium rounded bg-${color}-100 text-${color}-700">${knowledge.category}</span>` : ''}
+          </div>
+          <h2 class="text-xl font-bold text-gray-800">${escapeHtml(knowledge.title)}</h2>
+        </div>
+        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Confidence & Usage Stats -->
+      <div class="mb-4 grid grid-cols-2 gap-4">
+        <div class="bg-gray-50 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Confidence</div>
+          <div class="text-xl font-semibold text-${color}-600 mb-2">${Math.round(knowledge.confidence * 100)}%</div>
+          <div class="w-full bg-gray-200 rounded-full h-1.5">
+            <div class="bg-${color}-500 h-1.5 rounded-full transition-all" style="width: ${Math.round(knowledge.confidence * 100)}%"></div>
+          </div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-3">
+          <div class="text-xs text-gray-500 mb-1">Usage</div>
+          <div class="text-xl font-semibold text-gray-700">${knowledge.usage_count || 0} <span class="text-sm font-normal text-gray-500">times</span></div>
+          <div class="text-xs text-gray-400 mt-1">${knowledge.last_used_at ? 'Last used ' + knowledge.last_used_at.split('T')[0] : 'Never used'}</div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="mb-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Content</h3>
+        <div class="text-sm text-gray-700 bg-gray-50 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(knowledge.content)}</div>
+      </div>
+
+      <!-- Metadata -->
+      <div class="mb-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Metadata</h3>
+        <div class="text-sm text-gray-600 space-y-1">
+          <div><span class="text-gray-400">Namespace:</span> ${escapeHtml(knowledge.namespace)}</div>
+          <div><span class="text-gray-400">Scope:</span> ${knowledge.decision_scope}</div>
+          <div><span class="text-gray-400">Source:</span> ${knowledge.source}${knowledge.source === 'ticket' && knowledge.origin_ticket_type ? ` (${knowledge.origin_ticket_type})` : ''}</div>
+        </div>
+      </div>
+
+      ${knowledge.origin_ticket_id ? `
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-gray-700 mb-2">Origin Ticket</h3>
+          <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 cursor-pointer font-mono font-medium"
+                hx-get="/partials/ticket-modal/${encodeURIComponent(knowledge.origin_ticket_id)}"
+                hx-target="#modal-content"
+                hx-trigger="click">
+            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            ${escapeHtml(knowledge.origin_ticket_id)}
+          </span>
+        </div>
+      ` : ''}
+
+      <!-- Tags -->
+      ${knowledge.tags?.length ? `
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-gray-700 mb-2">Tags</h3>
+          <div class="flex flex-wrap gap-2">
+            ${knowledge.tags.map(t => `<span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">${escapeHtml(t)}</span>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Actions & Metadata Footer -->
+      <div class="mt-6 pt-4 border-t flex items-center justify-between">
+        <div class="text-xs text-gray-400">
+          <span>Created: ${knowledge.created_at || 'N/A'}</span>
+          <span class="ml-4">Updated: ${knowledge.updated_at || 'N/A'}</span>
+        </div>
+        <button type="button"
+                class="px-3 py-1.5 text-xs font-medium ${knowledge.active ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-green-700 bg-green-50 hover:bg-green-100'} rounded transition-colors"
+                hx-patch="/api/knowledge/${knowledge.id}/active"
+                hx-vals='{"active": ${!knowledge.active}}'
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                hx-on::after-request="htmx.trigger('#knowledge-list', 'poll-refresh')">
+          ${knowledge.active ? 'Deactivate' : 'Activate'}
+        </button>
+      </div>
+    </div>
+  `;
+}

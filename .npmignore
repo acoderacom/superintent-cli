@@ -1,0 +1,27 @@
+# Source files (dist is included via files array)
+src/
+
+# Local data and config
+.superintent/
+.claude/
+
+# Development files
+tsconfig.json
+.git/
+.gitignore
+.DS_Store
+
+# Editor files
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+
+# Documentation source (README.md is needed for npm)
+CLAUDE.md
