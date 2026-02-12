@@ -8,8 +8,8 @@ export function renderKnowledgeView() {
         <h2 class="text-2xl font-bold text-gray-800 mb-4">Filters</h2>
         <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white rounded-lg shadow-card p-3 lg:p-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select name="k-status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select id="k-status" name="k-status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -21,8 +21,8 @@ export function renderKnowledgeView() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select name="k-category" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select id="k-category" name="k-category" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -37,8 +37,8 @@ export function renderKnowledgeView() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
-            <select name="k-scope" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-scope" class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+            <select id="k-scope" name="k-scope" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -52,8 +52,8 @@ export function renderKnowledgeView() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
-            <select name="k-origin" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-origin" class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+            <select id="k-origin" name="k-origin" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"

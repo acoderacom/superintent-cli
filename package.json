@@ -17,7 +17,7 @@
   },
   "scripts": {
     "build": "tsc && npm run build:css",
-    "build:css": "npx @tailwindcss/cli -i src/ui/styles/input.css -o dist/ui/styles.css --minify",
+    "build:css": "npx @tailwindcss/cli -i src/ui/styles/main.css -o dist/ui/styles.css --minify",
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build"
   },

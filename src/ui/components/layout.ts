@@ -51,22 +51,27 @@ export function getHtml(namespace: string): string {
   <nav class="bg-white shadow-sm">
     <div class="max-w-7xl mx-auto px-4">
       <div class="flex items-center justify-between h-14">
-        <span class="text-sm sm:text-xl font-bold text-gray-800">Superintent</span>
+        <div class="flex items-center gap-2 text-gray-800">
+          <svg class="h-6 sm:h-8 w-auto" viewBox="0 0 222 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M172.213 0C199.671 0 222 22.3653 222 50C222 77.576 199.672 99.9998 172.155 100H221.941V200H49.7871C22.3286 200 0 177.635 0 150C9.4336e-05 122.424 22.2704 100 49.7871 100H0V0H172.213ZM93.2451 82.5127L61.2129 100.104L93.2451 117.722L110.767 149.883L128.288 117.722L160.32 100.104L128.288 82.5127L110.767 50.3516L93.2451 82.5127Z" fill="currentColor"/>
+          </svg>
+          <span class="text-base sm:text-2xl font-bold">Superintent</span>
+        </div>
         <div class="flex">
           <button id="tab-ticket" onclick="switchTab('ticket')"
-                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 cursor-pointer tab-active">
+                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-800 hover:text-gray-900 cursor-pointer tab-active">
             Ticket
           </button>
           <button id="tab-search" onclick="switchTab('search')"
-                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 cursor-pointer">
+                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-800 hover:text-gray-900 cursor-pointer">
             Search
           </button>
           <button id="tab-knowledge" onclick="switchTab('knowledge')"
-                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 cursor-pointer">
+                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-800 hover:text-gray-900 cursor-pointer">
             Knowledge
           </button>
           <button id="tab-spec" onclick="switchTab('spec')"
-                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 cursor-pointer">
+                  class="px-2 sm:px-4 py-4 text-xs sm:text-sm font-medium text-gray-800 hover:text-gray-900 cursor-pointer">
             Spec
           </button>
         </div>
