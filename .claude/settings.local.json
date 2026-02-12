@@ -3,5 +3,9 @@
     "allow": [
       "Bash(npx superintent *)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "Context7",
+    "shopify-dev-mcp"
+  ]
 }
