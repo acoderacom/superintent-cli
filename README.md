@@ -1,123 +1,94 @@
-# superintent
+# superintent-cli
 
-The CLI backend for [Superintent Development](https://github.com/acoderacom/superintent) — a framework where your intent drives the entire development cycle, and knowledge compounds with every iteration.
-
-Built on Turso/libSQL for ticket management, RAG-powered knowledge storage, and feature spec planning. Designed to work as the data layer for the **Superintent** Claude Code plugin.
-
-## The Loop
-
-```
-  ┌──────────────────────────────────┐
-  │                                  │
-  ▼                                  │
-Intent ──► Work ──► Test ──► Compound
-                                │
-                        knowledge extracted
-```
-
-**Intent** — Say what you want. Superintent figures out the right size: `/spec` for big features, `/ticket` for standard work, `/task` for quick fixes.
-
-**Work** — AI builds it, informed by knowledge from past cycles — patterns, architecture, gotchas, decisions.
-
-**Compound** — Knowledge is extracted from completed work and stored. What was built, how, why, what went wrong. This feeds back into the next cycle.
-
-## Features
-
-- **Ticket Management** — Structured tickets with intent, constraints, tasks, definition-of-done, change classification, and execution plans. Full lifecycle: Backlog → In Progress → In Review → Done.
-- **Knowledge Base (RAG)** — Semantic vector storage with 384-dimensional embeddings ([all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2)). Categories: `pattern`, `truth`, `principle`, `architecture`, `gotcha`. Confidence scoring with usage-based growth and staleness decay.
-- **Semantic Search** — Cosine similarity search across knowledge entries with namespace, category, tag, and ticket-type filters.
-- **Feature Specs** — Break big features into sequenced tickets. Specs link to their derived tickets.
-- **Knowledge Extraction** — Auto-generates knowledge proposals when tickets are marked Done. Extracts patterns, truths, principles, decisions, and trade-offs.
-- **Web Dashboard** — Kanban board, semantic search, knowledge browser, and spec viewer. Built with Hono + HTMX.
+The data layer for [Superintent](https://github.com/acoderacom/superintent). Manages tickets, knowledge, specs, and semantic search backed by Turso/libSQL.
 
 ## Requirements
 
 - Node.js >= 18.0.0
 
-## Installation
-
-```bash
-npm install -g superintent
-```
-
-Or use directly via npx:
-
-```bash
-npx superintent init
-```
-
 ## Quick Start
 
-### Local Database (no account needed)
+Install the [Superintent plugin](https://github.com/acoderacom/superintent), then run in Claude Code:
 
-```bash
-npx superintent init --url "file:.superintent/local.db"
+```
+/superintent:setup
 ```
 
-### Cloud Database (Turso)
+## Architecture
 
-Create `.superintent/.env`:
-
-```env
-TURSO_URL="libsql://your-db.turso.io"
-TURSO_AUTH_TOKEN="your-token"
+```
+┌─────────────────────────────────────────────┐
+│  Claude Code Plugin (skills, commands)      │
+│  Human (CLI, web dashboard)                 │
+└──────────────┬──────────────────────────────┘
+               │ npx superintent <command>
+┌──────────────▼──────────────────────────────┐
+│  CLI (commander.js)                         │
+│  ├── commands/   ticket, knowledge, spec,   │
+│  │               search, extract, init,     │
+│  │               status, ui                 │
+│  ├── db/         libSQL client, schema,     │
+│  │               parsers, usage tracking    │
+│  ├── embed/      all-MiniLM-L6-v2 (384d)    │
+│  └── ui/         Hono + HTMX web dashboard  │
+└──────────────┬──────────────────────────────┘
+               │
+┌──────────────▼──────────────────────────────┐
+│  Turso/libSQL                               │
+│  ├── tickets     work items + plans         │
+│  ├── knowledge   RAG entries + F32_BLOB     │
+│  └── specs       feature specifications     │
+└─────────────────────────────────────────────┘
 ```
 
-Then initialize:
+All commands output structured JSON: `{ success: boolean, data?: T, error?: string }`.
 
-```bash
-npx superintent init
-```
-
-### Verify
-
-```bash
-npx superintent status
-```
-
-## CLI Commands
-
-All commands output JSON in the format `{ success: boolean, data?: T, error?: string }`.
-
-### Setup
-
-| Command | Description |
-| --- | --- |
-| `superintent init [--url <url>] [--token <token>]` | Create database tables |
-| `superintent status` | Check connection and counts |
-| `superintent ui [-p <port>] [-o]` | Start web dashboard (default: port 3456) |
+## Commands
 
 ### Tickets
 
 ```bash
-# Create from markdown via stdin
-superintent ticket create --stdin <<'EOF'
+# Create (stdin markdown)
+superintent ticket create --stdin <<'TICKET'
 # Add user authentication
 
 **Type:** feature
-**Intent:** Add JWT-based authentication to the API
-**Context:** Currently no auth, all endpoints are public
+**Intent:** Add JWT-based auth to the API
+**Context:** All endpoints currently public
 **Constraints:**
 - Use: jsonwebtoken, bcrypt
 - Avoid: session cookies
-**Assumptions:** PostgreSQL already stores user table
-**Change Class:** B - Adds new middleware to all routes
-EOF
+**Change Class:** B - Adds middleware to all routes
 
-# Get, list, update, delete
-superintent ticket get TICKET-20260210-143000
-superintent ticket list --status "In Progress" --limit 10
-superintent ticket update TICKET-20260210-143000 --status "Done"
-superintent ticket delete TICKET-20260210-143000
+## Plan
+
+**Files:** src/middleware/auth.ts, src/routes/auth.ts
+
+**Tasks → Steps:**
+1. Create auth middleware
+   - JWT verification
+   - Error handling
+2. Add login/register routes
+   - Password hashing
+   - Token generation
+
+**DoD → Verification:**
+- All protected routes require valid JWT → curl returns 401 without token
+- Passwords hashed with bcrypt → DB inspection shows no plaintext
+TICKET
+
+# Manage
+superintent ticket get <id>
+superintent ticket list [--status <status>] [--limit N]
+superintent ticket update <id> [--status] [--comment <text>] [--complete-task 0,1] [--complete-all] [--plan-stdin]
+superintent ticket delete <id>
 ```
-
-**Update options:** `--status`, `--context`, `--comment`, `--spec`, `--plan-stdin`, `--complete-task <indices>`, `--complete-dod <indices>`, `--complete-all`
 
 ### Knowledge
 
 ```bash
-# Create from markdown via stdin
-superintent knowledge create --stdin <<'EOF'
+# Create (stdin markdown)
+superintent knowledge create --stdin <<'KNOWLEDGE'
 # API Error Handling Pattern
 
 **Namespace:** my-project
@@ -125,101 +96,119 @@ superintent knowledge create --stdin <<'EOF'
 **Source:** discovery
 **Confidence:** 0.85
 **Scope:** new-only
-**Tags:** api, error-handling, express
+**Tags:** api, error-handling
 
 ## Content
 
 Why:
-Consistent error responses improve debugging and client experience.
+Consistent error responses across all endpoints.
 
 When:
-All new API endpoints.
+All new API routes.
 
 Pattern:
-Wrap route handlers in try/catch, return { success: false, error: message }.
-EOF
+Wrap handlers in try/catch, return { success, error }.
+KNOWLEDGE
 
-# Search, list, get, update, activate/deactivate
-superintent search "error handling patterns" --limit 5
-superintent knowledge list --category pattern --namespace my-project
-superintent knowledge get KNOWLEDGE-20260210-150000
-superintent knowledge update KNOWLEDGE-20260210-150000 --confidence 0.9
-superintent knowledge deactivate KNOWLEDGE-20260210-150000
-superintent knowledge recalculate --dry-run
+# Manage
+superintent knowledge get <id>
+superintent knowledge list [--namespace] [--category] [--scope] [--source] [--status active|inactive|all]
+superintent knowledge update <id> [--title] [--content-stdin] [--confidence <n>] [--category] [--tags]
+superintent knowledge activate <id>
+superintent knowledge deactivate <id>
+superintent knowledge recalculate [--dry-run]
 ```
+
+### Search
+
+Semantic search using cosine similarity against 384-dimensional embeddings.
+
+```bash
+superintent search "error handling" [--namespace] [--category] [--ticket-type] [--tags] [--min-score 0.45] [--limit 5]
+```
+
+Score interpretation: ≥0.45 relevant, ≥0.55 strong match. Falls back to non-indexed search if vector index unavailable.
 
 ### Specs
 
 ```bash
-# Create from markdown via stdin
-superintent spec create --stdin <<'EOF'
+superintent spec create --stdin <<'SPEC'
 # User Authentication System
 
 ## Summary
-Full auth system with registration, login, JWT tokens, and middleware.
+Full auth: registration, login, JWT, middleware.
 
-## Tickets
-1. Add user model and registration endpoint
-2. Add login endpoint with JWT generation
-3. Add auth middleware to protected routes
-EOF
+## Scope
+**In Scope:** JWT auth, password hashing, protected routes
+**Out of Scope:** OAuth, 2FA, password reset
 
-# Get, list, update, delete
-superintent spec get SPEC-20260210-160000
-superintent spec list --limit 10
-superintent spec delete SPEC-20260210-160000
+## Work Areas
+1. User model and registration
+2. Login and token generation
+3. Auth middleware
+SPEC
+
+superintent spec get <id>
+superintent spec list [--limit N]
+superintent spec update <id> [--title] [--content-stdin]
+superintent spec delete <id>
 ```
 
 ### Knowledge Extraction
 
-```bash
-# Extract knowledge proposals from a completed ticket
-superintent extract TICKET-20260210-143000
-```
-
-## Web Dashboard
+Generates structured knowledge proposals from completed tickets.
 
 ```bash
-superintent ui --open
+superintent extract <ticket-id>
 ```
 
-Opens a web UI at `http://localhost:3456` with four tabs:
+Proposes entries across categories based on ticket intent, assumptions, constraints, decisions, and trade-offs. Designed for human or AI review before saving.
 
-1. **Kanban** — Ticket board with status columns, quick create, edit, and detail modals
-2. **Search** — Real-time semantic search across the knowledge base
-3. **Knowledge** — Filterable list with category, namespace, scope, and status filters
-4. **Specs** — Feature specs with linked ticket counts
+### Web Dashboard
 
-## Claude Code Plugin
+```bash
+superintent ui [--port 3456] [--open]
+```
 
-This CLI is the data layer for the [Superintent plugin](https://github.com/acoderacom/superintent). Install the plugin in Claude Code to get skill-driven workflows:
+Four views: Kanban board (tickets by status), Semantic search, Knowledge browser (filterable), Spec viewer (with linked tickets).
 
-| Skill | Trigger | What It Does |
+### Setup
+
+```bash
+superintent init [--url <url>]     # Create tables
+superintent status                  # Check connection + counts
+```
+
+## Database Schema
+
+| Table | Purpose | Key columns |
 | --- | --- | --- |
-| `/ticket` | "I want...", "Add...", "Build..." | Create and execute structured tickets with planning, implementation, review, and knowledge extraction |
-| `/task` | "quick fix", "just do it" | Fast execution for confident, low-risk changes (Class A only) |
-| `/spec` | "spec", "plan feature", "big feature" | Write comprehensive specs for big features, then derive tickets |
-| `/learn` | "learn how...", "document how..." | Explore codebase and capture understanding as searchable knowledge |
-| `/explain` | "explain...", "why do we..." | Answer questions from the knowledge base before codebase exploration |
-| `/maintain` | "maintain", "sync knowledge" | Distill the knowledge database into CLAUDE.md between managed markers |
+| `tickets` | Work items | status, intent, plan (JSON), tasks (JSON), change_class, origin_spec_id |
+| `knowledge` | RAG entries | embedding F32_BLOB(384), category, confidence, active, decision_scope, usage_count |
+| `specs` | Feature specs | title, content (markdown) |
 
-The plugin auto-approves CLI commands via hooks, searches knowledge before every action, and extracts knowledge when tickets are completed — closing the compound loop.
-
-## Database
-
-Three tables:
-
-- **tickets** — Work items with structured metadata (tasks, DoD, plan, constraints, etc.)
-- **knowledge** — RAG entries with `F32_BLOB(384)` vector column and cosine similarity index
-- **specs** — Feature specifications linking to tickets via `origin_spec_id`
-
-Supports both local SQLite (`file:` URLs) and Turso Cloud (`libsql://` URLs).
+Vector search uses `vector_distance_cos` with `vector_top_k` index. Supports both local SQLite (`file:` URLs) and Turso Cloud (`libsql://` URLs).
 
 ## Configuration
 
-Config is read from `.superintent/.env` or environment variables (`TURSO_URL`, `TURSO_AUTH_TOKEN`). Environment variables take priority.
+All config lives in `.superintent/.env`, created by `/superintent:setup`.
 
-Local file URLs (`file:...`) do not require an auth token.
+Local:
+```env
+TURSO_URL="file:.superintent/local.db"
+```
+
+Cloud:
+```env
+TURSO_URL="libsql://your-db.turso.io"
+TURSO_AUTH_TOKEN="your-token"
+```
+
+Project namespace is read from `CLAUDE.md` (`- Namespace: <n>`), falling back to the current directory name.
+
+## Embedding Model
+
+Uses [all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2) via `@huggingface/transformers`. The model (~23MB) downloads on first use and caches locally. Runs entirely on-device — no API calls for embeddings.
 
 ## License
 
