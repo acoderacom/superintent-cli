@@ -6,6 +6,11 @@ import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
 import type { Knowledge, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType } from '../types.js';
 
+function clampConfidence(value: number): number {
+  if (isNaN(value)) return 0.8;
+  return Math.max(0.1, Math.min(1.0, value));
+}
+
 interface ParsedKnowledge {
   title: string;
   namespace: string;
@@ -88,7 +93,7 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
         result.originTicketType = typeValue as TicketType;
       }
     } else if (trimmed.startsWith('**Confidence:**')) {
-      result.confidence = parseFloat(trimmed.replace('**Confidence:**', '').trim());
+      result.confidence = clampConfidence(parseFloat(trimmed.replace('**Confidence:**', '').trim()));
     } else if (trimmed.startsWith('**Scope:**')) {
       result.scope = trimmed.replace('**Scope:**', '').trim() as DecisionScope;
     } else if (trimmed.startsWith('**Tags:**')) {
@@ -182,7 +187,7 @@ knowledgeCommand
         source = options.origin ? 'ticket' : options.source;
         originTicketId = options.origin || null;
         originTicketType = null;  // CLI doesn't support this yet, use stdin for full control
-        confidence = parseFloat(options.confidence);
+        confidence = clampConfidence(parseFloat(options.confidence));
         scope = options.scope;
       }
 
@@ -454,7 +459,7 @@ knowledgeCommand
         }
         if (options.confidence) {
           updates.push('confidence = ?');
-          args.push(parseFloat(options.confidence));
+          args.push(clampConfidence(parseFloat(options.confidence)));
         } else if (stdinParsed?.confidence) {
           updates.push('confidence = ?');
           args.push(stdinParsed.confidence);
