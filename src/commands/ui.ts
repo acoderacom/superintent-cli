@@ -10,7 +10,7 @@ import { getClient, closeClient } from '../db/client.js';
 import { parseTicketRow, parseKnowledgeRow, parseSpecRow } from '../db/parsers.js';
 import { performVectorSearch } from '../db/search.js';
 import { loadConfig, getProjectNamespace } from '../utils/config.js';
-import { embed } from '../embed/model.js';
+import { embed, disposeEmbedder } from '../embed/model.js';
 import {
   getHtml,
   renderKanbanView,
@@ -961,12 +961,16 @@ export const uiCommand = new Command('ui')
       }, 500);
     }
 
-    // Handle graceful shutdown
+    // Handle graceful shutdown — release all handles so the event loop drains naturally.
+    // NEVER call process.exit() here: onnxruntime-node has a global C++ thread pool
+    // that holds mutexes. Forceful exit kills those threads mid-lock, causing:
+    //   "libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed"
+    // Instead, close all JS-side handles and let Node.js exit on its own.
     const shutdown = () => {
       console.log('\n\x1b[90m  See ya!\x1b[0m\n');
-      server.close(() => {
+      server.close(async () => {
+        await disposeEmbedder();
         closeClient();
-        process.exit(0);
       });
     };
 

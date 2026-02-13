@@ -16,24 +16,26 @@ export const searchCommand = new Command('search')
   .action(async (query, options) => {
     try {
       const client = await getClient();
-      const queryEmbedding = await embed(query);
+      try {
+        const queryEmbedding = await embed(query);
 
-      const results = await performVectorSearch(client, queryEmbedding, {
-        namespace: options.namespace,
-        category: options.category,
-        ticketType: options.ticketType,
-        tags: options.tags,
-        minScore: parseFloat(options.minScore),
-        limit: parseInt(options.limit, 10),
-      });
+        const results = await performVectorSearch(client, queryEmbedding, {
+          namespace: options.namespace,
+          category: options.category,
+          ticketType: options.ticketType,
+          tags: options.tags,
+          minScore: parseFloat(options.minScore),
+          limit: parseInt(options.limit, 10),
+        });
 
-      closeClient();
-
-      const response: CliResponse<{ query: string; results: SearchResult[] }> = {
-        success: true,
-        data: { query, results },
-      };
-      console.log(JSON.stringify(response));
+        const response: CliResponse<{ query: string; results: SearchResult[] }> = {
+          success: true,
+          data: { query, results },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
     } catch (error) {
       const response: CliResponse = {
         success: false,

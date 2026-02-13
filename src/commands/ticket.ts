@@ -644,38 +644,39 @@ ticketCommand
       }
 
       const client = await getClient();
+      try {
+        await client.execute({
+          sql: `INSERT INTO tickets (
+            id, type, title, status, intent, context,
+            constraints_use, constraints_avoid, assumptions,
+            tasks, definition_of_done, change_class, change_class_reason, plan, origin_spec_id
+          ) VALUES (?, ?, ?, 'Backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            id,
+            type,
+            title,
+            intent,
+            context,
+            constraintsUse ? JSON.stringify(constraintsUse) : null,
+            constraintsAvoid ? JSON.stringify(constraintsAvoid) : null,
+            assumptions ? JSON.stringify(assumptions) : null,
+            tasks ? JSON.stringify(tasks) : null,
+            dod ? JSON.stringify(dod) : null,
+            changeClass,
+            changeClassReason,
+            plan ? JSON.stringify(plan) : null,
+            originSpecId,
+          ],
+        });
 
-      await client.execute({
-        sql: `INSERT INTO tickets (
-          id, type, title, status, intent, context,
-          constraints_use, constraints_avoid, assumptions,
-          tasks, definition_of_done, change_class, change_class_reason, plan, origin_spec_id
-        ) VALUES (?, ?, ?, 'Backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [
-          id,
-          type,
-          title,
-          intent,
-          context,
-          constraintsUse ? JSON.stringify(constraintsUse) : null,
-          constraintsAvoid ? JSON.stringify(constraintsAvoid) : null,
-          assumptions ? JSON.stringify(assumptions) : null,
-          tasks ? JSON.stringify(tasks) : null,
-          dod ? JSON.stringify(dod) : null,
-          changeClass,
-          changeClassReason,
-          plan ? JSON.stringify(plan) : null,
-          originSpecId,
-        ],
-      });
-
-      closeClient();
-
-      const response: CliResponse<{ id: string; status: string }> = {
-        success: true,
-        data: { id, status: 'created' },
-      };
-      console.log(JSON.stringify(response));
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'created' },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -694,13 +695,15 @@ ticketCommand
   .action(async (id) => {
     try {
       const client = await getClient();
-
-      const result = await client.execute({
-        sql: 'SELECT * FROM tickets WHERE id = ?',
-        args: [id],
-      });
-
-      closeClient();
+      let result;
+      try {
+        result = await client.execute({
+          sql: 'SELECT * FROM tickets WHERE id = ?',
+          args: [id],
+        });
+      } finally {
+        closeClient();
+      }
 
       if (result.rows.length === 0) {
         const response: CliResponse = {
@@ -746,183 +749,182 @@ ticketCommand
   .action(async (id, options) => {
     try {
       const client = await getClient();
+      try {
+        // Check ticket exists
+        const existing = await client.execute({
+          sql: 'SELECT * FROM tickets WHERE id = ?',
+          args: [id],
+        });
 
-      // Check ticket exists
-      const existing = await client.execute({
-        sql: 'SELECT * FROM tickets WHERE id = ?',
-        args: [id],
-      });
-
-      if (existing.rows.length === 0) {
-        closeClient();
-        const response: CliResponse = {
-          success: false,
-          error: `Ticket ${id} not found`,
-        };
-        console.log(JSON.stringify(response));
-        process.exit(1);
-      }
-
-      const currentTicket = parseTicketRow(existing.rows[0] as Record<string, unknown>);
-      const updates: string[] = [];
-      const args: InValue[] = [];
-
-      // Track if tasks/dod have been modified to avoid duplicate updates
-      let tasksModified = false;
-      let dodModified = false;
-      let tasks = currentTicket.tasks ? [...currentTicket.tasks] : [];
-      let dod = currentTicket.definition_of_done ? [...currentTicket.definition_of_done] : [];
-
-      // Handle --complete-all flag (highest priority for completion)
-      if (options.completeAll) {
-        if (tasks.length > 0) {
-          tasks = tasks.map(t => ({ ...t, done: true }));
-          tasksModified = true;
+        if (existing.rows.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Ticket ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
         }
-        if (dod.length > 0) {
-          dod = dod.map(d => ({ ...d, done: true }));
-          dodModified = true;
-        }
-      }
 
-      // Handle --complete-task with comma-separated indices
-      if (options.completeTask !== undefined && !options.completeAll) {
-        const indices = String(options.completeTask).split(',').map(s => parseInt(s.trim(), 10));
-        for (const idx of indices) {
-          if (tasks[idx]) {
-            tasks[idx].done = true;
-            tasksModified = true;
-          }
-        }
-      }
+        const currentTicket = parseTicketRow(existing.rows[0] as Record<string, unknown>);
+        const updates: string[] = [];
+        const args: InValue[] = [];
 
-      // Handle --complete-dod with comma-separated indices
-      if (options.completeDod !== undefined && !options.completeAll) {
-        const indices = String(options.completeDod).split(',').map(s => parseInt(s.trim(), 10));
-        for (const idx of indices) {
-          if (dod[idx]) {
-            dod[idx].done = true;
-            dodModified = true;
-          }
-        }
-      }
+        // Track if tasks/dod have been modified to avoid duplicate updates
+        let tasksModified = false;
+        let dodModified = false;
+        let tasks = currentTicket.tasks ? [...currentTicket.tasks] : [];
+        let dod = currentTicket.definition_of_done ? [...currentTicket.definition_of_done] : [];
 
-      if (options.status) {
-        updates.push('status = ?');
-        args.push(options.status);
-
-        // Auto-complete all tasks and DoD when status is "Done" (unless already handled by --complete-all)
-        if (options.status === 'Done' && !options.completeAll) {
-          if (tasks.length > 0 && !tasksModified) {
+        // Handle --complete-all flag (highest priority for completion)
+        if (options.completeAll) {
+          if (tasks.length > 0) {
             tasks = tasks.map(t => ({ ...t, done: true }));
             tasksModified = true;
           }
-          if (dod.length > 0 && !dodModified) {
+          if (dod.length > 0) {
             dod = dod.map(d => ({ ...d, done: true }));
             dodModified = true;
           }
         }
-      }
 
-      if (options.context) {
-        updates.push('context = ?');
-        args.push(options.context);
-      }
+        // Handle --complete-task with comma-separated indices
+        if (options.completeTask !== undefined && !options.completeAll) {
+          const indices = String(options.completeTask).split(',').map(s => parseInt(s.trim(), 10));
+          for (const idx of indices) {
+            if (tasks[idx]) {
+              tasks[idx].done = true;
+              tasksModified = true;
+            }
+          }
+        }
 
-      if (options.comment) {
-        const currentComments: TicketComment[] = currentTicket.comments || [];
-        const newComment: TicketComment = {
-          text: options.comment,
-          timestamp: new Date().toISOString(),
-        };
-        currentComments.push(newComment);
-        updates.push('comments = ?');
-        args.push(JSON.stringify(currentComments));
-      }
+        // Handle --complete-dod with comma-separated indices
+        if (options.completeDod !== undefined && !options.completeAll) {
+          const indices = String(options.completeDod).split(',').map(s => parseInt(s.trim(), 10));
+          for (const idx of indices) {
+            if (dod[idx]) {
+              dod[idx].done = true;
+              dodModified = true;
+            }
+          }
+        }
 
-      if (options.tasks) {
-        tasks = (options.tasks as string[]).map((text: string) => ({ text, done: false }));
-        tasksModified = true;
-      }
+        if (options.status) {
+          updates.push('status = ?');
+          args.push(options.status);
 
-      if (options.dod) {
-        dod = (options.dod as string[]).map((text: string) => ({ text, done: false }));
-        dodModified = true;
-      }
+          // Auto-complete all tasks and DoD when status is "Done" (unless already handled by --complete-all)
+          if (options.status === 'Done' && !options.completeAll) {
+            if (tasks.length > 0 && !tasksModified) {
+              tasks = tasks.map(t => ({ ...t, done: true }));
+              tasksModified = true;
+            }
+            if (dod.length > 0 && !dodModified) {
+              dod = dod.map(d => ({ ...d, done: true }));
+              dodModified = true;
+            }
+          }
+        }
 
-      if (options.spec) {
-        updates.push('origin_spec_id = ?');
-        args.push(options.spec);
-      }
+        if (options.context) {
+          updates.push('context = ?');
+          args.push(options.context);
+        }
 
-      // Handle --plan-stdin: read and parse plan from stdin
-      if (options.planStdin) {
-        const planContent = await readStdin();
-        const plan = parsePlanMarkdown(planContent);
-        updates.push('plan = ?');
-        args.push(JSON.stringify(plan));
-      }
+        if (options.comment) {
+          const currentComments: TicketComment[] = currentTicket.comments || [];
+          const newComment: TicketComment = {
+            text: options.comment,
+            timestamp: new Date().toISOString(),
+          };
+          currentComments.push(newComment);
+          updates.push('comments = ?');
+          args.push(JSON.stringify(currentComments));
+        }
 
-      // Apply task modifications
-      if (tasksModified) {
-        updates.push('tasks = ?');
-        args.push(JSON.stringify(tasks));
-      }
+        if (options.tasks) {
+          tasks = (options.tasks as string[]).map((text: string) => ({ text, done: false }));
+          tasksModified = true;
+        }
 
-      // Apply dod modifications
-      if (dodModified) {
-        updates.push('definition_of_done = ?');
-        args.push(JSON.stringify(dod));
-      }
+        if (options.dod) {
+          dod = (options.dod as string[]).map((text: string) => ({ text, done: false }));
+          dodModified = true;
+        }
 
-      if (updates.length === 0) {
-        closeClient();
-        const response: CliResponse = {
-          success: false,
-          error: 'No updates provided',
+        if (options.spec) {
+          updates.push('origin_spec_id = ?');
+          args.push(options.spec);
+        }
+
+        // Handle --plan-stdin: read and parse plan from stdin
+        if (options.planStdin) {
+          const planContent = await readStdin();
+          const plan = parsePlanMarkdown(planContent);
+          updates.push('plan = ?');
+          args.push(JSON.stringify(plan));
+        }
+
+        // Apply task modifications
+        if (tasksModified) {
+          updates.push('tasks = ?');
+          args.push(JSON.stringify(tasks));
+        }
+
+        // Apply dod modifications
+        if (dodModified) {
+          updates.push('definition_of_done = ?');
+          args.push(JSON.stringify(dod));
+        }
+
+        if (updates.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: 'No updates provided',
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        updates.push("updated_at = datetime('now')");
+        args.push(id);
+
+        await client.execute({
+          sql: `UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`,
+          args,
+        });
+
+        // Auto-extract: generate knowledge proposals when status is "Done"
+        let extractProposals: KnowledgeInput[] | undefined;
+        if (options.status === 'Done') {
+          // Fetch updated ticket for extraction
+          const updatedResult = await client.execute({
+            sql: 'SELECT * FROM tickets WHERE id = ?',
+            args: [id],
+          });
+          if (updatedResult.rows.length > 0) {
+            const updatedTicket = parseTicketRow(updatedResult.rows[0] as Record<string, unknown>);
+            const namespace = getProjectNamespace();
+            extractProposals = generateExtractProposals(updatedTicket, namespace);
+          }
+        }
+
+        const response: CliResponse<{
+          id: string;
+          status: string;
+          extractProposals?: KnowledgeInput[];
+        }> = {
+          success: true,
+          data: {
+            id,
+            status: 'updated',
+            ...(extractProposals && extractProposals.length > 0 && { extractProposals }),
+          },
         };
         console.log(JSON.stringify(response));
-        process.exit(1);
+      } finally {
+        closeClient();
       }
-
-      updates.push("updated_at = datetime('now')");
-      args.push(id);
-
-      await client.execute({
-        sql: `UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`,
-        args,
-      });
-
-      // Auto-extract: generate knowledge proposals when status is "Done"
-      let extractProposals: KnowledgeInput[] | undefined;
-      if (options.status === 'Done') {
-        // Fetch updated ticket for extraction
-        const updatedResult = await client.execute({
-          sql: 'SELECT * FROM tickets WHERE id = ?',
-          args: [id],
-        });
-        if (updatedResult.rows.length > 0) {
-          const updatedTicket = parseTicketRow(updatedResult.rows[0] as Record<string, unknown>);
-          const namespace = getProjectNamespace();
-          extractProposals = generateExtractProposals(updatedTicket, namespace);
-        }
-      }
-
-      closeClient();
-
-      const response: CliResponse<{
-        id: string;
-        status: string;
-        extractProposals?: KnowledgeInput[];
-      }> = {
-        success: true,
-        data: {
-          id,
-          status: 'updated',
-          ...(extractProposals && extractProposals.length > 0 && { extractProposals }),
-        },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -942,31 +944,32 @@ ticketCommand
   .action(async (options) => {
     try {
       const client = await getClient();
+      try {
+        let sql = 'SELECT * FROM tickets';
+        const args: InValue[] = [];
 
-      let sql = 'SELECT * FROM tickets';
-      const args: InValue[] = [];
+        if (options.status) {
+          sql += ' WHERE status = ?';
+          args.push(options.status);
+        }
 
-      if (options.status) {
-        sql += ' WHERE status = ?';
-        args.push(options.status);
+        sql += ' ORDER BY created_at DESC LIMIT ?';
+        args.push(parseInt(options.limit, 10));
+
+        const result = await client.execute({ sql, args });
+
+        const tickets = result.rows.map((row) =>
+          parseTicketRow(row as Record<string, unknown>)
+        );
+
+        const response: CliResponse<Ticket[]> = {
+          success: true,
+          data: tickets,
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
       }
-
-      sql += ' ORDER BY created_at DESC LIMIT ?';
-      args.push(parseInt(options.limit, 10));
-
-      const result = await client.execute({ sql, args });
-
-      closeClient();
-
-      const tickets = result.rows.map((row) =>
-        parseTicketRow(row as Record<string, unknown>)
-      );
-
-      const response: CliResponse<Ticket[]> = {
-        success: true,
-        data: tickets,
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -985,35 +988,35 @@ ticketCommand
   .action(async (id) => {
     try {
       const client = await getClient();
+      try {
+        // Check ticket exists
+        const existing = await client.execute({
+          sql: 'SELECT id FROM tickets WHERE id = ?',
+          args: [id],
+        });
 
-      // Check ticket exists
-      const existing = await client.execute({
-        sql: 'SELECT id FROM tickets WHERE id = ?',
-        args: [id],
-      });
+        if (existing.rows.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Ticket ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
 
-      if (existing.rows.length === 0) {
-        closeClient();
-        const response: CliResponse = {
-          success: false,
-          error: `Ticket ${id} not found`,
+        await client.execute({
+          sql: 'DELETE FROM tickets WHERE id = ?',
+          args: [id],
+        });
+
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'deleted' },
         };
         console.log(JSON.stringify(response));
-        process.exit(1);
+      } finally {
+        closeClient();
       }
-
-      await client.execute({
-        sql: 'DELETE FROM tickets WHERE id = ?',
-        args: [id],
-      });
-
-      closeClient();
-
-      const response: CliResponse<{ id: string; status: string }> = {
-        success: true,
-        data: { id, status: 'deleted' },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,

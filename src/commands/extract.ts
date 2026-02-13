@@ -27,13 +27,15 @@ export const extractCommand = new Command('extract')
   .action(async (ticketId, options) => {
     try {
       const client = await getClient();
-
-      const result = await client.execute({
-        sql: 'SELECT * FROM tickets WHERE id = ?',
-        args: [ticketId],
-      });
-
-      closeClient();
+      let result;
+      try {
+        result = await client.execute({
+          sql: 'SELECT * FROM tickets WHERE id = ?',
+          args: [ticketId],
+        });
+      } finally {
+        closeClient();
+      }
 
       if (result.rows.length === 0) {
         const response: CliResponse = {

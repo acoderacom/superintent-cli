@@ -36,8 +36,11 @@ export const initCommand = new Command('init')
 
       // Test connection and create tables
       const client = await createClientWithConfig(url, token);
-      await initSchema(client);
-      client.close();
+      try {
+        await initSchema(client);
+      } finally {
+        client.close();
+      }
 
       const response: CliResponse = {
         success: true,

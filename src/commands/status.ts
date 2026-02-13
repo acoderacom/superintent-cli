@@ -21,23 +21,24 @@ export const statusCommand = new Command('status')
 
       // Test connection
       const client = await getClient();
+      try {
+        // Get counts
+        const ticketCount = await client.execute('SELECT COUNT(*) as count FROM tickets');
+        const knowledgeCount = await client.execute('SELECT COUNT(*) as count FROM knowledge');
 
-      // Get counts
-      const ticketCount = await client.execute('SELECT COUNT(*) as count FROM tickets');
-      const knowledgeCount = await client.execute('SELECT COUNT(*) as count FROM knowledge');
-
-      closeClient();
-
-      const response: CliResponse = {
-        success: true,
-        data: {
-          connected: true,
-          url: config.url.replace(/\/\/.*:.*@/, '//***@'), // Hide token in URL if present
-          tickets: ticketCount.rows[0].count,
-          knowledge: knowledgeCount.rows[0].count,
-        },
-      };
-      console.log(JSON.stringify(response));
+        const response: CliResponse = {
+          success: true,
+          data: {
+            connected: true,
+            url: config.url.replace(/\/\/.*:.*@/, '//***@'), // Hide token in URL if present
+            tickets: ticketCount.rows[0].count,
+            knowledge: knowledgeCount.rows[0].count,
+          },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
     } catch (error) {
       const response: CliResponse = {
         success: false,

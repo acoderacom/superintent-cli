@@ -93,19 +93,20 @@ specCommand
       }
 
       const client = await getClient();
+      try {
+        await client.execute({
+          sql: `INSERT INTO specs (id, title, content) VALUES (?, ?, ?)`,
+          args: [id, title, content],
+        });
 
-      await client.execute({
-        sql: `INSERT INTO specs (id, title, content) VALUES (?, ?, ?)`,
-        args: [id, title, content],
-      });
-
-      closeClient();
-
-      const response: CliResponse<{ id: string; status: string }> = {
-        success: true,
-        data: { id, status: 'created' },
-      };
-      console.log(JSON.stringify(response));
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'created' },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -124,13 +125,15 @@ specCommand
   .action(async (id) => {
     try {
       const client = await getClient();
-
-      const result = await client.execute({
-        sql: 'SELECT * FROM specs WHERE id = ?',
-        args: [id],
-      });
-
-      closeClient();
+      let result;
+      try {
+        result = await client.execute({
+          sql: 'SELECT * FROM specs WHERE id = ?',
+          args: [id],
+        });
+      } finally {
+        closeClient();
+      }
 
       if (result.rows.length === 0) {
         const response: CliResponse = {
@@ -166,23 +169,24 @@ specCommand
   .action(async (options) => {
     try {
       const client = await getClient();
+      try {
+        const result = await client.execute({
+          sql: 'SELECT * FROM specs ORDER BY created_at DESC LIMIT ?',
+          args: [parseInt(options.limit, 10)],
+        });
 
-      const result = await client.execute({
-        sql: 'SELECT * FROM specs ORDER BY created_at DESC LIMIT ?',
-        args: [parseInt(options.limit, 10)],
-      });
+        const specs = result.rows.map((row) =>
+          parseSpecRow(row as Record<string, unknown>)
+        );
 
-      closeClient();
-
-      const specs = result.rows.map((row) =>
-        parseSpecRow(row as Record<string, unknown>)
-      );
-
-      const response: CliResponse<Spec[]> = {
-        success: true,
-        data: specs,
-      };
-      console.log(JSON.stringify(response));
+        const response: CliResponse<Spec[]> = {
+          success: true,
+          data: specs,
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -203,70 +207,70 @@ specCommand
   .action(async (id, options) => {
     try {
       const client = await getClient();
+      try {
+        const updates: string[] = [];
+        const args: (string | number)[] = [];
 
-      const updates: string[] = [];
-      const args: (string | number)[] = [];
-
-      // Read stdin — parse as full spec markdown if it has a # title
-      let stdinParsed: ParsedSpec | undefined;
-      if (options.contentStdin) {
-        const raw = await readStdin();
-        const parsed = parseMarkdownSpec(raw);
-        if (parsed.title) {
-          stdinParsed = parsed;
-        } else {
-          // Plain content text (no title header)
-          updates.push('content = ?');
-          args.push(raw.trim());
+        // Read stdin — parse as full spec markdown if it has a # title
+        let stdinParsed: ParsedSpec | undefined;
+        if (options.contentStdin) {
+          const raw = await readStdin();
+          const parsed = parseMarkdownSpec(raw);
+          if (parsed.title) {
+            stdinParsed = parsed;
+          } else {
+            // Plain content text (no title header)
+            updates.push('content = ?');
+            args.push(raw.trim());
+          }
         }
-      }
 
-      if (options.title) {
-        updates.push('title = ?');
-        args.push(options.title);
-      } else if (stdinParsed?.title) {
-        updates.push('title = ?');
-        args.push(stdinParsed.title);
-      }
-      if (stdinParsed?.content) {
-        updates.push('content = ?');
-        args.push(stdinParsed.content);
-      }
+        if (options.title) {
+          updates.push('title = ?');
+          args.push(options.title);
+        } else if (stdinParsed?.title) {
+          updates.push('title = ?');
+          args.push(stdinParsed.title);
+        }
+        if (stdinParsed?.content) {
+          updates.push('content = ?');
+          args.push(stdinParsed.content);
+        }
 
-      if (updates.length === 0) {
+        if (updates.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: 'No updates provided. Use --title or --content-stdin',
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        updates.push("updated_at = datetime('now')");
+        args.push(id);
+
+        const result = await client.execute({
+          sql: `UPDATE specs SET ${updates.join(', ')} WHERE id = ?`,
+          args,
+        });
+
+        if (result.rowsAffected === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Spec ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'updated' },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
         closeClient();
-        const response: CliResponse = {
-          success: false,
-          error: 'No updates provided. Use --title or --content-stdin',
-        };
-        console.log(JSON.stringify(response));
-        process.exit(1);
       }
-
-      updates.push("updated_at = datetime('now')");
-      args.push(id);
-
-      const result = await client.execute({
-        sql: `UPDATE specs SET ${updates.join(', ')} WHERE id = ?`,
-        args,
-      });
-
-      closeClient();
-
-      if (result.rowsAffected === 0) {
-        const response: CliResponse = {
-          success: false,
-          error: `Spec ${id} not found`,
-        };
-        console.log(JSON.stringify(response));
-        process.exit(1);
-      }
-
-      const response: CliResponse<{ id: string; status: string }> = {
-        success: true,
-        data: { id, status: 'updated' },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -285,34 +289,34 @@ specCommand
   .action(async (id) => {
     try {
       const client = await getClient();
+      try {
+        const existing = await client.execute({
+          sql: 'SELECT id FROM specs WHERE id = ?',
+          args: [id],
+        });
 
-      const existing = await client.execute({
-        sql: 'SELECT id FROM specs WHERE id = ?',
-        args: [id],
-      });
+        if (existing.rows.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Spec ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
 
-      if (existing.rows.length === 0) {
-        closeClient();
-        const response: CliResponse = {
-          success: false,
-          error: `Spec ${id} not found`,
+        await client.execute({
+          sql: 'DELETE FROM specs WHERE id = ?',
+          args: [id],
+        });
+
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'deleted' },
         };
         console.log(JSON.stringify(response));
-        process.exit(1);
+      } finally {
+        closeClient();
       }
-
-      await client.execute({
-        sql: 'DELETE FROM specs WHERE id = ?',
-        args: [id],
-      });
-
-      closeClient();
-
-      const response: CliResponse<{ id: string; status: string }> = {
-        success: true,
-        data: { id, status: 'deleted' },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,

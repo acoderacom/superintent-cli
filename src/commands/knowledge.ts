@@ -187,57 +187,58 @@ knowledgeCommand
       }
 
       const client = await getClient();
+      try {
+        // Generate embedding from title + content + tags
+        const tagsText = tags?.length ? ' ' + tags.join(' ') : '';
+        const textToEmbed = `${title} ${content}${tagsText}`;
+        const embedding = await embed(textToEmbed);
 
-      // Generate embedding from title + content + tags
-      const tagsText = tags?.length ? ' ' + tags.join(' ') : '';
-      const textToEmbed = `${title} ${content}${tagsText}`;
-      const embedding = await embed(textToEmbed);
-
-      await client.execute({
-        sql: `INSERT INTO knowledge (
-          id, namespace, chunk_index, title, content, embedding,
-          category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope
-        ) VALUES (?, ?, 0, ?, ?, vector32(?), ?, ?, ?, ?, ?, ?, 1, ?)`,
-        args: [
-          id,
-          namespace,
-          title,
-          content,
-          JSON.stringify(embedding),
-          category,
-          tags ? JSON.stringify(tags) : null,
-          source,
-          originTicketId,
-          originTicketType,
-          confidence,
-          scope,
-        ],
-      });
-
-      // Bidirectional linking: update ticket's derived_knowledge
-      if (originTicketId) {
-        const ticketResult = await client.execute({
-          sql: 'SELECT derived_knowledge FROM tickets WHERE id = ?',
-          args: [originTicketId],
+        await client.execute({
+          sql: `INSERT INTO knowledge (
+            id, namespace, chunk_index, title, content, embedding,
+            category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope
+          ) VALUES (?, ?, 0, ?, ?, vector32(?), ?, ?, ?, ?, ?, ?, 1, ?)`,
+          args: [
+            id,
+            namespace,
+            title,
+            content,
+            JSON.stringify(embedding),
+            category,
+            tags ? JSON.stringify(tags) : null,
+            source,
+            originTicketId,
+            originTicketType,
+            confidence,
+            scope,
+          ],
         });
-        if (ticketResult.rows.length > 0) {
-          const row = ticketResult.rows[0] as Record<string, unknown>;
-          const existing = row.derived_knowledge ? JSON.parse(row.derived_knowledge as string) : [];
-          existing.push(id);
-          await client.execute({
-            sql: 'UPDATE tickets SET derived_knowledge = ? WHERE id = ?',
-            args: [JSON.stringify(existing), originTicketId],
+
+        // Bidirectional linking: update ticket's derived_knowledge
+        if (originTicketId) {
+          const ticketResult = await client.execute({
+            sql: 'SELECT derived_knowledge FROM tickets WHERE id = ?',
+            args: [originTicketId],
           });
+          if (ticketResult.rows.length > 0) {
+            const row = ticketResult.rows[0] as Record<string, unknown>;
+            const existing = row.derived_knowledge ? JSON.parse(row.derived_knowledge as string) : [];
+            existing.push(id);
+            await client.execute({
+              sql: 'UPDATE tickets SET derived_knowledge = ? WHERE id = ?',
+              args: [JSON.stringify(existing), originTicketId],
+            });
+          }
         }
+
+        const response: CliResponse<{ id: string; namespace: string; source: string; status: string }> = {
+          success: true,
+          data: { id, namespace, source, status: 'created' },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
       }
-
-      closeClient();
-
-      const response: CliResponse<{ id: string; namespace: string; source: string; status: string }> = {
-        success: true,
-        data: { id, namespace, source, status: 'created' },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -256,16 +257,18 @@ knowledgeCommand
   .action(async (id) => {
     try {
       const client = await getClient();
-
-      const result = await client.execute({
-        sql: `SELECT id, namespace, chunk_index, title, content,
-              category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-              usage_count, last_used_at, created_at
-              FROM knowledge WHERE id = ?`,
-        args: [id],
-      });
-
-      closeClient();
+      let result;
+      try {
+        result = await client.execute({
+          sql: `SELECT id, namespace, chunk_index, title, content,
+                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                usage_count, last_used_at, created_at
+                FROM knowledge WHERE id = ?`,
+          args: [id],
+        });
+      } finally {
+        closeClient();
+      }
 
       if (result.rows.length === 0) {
         const response: CliResponse = {
@@ -306,60 +309,61 @@ knowledgeCommand
   .action(async (options) => {
     try {
       const client = await getClient();
+      try {
+        const conditions: string[] = [];
+        const args: (string | number)[] = [];
 
-      const conditions: string[] = [];
-      const args: (string | number)[] = [];
+        if (options.status === 'active') {
+          conditions.push('active = 1');
+        } else if (options.status === 'inactive') {
+          conditions.push('active = 0');
+        }
+        // 'all' = no filter on active
 
-      if (options.status === 'active') {
-        conditions.push('active = 1');
-      } else if (options.status === 'inactive') {
-        conditions.push('active = 0');
+        if (options.namespace) {
+          conditions.push('namespace = ?');
+          args.push(options.namespace);
+        }
+
+        if (options.category) {
+          conditions.push('category = ?');
+          args.push(options.category);
+        }
+
+        if (options.scope) {
+          conditions.push('decision_scope = ?');
+          args.push(options.scope);
+        }
+
+        if (options.source) {
+          conditions.push('source = ?');
+          args.push(options.source);
+        }
+
+        let sql = `SELECT id, namespace, chunk_index, title, content,
+                   category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                   usage_count, last_used_at, created_at
+                   FROM knowledge`;
+        if (conditions.length > 0) {
+          sql += ` WHERE ${conditions.join(' AND ')}`;
+        }
+        sql += ' ORDER BY created_at DESC LIMIT ?';
+        args.push(parseInt(options.limit, 10));
+
+        const result = await client.execute({ sql, args });
+
+        const knowledge = result.rows.map((row) =>
+          parseKnowledgeRow(row as Record<string, unknown>)
+        );
+
+        const response: CliResponse<Knowledge[]> = {
+          success: true,
+          data: knowledge,
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
       }
-      // 'all' = no filter on active
-
-      if (options.namespace) {
-        conditions.push('namespace = ?');
-        args.push(options.namespace);
-      }
-
-      if (options.category) {
-        conditions.push('category = ?');
-        args.push(options.category);
-      }
-
-      if (options.scope) {
-        conditions.push('decision_scope = ?');
-        args.push(options.scope);
-      }
-
-      if (options.source) {
-        conditions.push('source = ?');
-        args.push(options.source);
-      }
-
-      let sql = `SELECT id, namespace, chunk_index, title, content,
-                 category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                 usage_count, last_used_at, created_at
-                 FROM knowledge`;
-      if (conditions.length > 0) {
-        sql += ` WHERE ${conditions.join(' AND ')}`;
-      }
-      sql += ' ORDER BY created_at DESC LIMIT ?';
-      args.push(parseInt(options.limit, 10));
-
-      const result = await client.execute({ sql, args });
-
-      closeClient();
-
-      const knowledge = result.rows.map((row) =>
-        parseKnowledgeRow(row as Record<string, unknown>)
-      );
-
-      const response: CliResponse<Knowledge[]> = {
-        success: true,
-        data: knowledge,
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -386,131 +390,132 @@ knowledgeCommand
   .action(async (id, options) => {
     try {
       const client = await getClient();
-
-      // Read content from stdin — parse as full markdown if it has ## Content section
-      let stdinContent: string | undefined;
-      let stdinParsed: ParsedKnowledge | undefined;
-      if (options.contentStdin) {
-        const raw = await readStdin();
-        if (raw.includes('## Content')) {
-          // Full knowledge markdown format — parse all fields
-          stdinParsed = parseMarkdownKnowledge(raw);
-        } else {
-          // Plain content text
-          stdinContent = raw;
+      try {
+        // Read content from stdin — parse as full markdown if it has ## Content section
+        let stdinContent: string | undefined;
+        let stdinParsed: ParsedKnowledge | undefined;
+        if (options.contentStdin) {
+          const raw = await readStdin();
+          if (raw.includes('## Content')) {
+            // Full knowledge markdown format — parse all fields
+            stdinParsed = parseMarkdownKnowledge(raw);
+          } else {
+            // Plain content text
+            stdinContent = raw;
+          }
         }
-      }
 
-      // Build dynamic update
-      const updates: string[] = [];
-      const args: (string | number | null)[] = [];
+        // Build dynamic update
+        const updates: string[] = [];
+        const args: (string | number | null)[] = [];
 
-      // CLI flags take priority over parsed stdin fields
-      if (options.title) {
-        updates.push('title = ?');
-        args.push(options.title);
-      } else if (stdinParsed?.title) {
-        updates.push('title = ?');
-        args.push(stdinParsed.title);
-      }
-      if (stdinParsed?.content) {
-        updates.push('content = ?');
-        args.push(stdinParsed.content);
-      } else if (stdinContent) {
-        updates.push('content = ?');
-        args.push(stdinContent);
-      }
-      if (options.namespace) {
-        updates.push('namespace = ?');
-        args.push(options.namespace);
-      } else if (stdinParsed?.namespace) {
-        updates.push('namespace = ?');
-        args.push(stdinParsed.namespace);
-      }
-      if (options.category) {
-        updates.push('category = ?');
-        args.push(options.category);
-      } else if (stdinParsed?.category) {
-        updates.push('category = ?');
-        args.push(stdinParsed.category);
-      }
-      if (options.tags) {
-        updates.push('tags = ?');
-        args.push(JSON.stringify(options.tags));
-      } else if (stdinParsed?.tags?.length) {
-        updates.push('tags = ?');
-        args.push(JSON.stringify(stdinParsed.tags));
-      }
-      if (options.origin) {
-        updates.push('origin_ticket_id = ?');
-        args.push(options.origin);
-      } else if (stdinParsed?.originTicketId) {
-        updates.push('origin_ticket_id = ?');
-        args.push(stdinParsed.originTicketId);
-      }
-      if (options.confidence) {
-        updates.push('confidence = ?');
-        args.push(parseFloat(options.confidence));
-      } else if (stdinParsed?.confidence) {
-        updates.push('confidence = ?');
-        args.push(stdinParsed.confidence);
-      }
-      if (options.scope) {
-        updates.push('decision_scope = ?');
-        args.push(options.scope);
-      } else if (stdinParsed?.scope) {
-        updates.push('decision_scope = ?');
-        args.push(stdinParsed.scope);
-      }
+        // CLI flags take priority over parsed stdin fields
+        if (options.title) {
+          updates.push('title = ?');
+          args.push(options.title);
+        } else if (stdinParsed?.title) {
+          updates.push('title = ?');
+          args.push(stdinParsed.title);
+        }
+        if (stdinParsed?.content) {
+          updates.push('content = ?');
+          args.push(stdinParsed.content);
+        } else if (stdinContent) {
+          updates.push('content = ?');
+          args.push(stdinContent);
+        }
+        if (options.namespace) {
+          updates.push('namespace = ?');
+          args.push(options.namespace);
+        } else if (stdinParsed?.namespace) {
+          updates.push('namespace = ?');
+          args.push(stdinParsed.namespace);
+        }
+        if (options.category) {
+          updates.push('category = ?');
+          args.push(options.category);
+        } else if (stdinParsed?.category) {
+          updates.push('category = ?');
+          args.push(stdinParsed.category);
+        }
+        if (options.tags) {
+          updates.push('tags = ?');
+          args.push(JSON.stringify(options.tags));
+        } else if (stdinParsed?.tags?.length) {
+          updates.push('tags = ?');
+          args.push(JSON.stringify(stdinParsed.tags));
+        }
+        if (options.origin) {
+          updates.push('origin_ticket_id = ?');
+          args.push(options.origin);
+        } else if (stdinParsed?.originTicketId) {
+          updates.push('origin_ticket_id = ?');
+          args.push(stdinParsed.originTicketId);
+        }
+        if (options.confidence) {
+          updates.push('confidence = ?');
+          args.push(parseFloat(options.confidence));
+        } else if (stdinParsed?.confidence) {
+          updates.push('confidence = ?');
+          args.push(stdinParsed.confidence);
+        }
+        if (options.scope) {
+          updates.push('decision_scope = ?');
+          args.push(options.scope);
+        } else if (stdinParsed?.scope) {
+          updates.push('decision_scope = ?');
+          args.push(stdinParsed.scope);
+        }
 
-      if (updates.length === 0) {
-        const response: CliResponse = {
-          success: false,
-          error: 'No fields to update',
+        if (updates.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: 'No fields to update',
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        // Re-generate embedding if title, content, or tags changed
+        if (options.title || stdinContent || stdinParsed || options.tags) {
+          const current = await client.execute({
+            sql: 'SELECT title, content, tags FROM knowledge WHERE id = ?',
+            args: [id],
+          });
+          if (current.rows.length > 0) {
+            const row = current.rows[0] as Record<string, unknown>;
+            const newTitle = options.title || row.title;
+            const newContent = stdinContent || row.content;
+            const newTags: string[] = options.tags || (row.tags ? JSON.parse(row.tags as string) : []);
+            const tagsText = newTags?.length ? ' ' + newTags.join(' ') : '';
+            const embedding = await embed(`${newTitle} ${newContent}${tagsText}`);
+            updates.push('embedding = vector32(?)');
+            args.push(JSON.stringify(embedding));
+          }
+        }
+
+        updates.push("updated_at = datetime('now')");
+        args.push(id);
+        const sql = `UPDATE knowledge SET ${updates.join(', ')} WHERE id = ?`;
+        const result = await client.execute({ sql, args });
+
+        if (result.rowsAffected === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Knowledge ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const response: CliResponse<{ id: string; status: string; updated: string[] }> = {
+          success: true,
+          data: { id, status: 'updated', updated: Object.keys(options).filter(k => options[k]) },
         };
         console.log(JSON.stringify(response));
-        process.exit(1);
+      } finally {
+        closeClient();
       }
-
-      // Re-generate embedding if title, content, or tags changed
-      if (options.title || stdinContent || stdinParsed || options.tags) {
-        const current = await client.execute({
-          sql: 'SELECT title, content, tags FROM knowledge WHERE id = ?',
-          args: [id],
-        });
-        if (current.rows.length > 0) {
-          const row = current.rows[0] as Record<string, unknown>;
-          const newTitle = options.title || row.title;
-          const newContent = stdinContent || row.content;
-          const newTags: string[] = options.tags || (row.tags ? JSON.parse(row.tags as string) : []);
-          const tagsText = newTags?.length ? ' ' + newTags.join(' ') : '';
-          const embedding = await embed(`${newTitle} ${newContent}${tagsText}`);
-          updates.push('embedding = vector32(?)');
-          args.push(JSON.stringify(embedding));
-        }
-      }
-
-      updates.push("updated_at = datetime('now')");
-      args.push(id);
-      const sql = `UPDATE knowledge SET ${updates.join(', ')} WHERE id = ?`;
-      const result = await client.execute({ sql, args });
-
-      closeClient();
-
-      if (result.rowsAffected === 0) {
-        const response: CliResponse = {
-          success: false,
-          error: `Knowledge ${id} not found`,
-        };
-        console.log(JSON.stringify(response));
-        process.exit(1);
-      }
-
-      const response: CliResponse<{ id: string; status: string; updated: string[] }> = {
-        success: true,
-        data: { id, status: 'updated', updated: Object.keys(options).filter(k => options[k]) },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -529,28 +534,29 @@ knowledgeCommand
   .action(async (id) => {
     try {
       const client = await getClient();
+      try {
+        const result = await client.execute({
+          sql: 'UPDATE knowledge SET active = 0 WHERE id = ?',
+          args: [id],
+        });
 
-      const result = await client.execute({
-        sql: 'UPDATE knowledge SET active = 0 WHERE id = ?',
-        args: [id],
-      });
+        if (result.rowsAffected === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Knowledge ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
 
-      closeClient();
-
-      if (result.rowsAffected === 0) {
-        const response: CliResponse = {
-          success: false,
-          error: `Knowledge ${id} not found`,
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'deactivated' },
         };
         console.log(JSON.stringify(response));
-        process.exit(1);
+      } finally {
+        closeClient();
       }
-
-      const response: CliResponse<{ id: string; status: string }> = {
-        success: true,
-        data: { id, status: 'deactivated' },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -569,28 +575,29 @@ knowledgeCommand
   .action(async (id) => {
     try {
       const client = await getClient();
+      try {
+        const result = await client.execute({
+          sql: 'UPDATE knowledge SET active = 1 WHERE id = ?',
+          args: [id],
+        });
 
-      const result = await client.execute({
-        sql: 'UPDATE knowledge SET active = 1 WHERE id = ?',
-        args: [id],
-      });
+        if (result.rowsAffected === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Knowledge ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
 
-      closeClient();
-
-      if (result.rowsAffected === 0) {
-        const response: CliResponse = {
-          success: false,
-          error: `Knowledge ${id} not found`,
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'activated' },
         };
         console.log(JSON.stringify(response));
-        process.exit(1);
+      } finally {
+        closeClient();
       }
-
-      const response: CliResponse<{ id: string; status: string }> = {
-        success: true,
-        data: { id, status: 'activated' },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,
@@ -609,102 +616,103 @@ knowledgeCommand
   .action(async (options) => {
     try {
       const client = await getClient();
+      try {
+        // Fetch all active knowledge with usage data
+        const result = await client.execute({
+          sql: `SELECT id, title, confidence, usage_count, last_used_at, created_at
+                FROM knowledge WHERE active = 1`,
+          args: [],
+        });
 
-      // Fetch all active knowledge with usage data
-      const result = await client.execute({
-        sql: `SELECT id, title, confidence, usage_count, last_used_at, created_at
-              FROM knowledge WHERE active = 1`,
-        args: [],
-      });
+        const now = new Date();
+        const adjustments: {
+          id: string;
+          title: string;
+          oldConfidence: number;
+          newConfidence: number;
+          reason: string;
+        }[] = [];
 
-      const now = new Date();
-      const adjustments: {
-        id: string;
-        title: string;
-        oldConfidence: number;
-        newConfidence: number;
-        reason: string;
-      }[] = [];
+        for (const row of result.rows) {
+          const id = row.id as string;
+          const title = row.title as string;
+          const currentConfidence = row.confidence as number;
+          const usageCount = (row.usage_count as number) || 0;
+          const lastUsedAt = row.last_used_at as string | null;
+          const createdAt = row.created_at as string;
 
-      for (const row of result.rows) {
-        const id = row.id as string;
-        const title = row.title as string;
-        const currentConfidence = row.confidence as number;
-        const usageCount = (row.usage_count as number) || 0;
-        const lastUsedAt = row.last_used_at as string | null;
-        const createdAt = row.created_at as string;
+          let adjustment = 0;
+          const reasons: string[] = [];
 
-        let adjustment = 0;
-        const reasons: string[] = [];
+          // Usage-based growth
+          if (usageCount > 10) {
+            adjustment += 0.10;
+            reasons.push(`high usage (${usageCount}): +0.10`);
+          } else if (usageCount > 5) {
+            adjustment += 0.05;
+            reasons.push(`good usage (${usageCount}): +0.05`);
+          }
 
-        // Usage-based growth
-        if (usageCount > 10) {
-          adjustment += 0.10;
-          reasons.push(`high usage (${usageCount}): +0.10`);
-        } else if (usageCount > 5) {
-          adjustment += 0.05;
-          reasons.push(`good usage (${usageCount}): +0.05`);
-        }
+          // Staleness-based decay
+          const referenceDate = lastUsedAt || createdAt;
+          if (referenceDate) {
+            const daysSince = Math.floor(
+              (now.getTime() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24)
+            );
 
-        // Staleness-based decay
-        const referenceDate = lastUsedAt || createdAt;
-        if (referenceDate) {
-          const daysSince = Math.floor(
-            (now.getTime() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24)
-          );
+            if (daysSince > 180) {
+              adjustment -= 0.20;
+              reasons.push(`very stale (${daysSince}d): -0.20`);
+            } else if (daysSince > 90) {
+              adjustment -= 0.10;
+              reasons.push(`stale (${daysSince}d): -0.10`);
+            }
+          }
 
-          if (daysSince > 180) {
-            adjustment -= 0.20;
-            reasons.push(`very stale (${daysSince}d): -0.20`);
-          } else if (daysSince > 90) {
-            adjustment -= 0.10;
-            reasons.push(`stale (${daysSince}d): -0.10`);
+          // Skip if no adjustment needed
+          if (adjustment === 0) continue;
+
+          // Calculate new confidence, clamped between 0.1 and 1.0
+          const newConfidence = Math.max(0.1, Math.min(1.0, currentConfidence + adjustment));
+
+          // Skip if no actual change (already at bounds)
+          if (Math.abs(newConfidence - currentConfidence) < 0.001) continue;
+
+          adjustments.push({
+            id,
+            title: title.slice(0, 50),
+            oldConfidence: currentConfidence,
+            newConfidence: Math.round(newConfidence * 100) / 100,
+            reason: reasons.join(', '),
+          });
+
+          // Apply update unless dry-run
+          if (!options.dryRun) {
+            await client.execute({
+              sql: 'UPDATE knowledge SET confidence = ? WHERE id = ?',
+              args: [newConfidence, id],
+            });
           }
         }
 
-        // Skip if no adjustment needed
-        if (adjustment === 0) continue;
-
-        // Calculate new confidence, clamped between 0.1 and 1.0
-        const newConfidence = Math.max(0.1, Math.min(1.0, currentConfidence + adjustment));
-
-        // Skip if no actual change (already at bounds)
-        if (Math.abs(newConfidence - currentConfidence) < 0.001) continue;
-
-        adjustments.push({
-          id,
-          title: title.slice(0, 50),
-          oldConfidence: currentConfidence,
-          newConfidence: Math.round(newConfidence * 100) / 100,
-          reason: reasons.join(', '),
-        });
-
-        // Apply update unless dry-run
-        if (!options.dryRun) {
-          await client.execute({
-            sql: 'UPDATE knowledge SET confidence = ? WHERE id = ?',
-            args: [newConfidence, id],
-          });
-        }
+        const response: CliResponse<{
+          dryRun: boolean;
+          total: number;
+          adjusted: number;
+          adjustments: typeof adjustments;
+        }> = {
+          success: true,
+          data: {
+            dryRun: !!options.dryRun,
+            total: result.rows.length,
+            adjusted: adjustments.length,
+            adjustments,
+          },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
       }
-
-      closeClient();
-
-      const response: CliResponse<{
-        dryRun: boolean;
-        total: number;
-        adjusted: number;
-        adjustments: typeof adjustments;
-      }> = {
-        success: true,
-        data: {
-          dryRun: !!options.dryRun,
-          total: result.rows.length,
-          adjusted: adjustments.length,
-          adjustments,
-        },
-      };
-      console.log(JSON.stringify(response));
     } catch (error) {
       const response: CliResponse = {
         success: false,

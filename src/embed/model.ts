@@ -33,6 +33,18 @@ const embeddingCache = new Map<string, number[]>();
  * Returns a 384-dimensional normalized vector.
  * Results are cached in memory (LRU, up to MAX_CACHE_SIZE entries).
  */
+/**
+ * Dispose the embedding pipeline to release onnxruntime native resources.
+ * Safe to call even if the pipeline was never initialized (no-op).
+ */
+export async function disposeEmbedder(): Promise<void> {
+  if (extractor) {
+    await extractor.dispose();
+    extractor = null;
+    embeddingCache.clear();
+  }
+}
+
 export async function embed(text: string): Promise<number[]> {
   const cached = embeddingCache.get(text);
   if (cached) {
