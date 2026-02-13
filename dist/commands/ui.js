@@ -6,8 +6,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { getClient, closeClient } from '../db/client.js';
-import { parseTicketRow, parseKnowledgeRow, parseSearchRow, parseSpecRow } from '../db/parsers.js';
-import { trackUsage } from '../db/usage.js';
+import { parseTicketRow, parseKnowledgeRow, parseSpecRow } from '../db/parsers.js';
+import { performVectorSearch } from '../db/search.js';
 import { loadConfig, getProjectNamespace } from '../utils/config.js';
 import { embed } from '../embed/model.js';
 import { getHtml, renderKanbanView, renderKanbanColumns, renderColumnMore, renderSearchView, renderSearchResults, renderKnowledgeView, renderKnowledgeList, renderTicketModal, renderKnowledgeModal, renderNewTicketModal, renderEditTicketModal, renderSpecView, renderSpecList, renderSpecModal, renderNewSpecModal, renderEditSpecModal, } from '../ui/components/index.js';
@@ -369,70 +369,10 @@ export const uiCommand = new Command('ui')
             }
             const client = await getClient();
             const queryEmbedding = await embed(query);
-            const topK = limit * 2;
-            const conditions = ['k.active = 1'];
-            const args = [
-                JSON.stringify(queryEmbedding),
-                JSON.stringify(queryEmbedding),
-            ];
-            if (namespace) {
-                conditions.push('k.namespace = ?');
-                args.push(namespace);
-            }
-            if (category) {
-                conditions.push('k.category = ?');
-                args.push(category);
-            }
-            // Try indexed search first (k must be literal, not bound parameter)
-            try {
-                const sql = `
-            SELECT
-              k.id, k.namespace, k.chunk_index, k.title, k.content,
-              k.category, k.tags, k.source, k.origin_ticket_id, k.origin_ticket_type, k.confidence, k.active, k.decision_scope,
-              k.usage_count, k.last_used_at, k.created_at,
-              vector_distance_cos(k.embedding, vector32(?)) as distance
-            FROM vector_top_k('knowledge_embedding_idx', vector32(?), ${topK}) AS v
-            JOIN knowledge k ON k.rowid = v.id
-            WHERE ${conditions.join(' AND ')}
-            ORDER BY distance ASC
-            LIMIT ${limit}
-          `;
-                const result = await client.execute({ sql, args });
-                const results = result.rows.map((row) => parseSearchRow(row));
-                // Track usage for returned results
-                await trackUsage(results.map(r => r.id));
-                return c.json({ success: true, data: { query, results } });
-            }
-            catch {
-                // Fallback to non-indexed search
-                const fallbackConditions = ['active = 1'];
-                const fallbackArgs = [JSON.stringify(queryEmbedding)];
-                if (namespace) {
-                    fallbackConditions.push('namespace = ?');
-                    fallbackArgs.push(namespace);
-                }
-                if (category) {
-                    fallbackConditions.push('category = ?');
-                    fallbackArgs.push(category);
-                }
-                const fallbackSql = `
-            SELECT
-              id, namespace, chunk_index, title, content,
-              category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-              usage_count, last_used_at, created_at,
-              vector_distance_cos(embedding, vector32(?)) as distance
-            FROM knowledge
-            WHERE ${fallbackConditions.join(' AND ')}
-            ORDER BY distance ASC
-            LIMIT ?
-          `;
-                fallbackArgs.push(limit);
-                const result = await client.execute({ sql: fallbackSql, args: fallbackArgs });
-                const results = result.rows.map((row) => parseSearchRow(row));
-                // Track usage for returned results
-                await trackUsage(results.map(r => r.id));
-                return c.json({ success: true, data: { query, results } });
-            }
+            const results = await performVectorSearch(client, queryEmbedding, {
+                namespace, category, limit,
+            });
+            return c.json({ success: true, data: { query, results } });
         }
         catch (error) {
             return c.json({ success: false, error: error.message }, 500);
@@ -568,70 +508,10 @@ export const uiCommand = new Command('ui')
             }
             const client = await getClient();
             const queryEmbedding = await embed(query);
-            const topK = limit * 2;
-            const conditions = ['k.active = 1'];
-            const args = [
-                JSON.stringify(queryEmbedding),
-                JSON.stringify(queryEmbedding),
-            ];
-            if (namespace) {
-                conditions.push('k.namespace = ?');
-                args.push(namespace);
-            }
-            if (category) {
-                conditions.push('k.category = ?');
-                args.push(category);
-            }
-            // Try indexed search (k must be literal, not bound parameter)
-            try {
-                const sql = `
-            SELECT
-              k.id, k.namespace, k.chunk_index, k.title, k.content,
-              k.category, k.tags, k.source, k.origin_ticket_id, k.origin_ticket_type, k.confidence, k.active, k.decision_scope,
-              k.usage_count, k.last_used_at, k.created_at,
-              vector_distance_cos(k.embedding, vector32(?)) as distance
-            FROM vector_top_k('knowledge_embedding_idx', vector32(?), ${topK}) AS v
-            JOIN knowledge k ON k.rowid = v.id
-            WHERE ${conditions.join(' AND ')}
-            ORDER BY distance ASC
-            LIMIT ${limit}
-          `;
-                const result = await client.execute({ sql, args });
-                const results = result.rows.map((row) => parseSearchRow(row));
-                // Track usage for returned results
-                await trackUsage(results.map(r => r.id));
-                return c.html(renderSearchResults(results));
-            }
-            catch {
-                // Fallback to non-indexed search
-                const fallbackConditions = ['active = 1'];
-                const fallbackArgs = [JSON.stringify(queryEmbedding)];
-                if (namespace) {
-                    fallbackConditions.push('namespace = ?');
-                    fallbackArgs.push(namespace);
-                }
-                if (category) {
-                    fallbackConditions.push('category = ?');
-                    fallbackArgs.push(category);
-                }
-                const fallbackSql = `
-            SELECT
-              id, namespace, chunk_index, title, content,
-              category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-              usage_count, last_used_at, created_at,
-              vector_distance_cos(embedding, vector32(?)) as distance
-            FROM knowledge
-            WHERE ${fallbackConditions.join(' AND ')}
-            ORDER BY distance ASC
-            LIMIT ?
-          `;
-                fallbackArgs.push(limit);
-                const result = await client.execute({ sql: fallbackSql, args: fallbackArgs });
-                const results = result.rows.map((row) => parseSearchRow(row));
-                // Track usage for returned results
-                await trackUsage(results.map(r => r.id));
-                return c.html(renderSearchResults(results));
-            }
+            const results = await performVectorSearch(client, queryEmbedding, {
+                namespace, category, limit,
+            });
+            return c.html(renderSearchResults(results));
         }
         catch (error) {
             return c.html(`<div class="text-red-500 p-4">Search error: ${error.message}</div>`);
