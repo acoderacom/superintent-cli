@@ -17,8 +17,11 @@ export async function performVectorSearch(
   queryEmbedding: number[],
   options: VectorSearchOptions,
 ): Promise<SearchResult[]> {
-  const { limit, minScore = 0 } = options;
-  const topK = limit * 2;
+  const { minScore = 0 } = options;
+  const safeLimit = Number.isFinite(options.limit) && options.limit >= 1
+    ? Math.min(Math.floor(options.limit), 100)
+    : 10;
+  const topK = safeLimit * 2;
 
   const conditions: string[] = ['k.active = 1'];
   const embeddingJson = JSON.stringify(queryEmbedding);
@@ -52,9 +55,9 @@ export async function performVectorSearch(
         JOIN knowledge k ON k.rowid = v.id
         WHERE ${whereClause}
         ORDER BY distance ASC
-        LIMIT ${limit}
+        LIMIT ?
       `,
-      args: [embeddingJson, embeddingJson, ...filterArgs],
+      args: [embeddingJson, embeddingJson, ...filterArgs, safeLimit],
     });
   } catch (error) {
     const msg = (error as Error).message;
@@ -71,7 +74,7 @@ export async function performVectorSearch(
           ORDER BY distance ASC
           LIMIT ?
         `,
-        args: [embeddingJson, ...filterArgs, limit],
+        args: [embeddingJson, ...filterArgs, safeLimit],
       });
     } else {
       throw error;
