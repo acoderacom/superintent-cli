@@ -5,21 +5,21 @@ import { saveConfig, loadConfig } from '../utils/config.js';
 import type { CliResponse } from '../types.js';
 
 export const initCommand = new Command('init')
-  .description('Create database tables (reads credentials from .superintent/.env)')
+  .description('Create database tables (reads credentials from .superintent/.env or env vars)')
   .option('--url <url>', 'Turso database URL (file:local.db for local, libsql://... for cloud)')
-  .option('--token <token>', 'Turso auth token (required for cloud, optional for local)')
   .action(async (options) => {
     try {
       let url: string;
       let token: string | undefined;
 
-      // If URL provided via CLI, use it
+      // If URL provided via CLI, save it to .env then load full config
       if (options.url) {
         url = options.url;
-        token = options.token; // May be undefined for local URLs
+        // Token must come from TURSO_AUTH_TOKEN env var or existing .env — never from CLI args
+        token = process.env.TURSO_AUTH_TOKEN;
         saveConfig({ url, authToken: token });
       } else {
-        // Try to load from .env
+        // Try to load from env vars / .env file
         try {
           const config = loadConfig();
           url = config.url;

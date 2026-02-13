@@ -952,6 +952,7 @@ export const uiCommand = new Command('ui')
     const server = serve({
       fetch: app.fetch,
       port,
+      hostname: '127.0.0.1',
     });
 
     if (options.open) {

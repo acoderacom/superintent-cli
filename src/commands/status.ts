@@ -11,7 +11,7 @@ export const statusCommand = new Command('status')
       if (!configExists()) {
         const response: CliResponse = {
           success: false,
-          error: 'Not configured. Run: superintent init --url <url> --token <token>',
+          error: 'Not configured. Create .superintent/.env with TURSO_URL (and TURSO_AUTH_TOKEN for cloud), then run: superintent init',
         };
         console.log(JSON.stringify(response));
         process.exit(1);
