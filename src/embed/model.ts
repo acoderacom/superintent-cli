@@ -25,17 +25,37 @@ async function getEmbedder(): Promise<any> {
   return extractor;
 }
 
+const MAX_CACHE_SIZE = 100;
+const embeddingCache = new Map<string, number[]>();
+
 /**
  * Generate embedding for a single text.
  * Returns a 384-dimensional normalized vector.
+ * Results are cached in memory (LRU, up to MAX_CACHE_SIZE entries).
  */
 export async function embed(text: string): Promise<number[]> {
+  const cached = embeddingCache.get(text);
+  if (cached) {
+    // Move to end for LRU freshness
+    embeddingCache.delete(text);
+    embeddingCache.set(text, cached);
+    return cached;
+  }
+
   const embedder = await getEmbedder();
   const result = await embedder(text, {
     pooling: 'mean',
     normalize: true,
   });
 
-  // Convert Float32Array to regular array
-  return Array.from(result.data as Float32Array);
+  const embedding = Array.from(result.data as Float32Array);
+
+  // Evict oldest entry if at capacity
+  if (embeddingCache.size >= MAX_CACHE_SIZE) {
+    const oldest = embeddingCache.keys().next().value!;
+    embeddingCache.delete(oldest);
+  }
+
+  embeddingCache.set(text, embedding);
+  return embedding;
 }
