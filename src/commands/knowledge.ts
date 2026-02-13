@@ -81,9 +81,15 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
     if (trimmed.startsWith('**Namespace:**')) {
       result.namespace = trimmed.replace('**Namespace:**', '').trim();
     } else if (trimmed.startsWith('**Category:**')) {
-      result.category = trimmed.replace('**Category:**', '').trim() as KnowledgeCategory;
+      const catValue = trimmed.replace('**Category:**', '').trim();
+      if (['pattern', 'truth', 'principle', 'architecture', 'gotcha'].includes(catValue)) {
+        result.category = catValue as KnowledgeCategory;
+      }
     } else if (trimmed.startsWith('**Source:**')) {
-      result.source = trimmed.replace('**Source:**', '').trim() as KnowledgeSource;
+      const srcValue = trimmed.replace('**Source:**', '').trim();
+      if (['ticket', 'discovery', 'manual'].includes(srcValue)) {
+        result.source = srcValue as KnowledgeSource;
+      }
     } else if (trimmed.startsWith('**Origin Ticket:**')) {
       result.originTicketId = trimmed.replace('**Origin Ticket:**', '').trim();
       if (result.originTicketId) result.source = 'ticket';
@@ -95,7 +101,10 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
     } else if (trimmed.startsWith('**Confidence:**')) {
       result.confidence = clampConfidence(parseFloat(trimmed.replace('**Confidence:**', '').trim()));
     } else if (trimmed.startsWith('**Scope:**')) {
-      result.scope = trimmed.replace('**Scope:**', '').trim() as DecisionScope;
+      const scopeValue = trimmed.replace('**Scope:**', '').trim();
+      if (['new-only', 'backward-compatible', 'global', 'legacy-frozen'].includes(scopeValue)) {
+        result.scope = scopeValue as DecisionScope;
+      }
     } else if (trimmed.startsWith('**Tags:**')) {
       const tagStr = trimmed.replace('**Tags:**', '').trim();
       result.tags = tagStr.split(',').map(t => t.trim()).filter(Boolean);
