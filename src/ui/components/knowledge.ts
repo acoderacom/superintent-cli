@@ -125,7 +125,7 @@ export function renderKnowledgeList(items: {
                 </div>
                 <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(k.content.slice(0, 200))}${k.content.length > 200 ? '...' : ''}</p>
               </div>
-              <div class="text-right flex-shrink-0 ml-4">
+              <div class="text-right shrink-0 ml-4">
                 <div class="text-sm font-medium text-gray-600">${Math.round(k.confidence * 100)}%</div>
                 <div class="text-xs text-gray-400">confidence</div>
               </div>
@@ -198,14 +198,14 @@ export function renderKnowledgeModal(knowledge: {
 
       <!-- Confidence & Usage Stats -->
       <div class="mb-4 grid grid-cols-2 gap-4">
-        <div class="bg-gray-50 rounded-lg p-3">
+        <div class="bg-gray-100 rounded-lg p-3">
           <div class="text-xs text-gray-500 mb-1">Confidence</div>
           <div class="text-xl font-semibold text-${color}-600 mb-2">${Math.round(knowledge.confidence * 100)}%</div>
           <div class="w-full bg-gray-200 rounded-full h-1.5">
             <div class="bg-${color}-500 h-1.5 rounded-full transition-all" style="width: ${Math.round(knowledge.confidence * 100)}%"></div>
           </div>
         </div>
-        <div class="bg-gray-50 rounded-lg p-3">
+        <div class="bg-gray-100 rounded-lg p-3">
           <div class="text-xs text-gray-500 mb-1">Usage</div>
           <div class="text-xl font-semibold text-gray-700">${knowledge.usage_count || 0} <span class="text-sm font-normal text-gray-500">times</span></div>
           <div class="text-xs text-gray-400 mt-1">${knowledge.last_used_at ? 'Last used ' + knowledge.last_used_at.split('T')[0] : 'Never used'}</div>
@@ -215,13 +215,13 @@ export function renderKnowledgeModal(knowledge: {
       <!-- Content -->
       <div class="mb-4">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Content</h3>
-        <div class="text-sm text-gray-700 bg-gray-50 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(knowledge.content)}</div>
+        <div class="text-sm text-gray-700 bg-gray-100 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(knowledge.content)}</div>
       </div>
 
       <!-- Metadata -->
       <div class="mb-4">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Metadata</h3>
-        <div class="text-sm text-gray-600 space-y-1">
+        <div class="text-sm text-gray-700 space-y-1">
           <div><span class="text-gray-400">Namespace:</span> ${escapeHtml(knowledge.namespace)}</div>
           <div><span class="text-gray-400">Scope:</span> ${knowledge.decision_scope}</div>
           <div><span class="text-gray-400">Source:</span> ${knowledge.source}${knowledge.source === 'ticket' && knowledge.origin_ticket_type ? ` (${knowledge.origin_ticket_type})` : ''}</div>

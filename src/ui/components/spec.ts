@@ -101,7 +101,7 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
       <!-- Content -->
       <div class="mb-4">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Content</h3>
-        <div class="text-sm text-gray-700 bg-gray-50 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(spec.content)}</div>
+        <div class="text-sm text-gray-700 bg-gray-100 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(spec.content)}</div>
       </div>
 
       ${relatedTickets?.length ? `
@@ -201,7 +201,7 @@ export function renderNewSpecModal(): string {
             Cancel
           </button>
           <button type="submit"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
             Create Spec
           </button>
         </div>
@@ -248,7 +248,7 @@ export function renderEditSpecModal(spec: Spec): string {
             Cancel
           </button>
           <button type="submit"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
             Save Changes
           </button>
         </div>

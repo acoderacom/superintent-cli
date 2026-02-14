@@ -251,7 +251,7 @@ export function renderTicketModal(ticket: {
             ${ticket.type && typeStyle ? `<span class="px-2 py-0.5 text-xs font-medium rounded ${typeStyle.bg} ${typeStyle.text}">${ticket.type}</span>` : ''}
           </div>
           ${ticket.title ? `<h2 class="text-xl font-bold text-gray-800 mb-2">${escapeHtml(ticket.title)}</h2>` : ''}
-          <div class="text-sm text-gray-600 markdown-content" data-markdown>${escapeHtml(ticket.intent)}</div>
+          <div class="text-sm text-gray-700 markdown-content" data-markdown>${escapeHtml(ticket.intent)}</div>
         </div>
         <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
@@ -262,7 +262,7 @@ export function renderTicketModal(ticket: {
       ${ticket.context ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 mb-2">Context</h3>
-          <div class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">${escapeHtml(ticket.context)}</div>
+          <div class="text-sm text-gray-700 bg-gray-100 rounded-lg p-3 whitespace-pre-wrap">${escapeHtml(ticket.context)}</div>
         </div>
       ` : ''}
 
@@ -279,7 +279,7 @@ export function renderTicketModal(ticket: {
       ${ticket.assumptions?.length ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 mb-2">Assumptions</h3>
-          <ul class="text-sm text-gray-600 list-disc list-inside">
+          <ul class="text-sm text-gray-700 list-disc list-inside">
             ${ticket.assumptions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
           </ul>
         </div>
@@ -288,7 +288,7 @@ export function renderTicketModal(ticket: {
       ${ticket.change_class ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 mb-2">Change Class</h3>
-          <div class="text-sm text-gray-600">Class ${ticket.change_class}${ticket.change_class_reason ? ` - ${escapeHtml(ticket.change_class_reason)}` : ''}</div>
+          <div class="text-sm text-gray-700">Class ${ticket.change_class}${ticket.change_class_reason ? ` - ${escapeHtml(ticket.change_class_reason)}` : ''}</div>
         </div>
       ` : ''}
 
@@ -314,7 +314,7 @@ export function renderTicketModal(ticket: {
             ${ticket.plan.files?.length ? `
               <div>
                 <span class="font-medium text-blue-700">Files to Edit:</span>
-                <span class="text-gray-600">${ticket.plan.files.map(f => escapeHtml(f)).join(', ')}</span>
+                <span class="text-gray-700">${ticket.plan.files.map(f => escapeHtml(f)).join(', ')}</span>
               </div>
             ` : ''}
             ${ticket.plan.taskSteps?.length ? `
@@ -356,7 +356,7 @@ export function renderTicketModal(ticket: {
                              class="rounded border-gray-300 shrink-0 mt-0.5"
                              hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/dod/${i}"
                              hx-swap="none">
-                      <span class="${isDone ? 'line-through text-gray-400' : 'text-gray-600'}"><strong>${escapeHtml(dv.dod)}</strong> → ${escapeHtml(dv.verify)}</span>
+                      <span class="${isDone ? 'line-through text-gray-400' : 'text-gray-700'}"><strong>${escapeHtml(dv.dod)}</strong> → ${escapeHtml(dv.verify)}</span>
                     </div>
                   `;}).join('')}
                 </div>
@@ -365,7 +365,7 @@ export function renderTicketModal(ticket: {
             ${ticket.plan.decisions?.length ? `
               <div>
                 <span class="font-medium text-blue-700">Decisions:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-600">
+                <ul class="mt-1 ml-4 list-disc text-gray-700">
                   ${ticket.plan.decisions.map(d => `<li><strong>${escapeHtml(d.choice)}</strong>${d.reason ? ` — ${escapeHtml(d.reason)}` : ''}</li>`).join('')}
                 </ul>
               </div>
@@ -373,7 +373,7 @@ export function renderTicketModal(ticket: {
             ${ticket.plan.tradeOffs?.length ? `
               <div>
                 <span class="font-medium text-blue-700">Trade-offs:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-600">
+                <ul class="mt-1 ml-4 list-disc text-gray-700">
                   ${ticket.plan.tradeOffs.map(t => `<li>${escapeHtml(t.considered)}${t.rejected ? ` — ${escapeHtml(t.rejected)}` : ''}</li>`).join('')}
                 </ul>
               </div>
@@ -381,7 +381,7 @@ export function renderTicketModal(ticket: {
             ${ticket.plan.rollback ? `
               <div>
                 <span class="font-medium text-blue-700">Rollback:</span>
-                <div class="mt-1 ml-4 text-gray-600">
+                <div class="mt-1 ml-4 text-gray-700">
                   <div class="text-xs mb-1">
                     <span class="font-medium">Reversibility:</span>
                     <span class="${ticket.plan.rollback.reversibility === 'full' ? 'text-green-600' : ticket.plan.rollback.reversibility === 'partial' ? 'text-yellow-600' : 'text-red-600'}">${ticket.plan.rollback.reversibility}</span>
@@ -397,7 +397,7 @@ export function renderTicketModal(ticket: {
             ${ticket.plan.irreversibleActions?.length ? `
               <div>
                 <span class="font-medium text-blue-700">Irreversible Actions:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-600">
+                <ul class="mt-1 ml-4 list-disc text-gray-700">
                   ${ticket.plan.irreversibleActions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
                 </ul>
               </div>
@@ -405,7 +405,7 @@ export function renderTicketModal(ticket: {
             ${ticket.plan.edgeCases?.length ? `
               <div>
                 <span class="font-medium text-blue-700">Edge Cases:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-600">
+                <ul class="mt-1 ml-4 list-disc text-gray-700">
                   ${ticket.plan.edgeCases.map(e => `<li>${escapeHtml(e)}</li>`).join('')}
                 </ul>
               </div>
@@ -471,7 +471,7 @@ export function renderTicketModal(ticket: {
           <h3 class="text-sm font-semibold text-gray-700 mb-2">Comments</h3>
           <div class="space-y-2">
             ${ticket.comments.map(c => `
-              <div class="bg-gray-50 rounded-lg p-3">
+              <div class="bg-gray-100 rounded-lg p-3">
                 <div class="text-xs text-gray-400 mb-1">${new Date(c.timestamp).toLocaleString()}</div>
                 <div class="text-sm text-gray-700">${escapeHtml(c.text)}</div>
               </div>
@@ -594,7 +594,7 @@ export function renderNewTicketModal(): string {
             Cancel
           </button>
           <button type="submit"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
             Create Ticket
           </button>
         </div>
@@ -663,7 +663,7 @@ export function renderEditTicketModal(ticket: {
             Cancel
           </button>
           <button type="submit"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-500 rounded hover:bg-blue-600 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
             Save Changes
           </button>
         </div>
