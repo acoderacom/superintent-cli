@@ -4,27 +4,32 @@ import { escapeHtml } from './utils.js';
 // Helper to render search view
 export function renderSearchView(): string {
   return `
-    <div class="max-w-3xl mx-auto">
-      <h1 class="text-2xl font-bold text-gray-800 mb-6">Semantic Search</h1>
-
+    <div class="p-5">
       <div class="relative">
         <input type="text"
                id="search-input"
                name="query"
                placeholder="Search knowledge base..."
                autocomplete="off"
-               class="w-full px-4 py-3 text-lg border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+               class="w-full px-4 py-3 pr-16 text-lg border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                hx-get="/partials/search-results"
                hx-trigger="input changed delay:300ms, keyup[key=='Enter']"
                hx-target="#search-results"
                hx-include="[name='category'],[name='limit']"
-               hx-indicator="#search-spinner">
-        <div id="search-spinner" class="htmx-indicator absolute right-3 top-3.5">
-          <svg class="animate-spin h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24">
+               hx-indicator="#search-spinner"
+               oninput="document.getElementById('search-clear').classList.toggle('hidden', !this.value)">
+        <div id="search-spinner" class="htmx-indicator absolute right-9 top-3 p-1">
+          <svg class="animate-spin size-5 text-blue-500" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </div>
+        <button type="button" id="search-clear" class="hidden absolute right-3 top-3 p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                onclick="var inp = document.getElementById('search-input'); inp.value = ''; inp.focus(); this.classList.add('hidden'); document.getElementById('search-results').innerHTML = '<p class=&quot;text-gray-500 text-center py-8&quot;>Enter a search query to find relevant knowledge</p>';">
+          <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
       </div>
 
       <div class="flex gap-3 mt-4">
@@ -93,7 +98,7 @@ export function renderSearchResults(results: {
         const scorePercent = Math.round(r.score * 100);
         const inactiveClass = !r.active ? 'opacity-60 border-dashed' : '';
         return `
-          <div class="bg-white rounded-lg shadow-card p-4 hover:shadow-card-hover transition-shadow cursor-pointer ${inactiveClass}"
+          <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
                hx-get="/partials/knowledge-modal/${encodeURIComponent(r.id)}"
                hx-target="#modal-content"
                hx-trigger="click"
@@ -101,7 +106,7 @@ export function renderSearchResults(results: {
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1">
                 <div class="flex items-center gap-2">
-                  <h3 class="font-semibold text-gray-800">${escapeHtml(r.title)}</h3>
+                  <h3 class="text-sm font-semibold text-gray-800">${escapeHtml(r.title)}</h3>
                   ${!r.active ? '<span class="px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600">Inactive</span>' : ''}
                 </div>
                 <p class="text-sm text-gray-600 mt-1 line-clamp-3">${escapeHtml(r.content.slice(0, 300))}${r.content.length > 300 ? '...' : ''}</p>

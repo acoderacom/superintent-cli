@@ -40,7 +40,7 @@ export function renderTicketCard(ticket: {
   const displayTitle = ticket.title || ticket.intent;
 
   return `
-    <div class="bg-white rounded-lg shadow-card p-3 cursor-pointer hover:shadow-card-hover transition-shadow group"
+    <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-3 cursor-pointer hover:shadow-md transition group"
          draggable="true"
          ondragstart="onDragStart(event, '${ticket.id}')"
          ondragend="onDragEnd(event)"
@@ -115,7 +115,7 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
         // Archive column is not a drop target (can't drag to Archive directly)
         const dragHandlers = isArchive ? '' : `ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${col.status}')"`;
         return `
-          <div class="rounded-lg ${style.bg} p-4 flex flex-col max-h-[calc(100vh-120px)]"
+          <div class="rounded-lg ${style.bg} p-4 flex flex-col max-h-[calc(100vh-105px)]"
                ${dragHandlers}>
             <div class="flex items-center justify-between mb-3 shrink-0">
               <h2 class="font-semibold text-${style.color}-700">${col.status}</h2>
@@ -253,47 +253,10 @@ export function renderTicketModal(ticket: {
           ${ticket.title ? `<h2 class="text-xl font-bold text-gray-800 mb-2">${escapeHtml(ticket.title)}</h2>` : ''}
           <div class="text-sm text-gray-600 markdown-content" data-markdown>${escapeHtml(ticket.intent)}</div>
         </div>
-        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
-      </div>
-
-      <div class="mb-6">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Status</h3>
-        <select id="status-select"
-                class="px-3 py-1.5 rounded-lg border text-sm font-medium bg-${color}-50 text-${color}-700 border-${color}-200"
-                hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/status"
-                hx-trigger="change"
-                hx-swap="none"
-                name="status"
-                onchange="updateStatusColor(this)">
-          <optgroup label="Normal Flow">
-            <option value="Backlog" ${ticket.status === 'Backlog' ? 'selected' : ''}>Backlog</option>
-            <option value="In Progress" ${ticket.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-            <option value="In Review" ${ticket.status === 'In Review' ? 'selected' : ''}>In Review</option>
-            <option value="Done" ${ticket.status === 'Done' ? 'selected' : ''}>Done</option>
-          </optgroup>
-          <optgroup label="Exception States">
-            <option value="Blocked" ${ticket.status === 'Blocked' ? 'selected' : ''}>Blocked</option>
-            <option value="Paused" ${ticket.status === 'Paused' ? 'selected' : ''}>Paused</option>
-            <option value="Abandoned" ${ticket.status === 'Abandoned' ? 'selected' : ''}>Abandoned</option>
-            <option value="Superseded" ${ticket.status === 'Superseded' ? 'selected' : ''}>Superseded</option>
-          </optgroup>
-        </select>
-        <script>
-          function updateStatusColor(el) {
-            const colors = {
-              'Backlog': 'gray', 'In Progress': 'yellow', 'In Review': 'blue', 'Done': 'green',
-              'Blocked': 'red', 'Paused': 'orange', 'Abandoned': 'gray', 'Superseded': 'purple'
-            };
-            const c = colors[el.value] || 'gray';
-            el.className = el.className.replace(/bg-[a-z]+-50/g, 'bg-' + c + '-50')
-                                       .replace(/text-[a-z]+-700/g, 'text-' + c + '-700')
-                                       .replace(/border-[a-z]+-200/g, 'border-' + c + '-200');
-          }
-        </script>
       </div>
 
       ${ticket.context ? `
@@ -517,6 +480,42 @@ export function renderTicketModal(ticket: {
         </div>
       ` : ''}
 
+      <div class="mb-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Status</h3>
+        <select id="status-select"
+                class="px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer bg-${color}-50 text-${color}-700 border-${color}-200"
+                hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/status"
+                hx-trigger="change"
+                hx-swap="none"
+                name="status"
+                onchange="updateStatusColor(this)">
+          <optgroup label="Normal Flow">
+            <option value="Backlog" ${ticket.status === 'Backlog' ? 'selected' : ''}>Backlog</option>
+            <option value="In Progress" ${ticket.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+            <option value="In Review" ${ticket.status === 'In Review' ? 'selected' : ''}>In Review</option>
+            <option value="Done" ${ticket.status === 'Done' ? 'selected' : ''}>Done</option>
+          </optgroup>
+          <optgroup label="Exception States">
+            <option value="Blocked" ${ticket.status === 'Blocked' ? 'selected' : ''}>Blocked</option>
+            <option value="Paused" ${ticket.status === 'Paused' ? 'selected' : ''}>Paused</option>
+            <option value="Abandoned" ${ticket.status === 'Abandoned' ? 'selected' : ''}>Abandoned</option>
+            <option value="Superseded" ${ticket.status === 'Superseded' ? 'selected' : ''}>Superseded</option>
+          </optgroup>
+        </select>
+        <script>
+          function updateStatusColor(el) {
+            const colors = {
+              'Backlog': 'gray', 'In Progress': 'yellow', 'In Review': 'blue', 'Done': 'green',
+              'Blocked': 'red', 'Paused': 'orange', 'Abandoned': 'gray', 'Superseded': 'purple'
+            };
+            const c = colors[el.value] || 'gray';
+            el.className = el.className.replace(/bg-[a-z]+-50/g, 'bg-' + c + '-50')
+                                       .replace(/text-[a-z]+-700/g, 'text-' + c + '-700')
+                                       .replace(/border-[a-z]+-200/g, 'border-' + c + '-200');
+          }
+        </script>
+      </div>
+
       <div class="mt-6 pt-4 border-t flex items-center justify-between">
         <div class="text-xs text-gray-400">
           <span>Created: ${ticket.created_at || 'N/A'}</span>
@@ -558,10 +557,9 @@ export function renderNewTicketModal(): string {
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-bold text-gray-800">New Ticket</h2>
-        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
 
@@ -628,10 +626,9 @@ export function renderEditTicketModal(ticket: {
           <h2 class="text-xl font-bold text-gray-800">Edit Ticket</h2>
           <span class="text-xs font-mono text-gray-400">${escapeHtml(ticket.id)}</span>
         </div>
-        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
 

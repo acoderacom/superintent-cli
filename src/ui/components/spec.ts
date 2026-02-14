@@ -7,7 +7,7 @@ export function renderSpecView(): string {
   return `
     <div>
       <div class="flex items-center justify-between mb-4">
-        <h1 class="text-2xl font-bold text-gray-800">Specs</h1>
+        <h1 class="text-xl font-bold text-gray-800">Specs</h1>
         <button type="button"
                 class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
                 hx-get="/partials/new-spec-modal"
@@ -39,7 +39,7 @@ export function renderSpecList(specs: Spec[], ticketCounts?: Record<string, numb
 // Helper to render spec card
 export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
   return `
-    <div class="bg-white rounded-lg shadow-card hover:shadow-card-hover transition-shadow cursor-pointer overflow-hidden flex flex-col group"
+    <div class="bg-white border border-gray-200 shadow-2xs rounded-xl hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col group"
          hx-get="/partials/spec-modal/${encodeURIComponent(spec.id)}"
          hx-target="#modal-content"
          hx-trigger="click"
@@ -92,10 +92,9 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
           </div>
           <h2 class="text-xl font-bold text-gray-800">${escapeHtml(spec.title)}</h2>
         </div>
-        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
 
@@ -173,10 +172,9 @@ export function renderNewSpecModal(): string {
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-bold text-gray-800">New Spec</h2>
-        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
 
@@ -221,10 +219,9 @@ export function renderEditSpecModal(spec: Spec): string {
           <h2 class="text-xl font-bold text-gray-800">Edit Spec</h2>
           <span class="text-xs font-mono text-gray-400">${escapeHtml(spec.id)}</span>
         </div>
-        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
 

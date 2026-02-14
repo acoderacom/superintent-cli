@@ -4,10 +4,11 @@ import { escapeHtml } from './utils.js';
 // Helper to render knowledge view
 export function renderKnowledgeView(): string {
   return `
-    <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
+    <div>
+      <h1 class="text-xl font-bold text-gray-800 mb-4">Knowledge Base</h1>
+      <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
       <aside class="w-full lg:w-64 shrink-0 lg:sticky lg:top-4 lg:self-start">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Filters</h2>
-        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white rounded-lg shadow-card p-3 lg:p-4">
+        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white border border-gray-200 shadow-2xs rounded-xl p-3 lg:p-4">
           <div>
             <label for="k-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select id="k-status" name="k-status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
@@ -69,10 +70,10 @@ export function renderKnowledgeView(): string {
       </aside>
 
       <main class="flex-1">
-        <h1 class="text-2xl font-bold text-gray-800 mb-4">Knowledge Base</h1>
         <div id="knowledge-list" hx-get="/partials/knowledge-list" hx-trigger="load, poll-refresh" hx-swap="innerHTML">
         </div>
       </main>
+    </div>
     </div>
   `;
 }
@@ -110,7 +111,7 @@ export function renderKnowledgeList(items: {
         const color = categoryColors[k.category || ''] || 'gray';
         const inactiveClass = !k.active ? 'opacity-60 border-dashed' : '';
         return `
-          <div class="bg-white rounded-lg shadow-card p-4 hover:shadow-card-hover transition-shadow cursor-pointer ${inactiveClass}"
+          <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
                hx-get="/partials/knowledge-modal/${encodeURIComponent(k.id)}"
                hx-target="#modal-content"
                hx-trigger="click"
@@ -189,10 +190,9 @@ export function renderKnowledgeModal(knowledge: {
           </div>
           <h2 class="text-xl font-bold text-gray-800">${escapeHtml(knowledge.title)}</h2>
         </div>
-        <button onclick="hideModal()" class="text-gray-400 hover:text-gray-600 p-1">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
 

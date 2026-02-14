@@ -26,6 +26,11 @@ export function getHtml(namespace: string): string {
     #modal.show { opacity: 1; }
     #modal-content { transform: scale(0.95); transition: transform 150ms ease-out; }
     #modal.show #modal-content { transform: scale(1); }
+    /* Search modal */
+    #search-modal { opacity: 0; transition: opacity 150ms ease-out; }
+    #search-modal.show { opacity: 1; }
+    #search-modal-content { transform: scale(0.95) translateY(-10px); transition: transform 150ms ease-out; }
+    #search-modal.show #search-modal-content { transform: scale(1) translateY(0); }
     /* Sidebar transitions */
     #sidebar { transition: transform 300ms ease-in-out; }
     #sidebar-backdrop { transition: opacity 200ms ease-in-out; }
@@ -65,7 +70,7 @@ export function getHtml(namespace: string): string {
             </a>
 
             <!-- Sidebar Toggle -->
-            <button type="button" onclick="toggleSidebar()" class="p-1 size-7 inline-flex items-center justify-center rounded-md border border-transparent text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200">
+            <button type="button" onclick="toggleSidebar()" class="p-1 size-7 inline-flex items-center justify-center rounded-md border border-transparent text-gray-800 hover:bg-gray-200 cursor-pointer focus:outline-hidden focus:bg-gray-200">
               <svg class="shrink-0 size-3.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>
               <span class="sr-only">Sidebar Toggle</span>
             </button>
@@ -76,7 +81,7 @@ export function getHtml(namespace: string): string {
             <div class="inline-flex justify-center w-full">
               <div class="relative inline-flex">
                 <!-- Namespace Button -->
-                <button id="namespace-btn" type="button" onclick="toggleNamespaceDropdown()" class="py-1.5 px-2.5 min-h-8 flex items-center gap-x-1.5 font-medium text-sm text-gray-800 rounded-lg hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200">
+                <button id="namespace-btn" type="button" onclick="toggleNamespaceDropdown()" class="py-1.5 px-2.5 min-h-8 flex items-center gap-x-1.5 font-medium text-sm text-gray-800 rounded-lg hover:bg-gray-200 cursor-pointer focus:outline-hidden focus:bg-gray-200">
                   <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
                   ${escapeHtml(namespace)}
                   <svg class="shrink-0 size-3.5 ms-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
@@ -91,7 +96,7 @@ export function getHtml(namespace: string): string {
 
                     <div class="flex flex-col gap-y-1">
                       <!-- Active Namespace -->
-                      <label class="py-2.5 px-3 group flex justify-start items-center gap-x-3 rounded-lg cursor-pointer text-[13px] text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100">
+                      <label class="py-2.5 px-3 group flex justify-start items-center gap-x-3 rounded-lg cursor-pointer text-xs text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100">
                         <input type="radio" class="hidden" checked>
                         <svg class="shrink-0 size-4 opacity-0 group-has-checked:opacity-100" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                         <span class="grow">
@@ -133,8 +138,17 @@ export function getHtml(namespace: string): string {
           </button>
         </div>
 
+        <!-- Search Button -->
+        <button type="button" onclick="showSearchModal()" class="p-1.5 ps-2.5 w-full inline-flex items-center gap-x-2 text-sm rounded-lg bg-white border border-gray-200 text-gray-600 shadow-xs cursor-pointer focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none">
+          Search
+          <span class="ms-auto flex items-center gap-x-1 py-px px-1.5 border border-gray-200 rounded-md">
+            <svg class="shrink-0 size-2.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"></path></svg>
+            <span class="text-xs uppercase">k</span>
+          </span>
+        </button>
+
         <!-- Navigation Section -->
-        <div class="flex flex-col">
+        <div class="pt-3 mt-3 flex flex-col border-t border-gray-200">
           <span class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-500">
             Navigation
           </span>
@@ -146,15 +160,6 @@ export function getHtml(namespace: string): string {
                   <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
                 </svg>
                 Kanban Board
-              </button>
-            </li>
-            <li>
-              <button id="nav-search" onclick="switchTab('search')"
-                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none">
-                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-                </svg>
-                Search
               </button>
             </li>
             <li>
@@ -191,8 +196,6 @@ export function getHtml(namespace: string): string {
       <div class="flex-1 overflow-y-auto p-3 sm:p-5">
         <!-- Ticket View (default) - full width -->
         <div id="view-ticket" hx-get="/partials/kanban-view" hx-trigger="load"></div>
-        <!-- Search View -->
-        <div id="view-search" class="hidden max-w-7xl mx-auto" hx-get="/partials/search-view" hx-trigger="revealed"></div>
         <!-- Knowledge View -->
         <div id="view-knowledge" class="hidden max-w-7xl mx-auto" hx-get="/partials/knowledge-view" hx-trigger="revealed"></div>
         <!-- Spec View -->
@@ -202,8 +205,16 @@ export function getHtml(namespace: string): string {
   </main>
   <!-- ========== END MAIN CONTENT ========== -->
 
-  <!-- Modal -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick="if(event.target===this)hideModal()">
+  <!-- Search Modal -->
+  <div id="search-modal" class="hidden fixed inset-0 bg-black/50 flex items-start justify-center z-50 pt-[10vh]" onclick="if(event.target===this)hideSearchModal()">
+    <div id="search-modal-content" class="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4 max-h-[80vh]"
+         hx-get="/partials/search-view" hx-trigger="load">
+      <div class="flex justify-center items-center py-16"><div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div></div>
+    </div>
+  </div>
+
+  <!-- Modal (knowledge detail, tickets, specs — layers on top of search modal) -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onclick="if(event.target===this)hideModal()">
     <div id="modal-content" class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4">
       <!-- Modal content loaded via HTMX -->
     </div>
@@ -290,7 +301,7 @@ export function getHtml(namespace: string): string {
 
     // Tab/view switching with URL hash persistence
     function switchTab(tab, updateHash = true) {
-      ['ticket', 'search', 'knowledge', 'spec'].forEach(t => {
+      ['ticket', 'knowledge', 'spec'].forEach(t => {
         document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
         document.getElementById('nav-' + t).classList.toggle('nav-active', t === tab);
       });
@@ -307,7 +318,7 @@ export function getHtml(namespace: string): string {
     // Restore tab from URL hash on page load
     (function() {
       const hash = window.location.hash.slice(1);
-      if (['ticket', 'search', 'knowledge', 'spec'].includes(hash)) {
+      if (['ticket', 'knowledge', 'spec'].includes(hash)) {
         switchTab(hash, false);
       }
     })();
@@ -366,26 +377,62 @@ export function getHtml(namespace: string): string {
       });
     }
 
-    // Modal functions
+    // Search modal functions
+    function showSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      void modal.offsetWidth;
+      modal.classList.add('show');
+      // Focus search input after content loads
+      setTimeout(function() { var el = document.getElementById('search-input'); if (el) el.focus(); }, 150);
+      // Close sidebar on mobile
+      closeSidebarOnMobile();
+    }
+    function hideSearchModal() {
+      const modal = document.getElementById('search-modal');
+      modal.classList.remove('show');
+      // Only restore scroll if knowledge modal isn't also open
+      if (document.getElementById('modal').classList.contains('hidden')) {
+        document.body.style.overflow = '';
+      }
+      setTimeout(() => modal.classList.add('hidden'), 150);
+    }
+
+    // Detail modal functions (knowledge, ticket, spec — layers on top of search modal)
     function showModal() {
       const modal = document.getElementById('modal');
-      // Clear previous content and show loading spinner
       document.getElementById('modal-content').innerHTML = '<div class="flex justify-center items-center py-16"><div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div></div>';
       modal.classList.remove('hidden');
       document.body.style.overflow = 'hidden';
-      // Trigger reflow for transition
       void modal.offsetWidth;
       modal.classList.add('show');
     }
     function hideModal() {
       const modal = document.getElementById('modal');
       modal.classList.remove('show');
-      document.body.style.overflow = '';
-      // Wait for transition to finish before hiding
+      // Only restore scroll if search modal isn't also open
+      if (document.getElementById('search-modal').classList.contains('hidden')) {
+        document.body.style.overflow = '';
+      }
       setTimeout(() => modal.classList.add('hidden'), 150);
     }
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') hideModal();
+      if (e.key === 'Escape') {
+        // Close topmost modal first: detail modal > search modal
+        const detailModal = document.getElementById('modal');
+        const searchModal = document.getElementById('search-modal');
+        if (!detailModal.classList.contains('hidden')) {
+          hideModal();
+        } else if (!searchModal.classList.contains('hidden')) {
+          hideSearchModal();
+        }
+      }
+      // Cmd+K / Ctrl+K → open search modal
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        showSearchModal();
+      }
     });
 
     // Drag and drop
@@ -481,12 +528,7 @@ export function getHtml(namespace: string): string {
       window.switchTab = function(tab, updateHash) {
         currentTab = tab;
         originalSwitchTab(tab, updateHash);
-        // Only poll for ticket and knowledge tabs
-        if (tab === 'ticket' || tab === 'knowledge' || tab === 'spec') {
-          startPolling();
-        } else {
-          stopPolling();
-        }
+        startPolling();
       };
 
       // Handle page visibility changes
