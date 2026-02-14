@@ -102,7 +102,7 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
     'Paused': { color: 'orange', bg: 'bg-orange-50' },
     'Abandoned': { color: 'gray', bg: 'bg-gray-100' },
     'Superseded': { color: 'purple', bg: 'bg-purple-50' },
-    'Archive': { color: 'slate', bg: 'bg-slate-50' },
+    'Archived': { color: 'slate', bg: 'bg-slate-50' },
   };
 
   return `
@@ -111,8 +111,8 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
         const style = columnStyles[col.status] || { color: 'gray', bg: 'bg-gray-50' };
         const statusSlug = col.status.toLowerCase().replace(/ /g, '-');
         const isBacklog = col.status === 'Backlog';
-        const isArchive = col.status === 'Archive';
-        // Archive column is not a drop target (can't drag to Archive directly)
+        const isArchive = col.status === 'Archived';
+        // Archived column is not a drop target (can't drag to Archived directly)
         const dragHandlers = isArchive ? '' : `ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${col.status}')"`;
         return `
           <div class="rounded-lg ${style.bg} p-4 flex flex-col max-h-[calc(100vh-105px)]"

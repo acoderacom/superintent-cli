@@ -257,7 +257,7 @@ export const uiCommand = new Command('ui')
           })
         );
 
-        // Add Archive column
+        // Add Archived column
         const archiveResult = await client.execute({
           sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
                 FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
@@ -265,7 +265,7 @@ export const uiCommand = new Command('ui')
         });
         const archiveHasMore = archiveResult.rows.length > limit;
         const archiveTickets = archiveResult.rows.slice(0, limit).map((row) => parseTicketRow(row as Record<string, unknown>));
-        columnData.push({ status: 'Archive', tickets: archiveTickets, hasMore: archiveHasMore });
+        columnData.push({ status: 'Archived', tickets: archiveTickets, hasMore: archiveHasMore });
 
         return c.html(renderKanbanColumns(columnData));
       } catch (error) {
@@ -476,7 +476,7 @@ export const uiCommand = new Command('ui')
           })
         );
 
-        // Add Archive column (Blocked, Paused, Abandoned, Superseded)
+        // Add Archived column (Blocked, Paused, Abandoned, Superseded)
         const archiveResult = await client.execute({
           sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
                 FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
@@ -484,7 +484,7 @@ export const uiCommand = new Command('ui')
         });
         const archiveHasMore = archiveResult.rows.length > limit;
         const archiveTickets = archiveResult.rows.slice(0, limit).map((row) => parseTicketRow(row as Record<string, unknown>));
-        columnData.push({ status: 'Archive', tickets: archiveTickets, hasMore: archiveHasMore });
+        columnData.push({ status: 'Archived', tickets: archiveTickets, hasMore: archiveHasMore });
 
         return c.html(renderKanbanColumns(columnData));
       } catch (error) {
@@ -502,8 +502,8 @@ export const uiCommand = new Command('ui')
         const client = await getClient();
         let result;
 
-        // Handle Archive column specially (multiple statuses)
-        if (status === 'Archive') {
+        // Handle Archived column specially (multiple statuses)
+        if (status === 'Archived') {
           const archiveStatuses = ['Blocked', 'Paused', 'Abandoned', 'Superseded'];
           result = await client.execute({
             sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
