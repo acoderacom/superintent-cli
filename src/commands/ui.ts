@@ -59,7 +59,7 @@ export const uiCommand = new Command('ui')
     });
 
     // ============ MAIN HTML ============
-    app.get('/', (c) => c.html(getHtml(namespace)));
+    app.get('/', (c) => c.html(getHtml(namespace, version)));
 
     // ============ API ROUTES (JSON) ============
 

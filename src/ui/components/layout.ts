@@ -2,7 +2,7 @@
 import { escapeHtml } from './utils.js';
 
 // Main HTML shell with sidebar navigation, header, and JavaScript
-export function getHtml(namespace: string): string {
+export function getHtml(namespace: string, version: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,7 +32,7 @@ export function getHtml(namespace: string): string {
     #search-modal-content { transform: scale(0.95) translateY(-10px); transition: transform 150ms ease-out; }
     #search-modal.show #search-modal-content { transform: scale(1) translateY(0); }
     /* Sidebar transitions */
-    #sidebar { transition: transform 300ms ease-in-out; }
+    #sidebar { transition: translate 300ms ease-in-out, transform 300ms ease-in-out; }
     #sidebar-backdrop { transition: opacity 200ms ease-in-out; }
     /* Markdown prose styles */
     .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; }
@@ -176,13 +176,18 @@ export function getHtml(namespace: string): string {
             </li>
           </ul>
         </div>
+
       </nav>
+      <!-- Version -->
+      <div class="p-3 border-t border-gray-200">
+        <span class="block ps-2.5 text-xs text-gray-400">Superintent v${escapeHtml(version)}</span>
+      </div>
     </div>
   </aside>
   <!-- ========== END SIDEBAR ========== -->
 
   <!-- Sidebar Backdrop (mobile) -->
-  <div id="sidebar-backdrop" class="hidden fixed inset-0 z-30 bg-black/50 lg:hidden" onclick="toggleSidebar()"></div>
+  <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/50 opacity-0 pointer-events-none lg:hidden" onclick="toggleSidebar()"></div>
 
   <!-- ========== MAIN CONTENT ========== -->
   <main id="main-content" class="lg:ps-60 pt-13 px-3 pb-3 transition-all duration-300">
@@ -250,11 +255,13 @@ export function getHtml(namespace: string): string {
         const isOpen = !sidebar.classList.contains('-translate-x-full');
         if (isOpen) {
           sidebar.classList.add('-translate-x-full');
-          backdrop.classList.add('hidden');
+          backdrop.classList.add('opacity-0', 'pointer-events-none');
+          backdrop.classList.remove('opacity-100');
           document.body.style.overflow = '';
         } else {
           sidebar.classList.remove('-translate-x-full');
-          backdrop.classList.remove('hidden');
+          backdrop.classList.remove('opacity-0', 'pointer-events-none');
+          backdrop.classList.add('opacity-100');
           document.body.style.overflow = 'hidden';
         }
       }
@@ -266,7 +273,8 @@ export function getHtml(namespace: string): string {
         const sidebar = document.getElementById('sidebar');
         const backdrop = document.getElementById('sidebar-backdrop');
         sidebar.classList.add('-translate-x-full');
-        backdrop.classList.add('hidden');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        backdrop.classList.remove('opacity-100');
         document.body.style.overflow = '';
       }
     }
@@ -278,7 +286,8 @@ export function getHtml(namespace: string): string {
       const main = document.getElementById('main-content');
       if (window.innerWidth >= 1024) {
         // Entering desktop: clear mobile state, restore desktop
-        backdrop.classList.add('hidden');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        backdrop.classList.remove('opacity-100');
         document.body.style.overflow = '';
         sidebar.classList.remove('-translate-x-full');
         // Keep collapsed state if user collapsed on desktop
