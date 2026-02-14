@@ -210,6 +210,7 @@ export function renderTicketModal(ticket: {
     edgeCases: string[];
   };
   derived_knowledge?: string[];
+  author?: string;
   created_at?: string;
   updated_at?: string;
 }, comments?: Comment[]): string {
@@ -467,8 +468,6 @@ export function renderTicketModal(ticket: {
         </div>
       ` : ''}
 
-      ${renderCommentsSection(comments || [], 'ticket', ticket.id)}
-
       <div class="mb-4">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Status</h3>
         <select id="status-select"
@@ -504,6 +503,15 @@ export function renderTicketModal(ticket: {
           }
         </script>
       </div>
+
+      ${ticket.author ? `
+      <div class="mb-4">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Author</h3>
+        <div class="text-sm text-gray-700">${escapeHtml(ticket.author)}</div>
+      </div>
+      ` : ''}
+
+      ${renderCommentsSection(comments || [], 'ticket', ticket.id)}
 
       <div class="mt-6 pt-4 border-t flex items-center justify-between">
         <div class="text-xs text-gray-400">

@@ -128,6 +128,16 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
         <div class="text-sm text-gray-700 bg-gray-100 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(spec.content)}</div>
       </div>
 
+      <!-- Metadata -->
+      ${spec.author ? `
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-gray-700 mb-2">Metadata</h3>
+          <div class="text-sm text-gray-700 space-y-1">
+            <div><span class="text-gray-400">Author:</span> ${escapeHtml(spec.author)}</div>
+          </div>
+        </div>
+      ` : ''}
+
       ${relatedTickets?.length ? `
         <!-- Derived Tickets -->
         <div class="mb-4">

@@ -67,12 +67,14 @@ CREATE TABLE IF NOT EXISTS specs (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
+  author TEXT DEFAULT 'unknown',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 )`;
 
 export const CREATE_SPECS_INDEXES = `
-CREATE INDEX IF NOT EXISTS idx_specs_created ON specs(created_at)`;
+CREATE INDEX IF NOT EXISTS idx_specs_created ON specs(created_at);
+CREATE INDEX IF NOT EXISTS idx_specs_author ON specs(author)`;
 
 export const CREATE_COMMENTS_TABLE = `
 CREATE TABLE IF NOT EXISTS comments (

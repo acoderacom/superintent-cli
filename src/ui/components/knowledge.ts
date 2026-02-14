@@ -300,8 +300,8 @@ export function renderKnowledgeModal(knowledge: {
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Metadata</h3>
         <div class="text-sm text-gray-700 space-y-1">
           <div><span class="text-gray-400">Namespace:</span> ${escapeHtml(knowledge.namespace)}</div>
-          <div><span class="text-gray-400">Scope:</span> ${knowledge.decision_scope}</div>
           <div><span class="text-gray-400">Source:</span> ${knowledge.source}${knowledge.source === 'ticket' && knowledge.origin_ticket_type ? ` (${knowledge.origin_ticket_type})` : ''}</div>
+          <div><span class="text-gray-400">Scope:</span> ${knowledge.decision_scope}</div>
           ${knowledge.author ? `<div><span class="text-gray-400">Author:</span> ${escapeHtml(knowledge.author)}</div>` : ''}
           ${knowledge.branch ? `<div><span class="text-gray-400">Branch:</span> ${knowledge.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium text-xs">${escapeHtml(knowledge.branch)}</span>` : 'main'}</div>` : ''}
         </div>

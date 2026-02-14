@@ -69,6 +69,7 @@ export function parseSpecRow(row: Record<string, unknown>): Spec {
     id: row.id as string,
     title: row.title as string,
     content: row.content as string,
+    author: row.author as string | undefined,
     created_at: row.created_at as string | undefined,
     updated_at: row.updated_at as string | undefined,
   };

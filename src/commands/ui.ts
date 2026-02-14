@@ -344,7 +344,7 @@ export const uiCommand = new Command('ui')
         const result = await client.execute({
           sql: `SELECT id, type, title, status, intent, context, constraints_use, constraints_avoid,
                 assumptions, tasks, definition_of_done, change_class, change_class_reason,
-                origin_spec_id, plan, derived_knowledge, created_at, updated_at FROM tickets WHERE id = ?`,
+                origin_spec_id, plan, derived_knowledge, author, created_at, updated_at FROM tickets WHERE id = ?`,
           args: [id],
         });
 
@@ -555,7 +555,7 @@ export const uiCommand = new Command('ui')
         const result = await client.execute({
           sql: `SELECT id, type, title, status, intent, context, constraints_use, constraints_avoid,
                 assumptions, tasks, definition_of_done, change_class, change_class_reason,
-                origin_spec_id, plan, derived_knowledge, created_at, updated_at FROM tickets WHERE id = ?`,
+                origin_spec_id, plan, derived_knowledge, author, created_at, updated_at FROM tickets WHERE id = ?`,
           args: [id],
         });
 
@@ -757,7 +757,7 @@ export const uiCommand = new Command('ui')
         const limit = 12;
         const client = await getClient();
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
+          sql: 'SELECT id, title, content, author, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
           args: [limit + 1],
         });
         const hasMore = result.rows.length > limit;
@@ -786,7 +786,7 @@ export const uiCommand = new Command('ui')
         const limit = 12;
         const client = await getClient();
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ? OFFSET ?',
+          sql: 'SELECT id, title, content, author, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ? OFFSET ?',
           args: [limit + 1, offset],
         });
         const hasMore = result.rows.length > limit;
@@ -813,7 +813,7 @@ export const uiCommand = new Command('ui')
         const id = c.req.param('id');
         const client = await getClient();
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs WHERE id = ?',
+          sql: 'SELECT id, title, content, author, created_at, updated_at FROM specs WHERE id = ?',
           args: [id],
         });
 
@@ -847,7 +847,7 @@ export const uiCommand = new Command('ui')
         const id = c.req.param('id');
         const client = await getClient();
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs WHERE id = ?',
+          sql: 'SELECT id, title, content, author, created_at, updated_at FROM specs WHERE id = ?',
           args: [id],
         });
 
@@ -885,7 +885,7 @@ export const uiCommand = new Command('ui')
 
         // Fetch updated spec and return detail modal
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs WHERE id = ?',
+          sql: 'SELECT id, title, content, author, created_at, updated_at FROM specs WHERE id = ?',
           args: [id],
         });
 
@@ -934,16 +934,17 @@ export const uiCommand = new Command('ui')
         const time = now.toISOString().slice(11, 19).replace(/:/g, '');
         const id = `SPEC-${date}-${time}`;
 
+        const author = getGitUsername();
         const client = await getClient();
         await client.execute({
-          sql: `INSERT INTO specs (id, title, content) VALUES (?, ?, ?)`,
-          args: [id, title, content],
+          sql: `INSERT INTO specs (id, title, content, author) VALUES (?, ?, ?, ?)`,
+          args: [id, title, content, author],
         });
 
         // Return refreshed spec list
         const specLimit = 12;
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
+          sql: 'SELECT id, title, content, author, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
           args: [specLimit + 1],
         });
         const specHasMore = result.rows.length > specLimit;
@@ -977,7 +978,7 @@ export const uiCommand = new Command('ui')
         // Return updated spec list
         const specLimit = 12;
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
+          sql: 'SELECT id, title, content, author, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
           args: [specLimit + 1],
         });
         const specHasMore = result.rows.length > specLimit;

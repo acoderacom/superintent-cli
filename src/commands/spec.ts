@@ -52,6 +52,7 @@ specCommand
   .option('--stdin', 'Read spec markdown from stdin')
   .option('--title <title>', 'Spec title')
   .option('--content <content>', 'Spec content')
+  .option('--author <author>', 'Author (default: git user.name)')
   .action(async (options) => {
     try {
       let id: string;
@@ -93,11 +94,12 @@ specCommand
         content = options.content || '';
       }
 
+      const author = options.author || getGitUsername();
       const client = await getClient();
       try {
         await client.execute({
-          sql: `INSERT INTO specs (id, title, content) VALUES (?, ?, ?)`,
-          args: [id, title, content],
+          sql: `INSERT INTO specs (id, title, content, author) VALUES (?, ?, ?, ?)`,
+          args: [id, title, content, author],
         });
 
         const response: CliResponse<{ id: string; status: string }> = {

@@ -11,7 +11,7 @@ export function renderCommentsSection(comments: Comment[], parentType: CommentPa
       <div class="space-y-2 mb-3">
         ${comments.length > 0
           ? comments.map(c => renderCommentCard(c)).join('')
-          : '<p class="text-xs text-gray-400 italic">No comments yet</p>'
+          : '<p class="text-xs text-gray-400">No comments yet</p>'
         }
       </div>
       ${renderInlineCommentForm(parentType, parentId)}
