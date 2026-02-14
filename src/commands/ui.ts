@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { InValue } from '@libsql/client';
 import { getClient, closeClient } from '../db/client.js';
-import { parseTicketRow, parseKnowledgeRow, parseSpecRow } from '../db/parsers.js';
+import { parseTicketRow, parseKnowledgeRow, parseSpecRow, parseCommentRow } from '../db/parsers.js';
 import { performVectorSearch } from '../db/search.js';
 import { loadConfig, getProjectNamespace } from '../utils/config.js';
 import { embed, disposeEmbedder } from '../embed/model.js';
@@ -31,7 +31,12 @@ import {
   renderSpecModal,
   renderNewSpecModal,
   renderEditSpecModal,
+  renderCommentsSection,
+  renderEditCommentForm,
 } from '../ui/components/index.js';
+import { generateId } from '../utils/id.js';
+import { getGitUsername } from '../utils/git.js';
+import type { Comment } from '../types.js';
 
 export const uiCommand = new Command('ui')
   .description('Start web UI for ticket and knowledge management')
@@ -59,6 +64,16 @@ export const uiCommand = new Command('ui')
       c.header('Cache-Control', 'public, max-age=3600');
       return c.body(cssContent);
     });
+
+    // Helper to fetch comments for any entity
+    async function fetchComments(parentType: string, parentId: string): Promise<Comment[]> {
+      const client = await getClient();
+      const result = await client.execute({
+        sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE parent_type = ? AND parent_id = ? ORDER BY created_at ASC',
+        args: [parentType, parentId],
+      });
+      return result.rows.map(row => parseCommentRow(row as Record<string, unknown>));
+    }
 
     // ============ MAIN HTML ============
     app.get('/', (c) => c.html(getHtml(namespace, version)));
@@ -329,7 +344,7 @@ export const uiCommand = new Command('ui')
         const result = await client.execute({
           sql: `SELECT id, type, title, status, intent, context, constraints_use, constraints_avoid,
                 assumptions, tasks, definition_of_done, change_class, change_class_reason,
-                origin_spec_id, plan, derived_knowledge, comments, created_at, updated_at FROM tickets WHERE id = ?`,
+                origin_spec_id, plan, derived_knowledge, created_at, updated_at FROM tickets WHERE id = ?`,
           args: [id],
         });
 
@@ -338,9 +353,10 @@ export const uiCommand = new Command('ui')
         }
 
         const ticket = parseTicketRow(result.rows[0] as Record<string, unknown>);
+        const ticketComments = await fetchComments('ticket', id);
         // Trigger kanban refresh in the background
         c.header('HX-Trigger', 'refresh');
-        return c.html(renderTicketModal(ticket));
+        return c.html(renderTicketModal(ticket, ticketComments));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-2">Error: ${(error as Error).message}</div>`, 500);
       }
@@ -374,7 +390,8 @@ export const uiCommand = new Command('ui')
         }
 
         const knowledge = parseKnowledgeRow(result.rows[0] as Record<string, unknown>);
-        return c.html(renderKnowledgeModal(knowledge));
+        const activeToggleComments = await fetchComments('knowledge', id);
+        return c.html(renderKnowledgeModal(knowledge, activeToggleComments));
       } catch (error) {
         return c.html(`<div class="p-6 text-red-500">Error: ${(error as Error).message}</div>`, 500);
       }
@@ -538,7 +555,7 @@ export const uiCommand = new Command('ui')
         const result = await client.execute({
           sql: `SELECT id, type, title, status, intent, context, constraints_use, constraints_avoid,
                 assumptions, tasks, definition_of_done, change_class, change_class_reason,
-                origin_spec_id, plan, derived_knowledge, comments, created_at, updated_at FROM tickets WHERE id = ?`,
+                origin_spec_id, plan, derived_knowledge, created_at, updated_at FROM tickets WHERE id = ?`,
           args: [id],
         });
 
@@ -547,7 +564,8 @@ export const uiCommand = new Command('ui')
         }
 
         const ticket = parseTicketRow(result.rows[0] as Record<string, unknown>);
-        return c.html(renderTicketModal(ticket));
+        const comments = await fetchComments('ticket', id);
+        return c.html(renderTicketModal(ticket, comments));
       } catch (error) {
         return c.html(`<div class="p-6 text-red-500">Error: ${(error as Error).message}</div>`);
       }
@@ -710,7 +728,8 @@ export const uiCommand = new Command('ui')
         }
 
         const knowledge = parseKnowledgeRow(result.rows[0] as Record<string, unknown>);
-        return c.html(renderKnowledgeModal(knowledge));
+        const knowledgeComments = await fetchComments('knowledge', id);
+        return c.html(renderKnowledgeModal(knowledge, knowledgeComments));
       } catch (error) {
         return c.html(`<div class="p-6 text-red-500">Error: ${(error as Error).message}</div>`);
       }
@@ -811,7 +830,8 @@ export const uiCommand = new Command('ui')
           status: row.status as string,
         }));
 
-        return c.html(renderSpecModal(spec, relatedTickets));
+        const specComments = await fetchComments('spec', id);
+        return c.html(renderSpecModal(spec, relatedTickets, specComments));
       } catch (error) {
         return c.html(`<div class="p-6 text-red-500">Error: ${(error as Error).message}</div>`);
       }
@@ -882,8 +902,9 @@ export const uiCommand = new Command('ui')
           status: row.status as string,
         }));
 
+        const editSpecComments = await fetchComments('spec', id);
         c.header('HX-Trigger', 'refresh');
-        return c.html(renderSpecModal(spec, relatedTickets));
+        return c.html(renderSpecModal(spec, relatedTickets, editSpecComments));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-2">Error: ${(error as Error).message}</div>`, 500);
       }
@@ -970,6 +991,132 @@ export const uiCommand = new Command('ui')
         return c.html(renderSpecList(specs, ticketCounts, specHasMore));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
+    // ============ COMMENT API ============
+
+    // Create comment
+    app.post('/api/comments', async (c) => {
+      try {
+        const body = await c.req.parseBody();
+        const parentType = body.parent_type as string;
+        const parentId = body.parent_id as string;
+        const text = (body.text as string)?.trim();
+
+        if (!parentType || !parentId || !text) {
+          return c.html('<p class="text-red-500 text-sm">Comment text is required</p>', 400);
+        }
+
+        const client = await getClient();
+        const commentId = generateId('COMMENT');
+        const author = getGitUsername();
+        await client.execute({
+          sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
+          args: [commentId, parentType, parentId, author, text],
+        });
+
+        const comments = await fetchComments(parentType, parentId);
+        return c.html(renderCommentsSection(comments, parentType as Comment['parent_type'], parentId));
+      } catch (error) {
+        return c.html(`<p class="text-red-500 text-sm">Error: ${(error as Error).message}</p>`, 500);
+      }
+    });
+
+    // Update comment
+    app.patch('/api/comments/:id', async (c) => {
+      try {
+        const id = c.req.param('id');
+        const body = await c.req.parseBody();
+        const text = (body.text as string)?.trim();
+
+        if (!text) {
+          return c.html('<p class="text-red-500 text-sm">Comment text is required</p>', 400);
+        }
+
+        const client = await getClient();
+        await client.execute({
+          sql: `UPDATE comments SET text = ?, updated_at = datetime('now') WHERE id = ?`,
+          args: [text, id],
+        });
+
+        // Return updated comment card
+        const result = await client.execute({
+          sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE id = ?',
+          args: [id],
+        });
+        if (result.rows.length === 0) {
+          return c.html('', 404);
+        }
+        const comment = parseCommentRow(result.rows[0] as Record<string, unknown>);
+        // Re-render the full comments section to keep state consistent
+        const comments = await fetchComments(comment.parent_type, comment.parent_id);
+        return c.html(renderCommentsSection(comments, comment.parent_type, comment.parent_id));
+      } catch (error) {
+        return c.html(`<p class="text-red-500 text-sm">Error: ${(error as Error).message}</p>`, 500);
+      }
+    });
+
+    // Delete comment
+    app.delete('/api/comments/:id', async (c) => {
+      try {
+        const id = c.req.param('id');
+        const client = await getClient();
+
+        // Get comment info before deleting (for re-rendering parent)
+        const commentResult = await client.execute({
+          sql: 'SELECT parent_type, parent_id FROM comments WHERE id = ?',
+          args: [id],
+        });
+
+        await client.execute({
+          sql: 'DELETE FROM comments WHERE id = ?',
+          args: [id],
+        });
+
+        // Return empty string to remove the comment card
+        return c.html('');
+      } catch (error) {
+        return c.html(`<p class="text-red-500 text-sm">Error: ${(error as Error).message}</p>`, 500);
+      }
+    });
+
+    // Get single comment (for cancel edit)
+    app.get('/partials/comment/:id', async (c) => {
+      try {
+        const id = c.req.param('id');
+        const client = await getClient();
+        const result = await client.execute({
+          sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE id = ?',
+          args: [id],
+        });
+        if (result.rows.length === 0) {
+          return c.html('', 404);
+        }
+        const comment = parseCommentRow(result.rows[0] as Record<string, unknown>);
+        const comments = await fetchComments(comment.parent_type, comment.parent_id);
+        return c.html(renderCommentsSection(comments, comment.parent_type, comment.parent_id));
+      } catch (error) {
+        return c.html(`<p class="text-red-500 text-sm">Error: ${(error as Error).message}</p>`, 500);
+      }
+    });
+
+    // Edit comment form
+    app.get('/partials/edit-comment/:id', async (c) => {
+      try {
+        const id = c.req.param('id');
+        const client = await getClient();
+        const result = await client.execute({
+          sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE id = ?',
+          args: [id],
+        });
+        if (result.rows.length === 0) {
+          return c.html('', 404);
+        }
+        const comment = parseCommentRow(result.rows[0] as Record<string, unknown>);
+        return c.html(renderEditCommentForm(comment));
+      } catch (error) {
+        return c.html(`<p class="text-red-500 text-sm">Error: ${(error as Error).message}</p>`, 500);
       }
     });
 

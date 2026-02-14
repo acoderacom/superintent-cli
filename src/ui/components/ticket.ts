@@ -1,5 +1,7 @@
 // Ticket-related UI components
 import { escapeHtml, ColumnData, renderMarkdownEditor } from './utils.js';
+import { renderCommentsSection } from './comments.js';
+import type { Comment } from '../../types.js';
 
 // Helper to render a ticket card
 export function renderTicketCard(ticket: {
@@ -208,10 +210,9 @@ export function renderTicketModal(ticket: {
     edgeCases: string[];
   };
   derived_knowledge?: string[];
-  comments?: { text: string; timestamp: string }[];
   created_at?: string;
   updated_at?: string;
-}): string {
+}, comments?: Comment[]): string {
   const statusColors: Record<string, string> = {
     'Backlog': 'gray',
     'In Progress': 'yellow',
@@ -466,19 +467,7 @@ export function renderTicketModal(ticket: {
         </div>
       ` : ''}
 
-      ${ticket.comments?.length ? `
-        <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Comments</h3>
-          <div class="space-y-2">
-            ${ticket.comments.map(c => `
-              <div class="bg-gray-100 rounded-lg p-3">
-                <div class="text-xs text-gray-400 mb-1">${new Date(c.timestamp).toLocaleString()}</div>
-                <div class="text-sm text-gray-700">${escapeHtml(c.text)}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
+      ${renderCommentsSection(comments || [], 'ticket', ticket.id)}
 
       <div class="mb-4">
         <h3 class="text-sm font-semibold text-gray-700 mb-2">Status</h3>

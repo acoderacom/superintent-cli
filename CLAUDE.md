@@ -45,7 +45,7 @@ Before exploring the codebase, always run `npx superintent search` first — sto
 | --- | --- |
 | Create | `npx superintent ticket create --stdin` (heredoc) |
 | Get | `npx superintent ticket get <id>` |
-| Update | `npx superintent ticket update <id> [--status] [--plan-stdin] [--complete-all] [--complete-task <indices>] [--complete-dod <indices>] [--comment <text>] [--context <context>] [--spec <spec-id>]` |
+| Update | `npx superintent ticket update <id> [--status] [--plan-stdin] [--complete-all] [--complete-task <indices>] [--complete-dod <indices>] [--comment <text>] [--author <name>] [--context <context>] [--spec <spec-id>]` |
 | List | `npx superintent ticket list [--status <status>] [--limit N]` |
 | Delete | `npx superintent ticket delete <id>` |
 
@@ -56,7 +56,7 @@ Before exploring the codebase, always run `npx superintent search` first — sto
 | Create | `npx superintent spec create --stdin` (heredoc) |
 | Get | `npx superintent spec get <id>` |
 | List | `npx superintent spec list [--limit N]` |
-| Update | `npx superintent spec update <id> [--title] [--content-stdin]` |
+| Update | `npx superintent spec update <id> [--title] [--content-stdin] [--comment <text>] [--author <name>]` |
 | Delete | `npx superintent spec delete <id>` |
 
 ### Knowledge Operations
@@ -68,7 +68,7 @@ Before exploring the codebase, always run `npx superintent search` first — sto
 | Create | `npx superintent knowledge create --stdin` (heredoc) |
 | Get | `npx superintent knowledge get <id>` |
 | List | `npx superintent knowledge list [--namespace] [--category] [--scope] [--source] [--status active\|inactive\|all] [--limit N]` |
-| Update | `npx superintent knowledge update <id> [--title] [--content-stdin] [--namespace] [--category] [--tags] [--scope] [--origin] [--confidence]` |
+| Update | `npx superintent knowledge update <id> [--title] [--content-stdin] [--namespace] [--category] [--tags] [--scope] [--origin] [--confidence] [--comment <text>] [--author <name>]` |
 | Activate | `npx superintent knowledge activate <id>` |
 | Deactivate | `npx superintent knowledge deactivate <id>` |
 | Recalculate | `npx superintent knowledge recalculate [--dry-run]` |

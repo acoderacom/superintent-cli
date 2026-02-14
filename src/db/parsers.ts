@@ -3,7 +3,7 @@
  * Consolidates duplicated parsing logic from command files.
  */
 
-import type { Ticket, Knowledge, SearchResult, Spec, TicketType, TicketComment } from '../types.js';
+import type { Ticket, Knowledge, SearchResult, Spec, Comment, TicketType } from '../types.js';
 
 /**
  * Parse a database row into a Ticket object.
@@ -27,7 +27,6 @@ export function parseTicketRow(row: Record<string, unknown>): Ticket {
     plan: row.plan ? JSON.parse(row.plan as string) : undefined,
     origin_spec_id: row.origin_spec_id as string | undefined,
     derived_knowledge: row.derived_knowledge ? JSON.parse(row.derived_knowledge as string) : undefined,
-    comments: row.comments ? JSON.parse(row.comments as string) as TicketComment[] : undefined,
     created_at: row.created_at as string | undefined,
     updated_at: row.updated_at as string | undefined,
   };
@@ -67,6 +66,21 @@ export function parseSpecRow(row: Record<string, unknown>): Spec {
     id: row.id as string,
     title: row.title as string,
     content: row.content as string,
+    created_at: row.created_at as string | undefined,
+    updated_at: row.updated_at as string | undefined,
+  };
+}
+
+/**
+ * Parse a database row into a Comment object.
+ */
+export function parseCommentRow(row: Record<string, unknown>): Comment {
+  return {
+    id: row.id as string,
+    parent_type: row.parent_type as Comment['parent_type'],
+    parent_id: row.parent_id as string,
+    author: row.author as string,
+    text: row.text as string,
     created_at: row.created_at as string | undefined,
     updated_at: row.updated_at as string | undefined,
   };

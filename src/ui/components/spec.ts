@@ -1,6 +1,7 @@
 // Spec-related UI components
 import { escapeHtml, renderMarkdownEditor } from './utils.js';
-import type { Spec } from '../../types.js';
+import { renderCommentsSection } from './comments.js';
+import type { Spec, Comment } from '../../types.js';
 
 // Helper to render spec view
 export function renderSpecView(): string {
@@ -97,7 +98,7 @@ export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
 }
 
 // Helper to render spec modal
-export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title?: string; status: string }[]): string {
+export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title?: string; status: string }[], comments?: Comment[]): string {
   return `
     <div class="p-6">
       <div class="flex items-start justify-between mb-4">
@@ -159,6 +160,8 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
           </div>
         </div>
       ` : ''}
+
+      ${renderCommentsSection(comments || [], 'spec', spec.id)}
 
       <!-- Actions & Metadata Footer -->
       <div class="mt-6 pt-4 border-t flex items-center justify-between">

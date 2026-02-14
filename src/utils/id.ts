@@ -1,4 +1,4 @@
-type IdPrefix = 'TICKET' | 'SPEC' | 'KNOWLEDGE';
+type IdPrefix = 'TICKET' | 'SPEC' | 'KNOWLEDGE' | 'COMMENT';
 
 /**
  * Generate a timestamp-based ID in format: PREFIX-YYYYMMDD-HHMMSS

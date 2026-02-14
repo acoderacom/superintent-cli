@@ -6,7 +6,8 @@ import { parseTicketRow } from '../db/parsers.js';
 import { getProjectNamespace } from '../utils/config.js';
 import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
-import type { Ticket, TaskItem, CliResponse, KnowledgeInput, TicketPlan, TicketType, TicketComment } from '../types.js';
+import { getGitUsername } from '../utils/git.js';
+import type { Ticket, TaskItem, CliResponse, KnowledgeInput, TicketPlan, TicketType } from '../types.js';
 
 /**
  * Infer ticket type from intent keywords
@@ -738,7 +739,8 @@ ticketCommand
   .argument('<id>', 'Ticket ID')
   .option('--status <status>', 'New status (Backlog|In Progress|In Review|Done)')
   .option('--context <context>', 'Update context')
-  .option('--comment <comment>', 'Add a comment (appended to context)')
+  .option('--comment <comment>', 'Add a comment')
+  .option('--author <author>', 'Comment author (default: git user.name)')
   .option('--tasks <tasks...>', 'Replace tasks')
   .option('--dod <criteria...>', 'Replace definition of done')
   .option('--complete-task <indices>', 'Mark tasks as done (comma-separated indices, e.g., 0,1,2)')
@@ -832,14 +834,12 @@ ticketCommand
         }
 
         if (options.comment) {
-          const currentComments: TicketComment[] = currentTicket.comments || [];
-          const newComment: TicketComment = {
-            text: options.comment,
-            timestamp: new Date().toISOString(),
-          };
-          currentComments.push(newComment);
-          updates.push('comments = ?');
-          args.push(JSON.stringify(currentComments));
+          const commentId = generateId('COMMENT');
+          const author = options.author || getGitUsername();
+          await client.execute({
+            sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
+            args: [commentId, 'ticket', id, author, options.comment],
+          });
         }
 
         if (options.tasks) {
@@ -877,7 +877,7 @@ ticketCommand
           args.push(JSON.stringify(dod));
         }
 
-        if (updates.length === 0) {
+        if (updates.length === 0 && !options.comment) {
           const response: CliResponse = {
             success: false,
             error: 'No updates provided',
@@ -886,13 +886,15 @@ ticketCommand
           process.exit(1);
         }
 
-        updates.push("updated_at = datetime('now')");
-        args.push(id);
+        if (updates.length > 0) {
+          updates.push("updated_at = datetime('now')");
+          args.push(id);
 
-        await client.execute({
-          sql: `UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`,
-          args,
-        });
+          await client.execute({
+            sql: `UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`,
+            args,
+          });
+        }
 
         // Auto-extract: generate knowledge proposals when status is "Done"
         let extractProposals: KnowledgeInput[] | undefined;

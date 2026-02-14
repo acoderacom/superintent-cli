@@ -34,7 +34,6 @@ export interface Ticket {
   plan?: TicketPlan;
   origin_spec_id?: string;
   derived_knowledge?: string[];
-  comments?: TicketComment[];
   created_at?: string;
   updated_at?: string;
 }
@@ -44,9 +43,17 @@ export interface TaskItem {
   done: boolean;
 }
 
-export interface TicketComment {
+// Comment types (polymorphic)
+export type CommentParentType = 'ticket' | 'knowledge' | 'spec';
+
+export interface Comment {
+  id: string;
+  parent_type: CommentParentType;
+  parent_id: string;
+  author: string;
   text: string;
-  timestamp: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface TicketInput {

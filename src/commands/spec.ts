@@ -3,6 +3,7 @@ import { getClient, closeClient } from '../db/client.js';
 import { parseSpecRow } from '../db/parsers.js';
 import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
+import { getGitUsername } from '../utils/git.js';
 import type { Spec, CliResponse } from '../types.js';
 
 interface ParsedSpec {
@@ -204,6 +205,8 @@ specCommand
   .argument('<id>', 'Spec ID')
   .option('--title <title>', 'New title')
   .option('--content-stdin', 'Read new content from stdin')
+  .option('--comment <comment>', 'Add a comment')
+  .option('--author <author>', 'Comment author (default: git user.name)')
   .action(async (id, options) => {
     try {
       const client = await getClient();
@@ -237,13 +240,33 @@ specCommand
           args.push(stdinParsed.content);
         }
 
-        if (updates.length === 0) {
+        // Add comment if provided
+        if (options.comment) {
+          const commentId = generateId('COMMENT');
+          const author = options.author || getGitUsername();
+          await client.execute({
+            sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
+            args: [commentId, 'spec', id, author, options.comment],
+          });
+        }
+
+        if (updates.length === 0 && !options.comment) {
           const response: CliResponse = {
             success: false,
-            error: 'No updates provided. Use --title or --content-stdin',
+            error: 'No updates provided. Use --title, --content-stdin, or --comment',
           };
           console.log(JSON.stringify(response));
           process.exit(1);
+        }
+
+        if (updates.length === 0) {
+          // Only a comment was added
+          const response: CliResponse<{ id: string; status: string }> = {
+            success: true,
+            data: { id, status: 'updated' },
+          };
+          console.log(JSON.stringify(response));
+          return;
         }
 
         updates.push("updated_at = datetime('now')");

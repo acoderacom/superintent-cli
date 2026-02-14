@@ -1,5 +1,7 @@
 // Knowledge-related UI components
 import { escapeHtml } from './utils.js';
+import { renderCommentsSection } from './comments.js';
+import type { Comment } from '../../types.js';
 
 // Helper to render knowledge view
 export function renderKnowledgeView(): string {
@@ -208,7 +210,7 @@ export function renderKnowledgeModal(knowledge: {
   last_used_at?: string;
   created_at?: string;
   updated_at?: string;
-}): string {
+}, comments?: Comment[]): string {
   const categoryColors: Record<string, string> = {
     pattern: 'purple',
     truth: 'green',
@@ -299,6 +301,8 @@ export function renderKnowledgeModal(knowledge: {
           </div>
         </div>
       ` : ''}
+
+      ${renderCommentsSection(comments || [], 'knowledge', knowledge.id)}
 
       <!-- Actions & Metadata Footer -->
       <div class="mt-6 pt-4 border-t flex items-center justify-between">

@@ -31,6 +31,12 @@ export {
   renderSearchResults,
 } from './search.js';
 
+// Comment components
+export {
+  renderCommentsSection,
+  renderEditCommentForm,
+} from './comments.js';
+
 // Spec components
 export {
   renderSpecView,

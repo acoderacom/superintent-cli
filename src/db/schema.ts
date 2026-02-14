@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS tickets (
   change_class_reason TEXT,
   plan TEXT,
   derived_knowledge TEXT,
-  comments TEXT,
   origin_spec_id TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
@@ -68,4 +67,19 @@ CREATE TABLE IF NOT EXISTS specs (
 
 export const CREATE_SPECS_INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_specs_created ON specs(created_at)`;
+
+export const CREATE_COMMENTS_TABLE = `
+CREATE TABLE IF NOT EXISTS comments (
+  id TEXT PRIMARY KEY,
+  parent_type TEXT NOT NULL,
+  parent_id TEXT NOT NULL,
+  author TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+)`;
+
+export const CREATE_COMMENTS_INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_type, parent_id);
+CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created_at)`;
 

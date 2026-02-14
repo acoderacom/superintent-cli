@@ -4,6 +4,7 @@ import { parseKnowledgeRow } from '../db/parsers.js';
 import { embed } from '../embed/model.js';
 import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
+import { getGitUsername } from '../utils/git.js';
 import type { Knowledge, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType } from '../types.js';
 
 function clampConfidence(value: number): number {
@@ -401,6 +402,8 @@ knowledgeCommand
   .option('--origin <ticketId>', 'Origin ticket ID')
   .option('--confidence <n>', 'Confidence score 0-1')
   .option('--scope <scope>', 'Decision scope: new-only|backward-compatible|global|legacy-frozen')
+  .option('--comment <comment>', 'Add a comment')
+  .option('--author <author>', 'Comment author (default: git user.name)')
   .action(async (id, options) => {
     try {
       const client = await getClient();
@@ -481,13 +484,33 @@ knowledgeCommand
           args.push(stdinParsed.scope);
         }
 
-        if (updates.length === 0) {
+        // Add comment if provided
+        if (options.comment) {
+          const commentId = generateId('COMMENT');
+          const author = options.author || getGitUsername();
+          await client.execute({
+            sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
+            args: [commentId, 'knowledge', id, author, options.comment],
+          });
+        }
+
+        if (updates.length === 0 && !options.comment) {
           const response: CliResponse = {
             success: false,
             error: 'No fields to update',
           };
           console.log(JSON.stringify(response));
           process.exit(1);
+        }
+
+        if (updates.length === 0) {
+          // Only a comment was added, no field updates needed
+          const response: CliResponse<{ id: string; status: string }> = {
+            success: true,
+            data: { id, status: 'updated' },
+          };
+          console.log(JSON.stringify(response));
+          return;
         }
 
         // Re-generate embedding if title, content, or tags changed

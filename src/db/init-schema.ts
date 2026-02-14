@@ -7,6 +7,8 @@ import {
   CREATE_VECTOR_INDEX,
   CREATE_SPECS_TABLE,
   CREATE_SPECS_INDEXES,
+  CREATE_COMMENTS_TABLE,
+  CREATE_COMMENTS_INDEXES,
 } from './schema.js';
 
 export async function initSchema(client: Client): Promise<void> {
@@ -38,6 +40,14 @@ export async function initSchema(client: Client): Promise<void> {
 
   const specIndexes = CREATE_SPECS_INDEXES.split(';').filter(s => s.trim());
   for (const stmt of specIndexes) {
+    await client.execute(stmt);
+  }
+
+  // Create comments table
+  await client.execute(CREATE_COMMENTS_TABLE);
+
+  const commentIndexes = CREATE_COMMENTS_INDEXES.split(';').filter(s => s.trim());
+  for (const stmt of commentIndexes) {
     await client.execute(stmt);
   }
 
