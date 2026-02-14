@@ -380,7 +380,7 @@ export const uiCommand = new Command('ui')
         const result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
                 category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                usage_count, last_used_at, created_at, updated_at
+                usage_count, last_used_at, author, branch, created_at, updated_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
         });
@@ -432,7 +432,7 @@ export const uiCommand = new Command('ui')
 
         const sql = `SELECT id, namespace, chunk_index, title, content,
                      category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                     usage_count, last_used_at, created_at, updated_at
+                     usage_count, last_used_at, author, branch, created_at, updated_at
                      FROM knowledge WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 12`;
 
         const result = await client.execute({ sql, args });
@@ -666,7 +666,7 @@ export const uiCommand = new Command('ui')
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
                      category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                     usage_count, last_used_at, created_at, updated_at
+                     usage_count, last_used_at, author, branch, created_at, updated_at
                      FROM knowledge`;
         if (conditions.length > 0) {
           sql += ` WHERE ${conditions.join(' AND ')}`;
@@ -693,7 +693,7 @@ export const uiCommand = new Command('ui')
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
                      category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                     usage_count, last_used_at, created_at, updated_at
+                     usage_count, last_used_at, author, branch, created_at, updated_at
                      FROM knowledge`;
         if (conditions.length > 0) {
           sql += ` WHERE ${conditions.join(' AND ')}`;
@@ -718,7 +718,7 @@ export const uiCommand = new Command('ui')
         const result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
                 category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                usage_count, last_used_at, created_at, updated_at
+                usage_count, last_used_at, author, branch, created_at, updated_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
         });

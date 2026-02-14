@@ -27,6 +27,7 @@ export function parseTicketRow(row: Record<string, unknown>): Ticket {
     plan: row.plan ? JSON.parse(row.plan as string) : undefined,
     origin_spec_id: row.origin_spec_id as string | undefined,
     derived_knowledge: row.derived_knowledge ? JSON.parse(row.derived_knowledge as string) : undefined,
+    author: row.author as string | undefined,
     created_at: row.created_at as string | undefined,
     updated_at: row.updated_at as string | undefined,
   };
@@ -53,6 +54,8 @@ export function parseKnowledgeRow(row: Record<string, unknown>): Knowledge {
     decision_scope: (row.decision_scope as Knowledge['decision_scope']) || 'global',
     usage_count: (row.usage_count as number) || 0,
     last_used_at: row.last_used_at as string | undefined,
+    author: row.author as string | undefined,
+    branch: row.branch as string | undefined,
     created_at: row.created_at as string | undefined,
     updated_at: row.updated_at as string | undefined,
   };

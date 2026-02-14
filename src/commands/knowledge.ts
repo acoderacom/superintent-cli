@@ -4,7 +4,7 @@ import { parseKnowledgeRow } from '../db/parsers.js';
 import { embed } from '../embed/model.js';
 import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
-import { getGitUsername } from '../utils/git.js';
+import { getGitUsername, getGitBranch } from '../utils/git.js';
 import type { Knowledge, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType } from '../types.js';
 
 function clampConfidence(value: number): number {
@@ -23,6 +23,8 @@ interface ParsedKnowledge {
   scope: DecisionScope;
   tags?: string[];
   content: string;
+  author?: string;
+  branch?: string;
 }
 
 /**
@@ -109,6 +111,10 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
     } else if (trimmed.startsWith('**Tags:**')) {
       const tagStr = trimmed.replace('**Tags:**', '').trim();
       result.tags = tagStr.split(',').map(t => t.trim()).filter(Boolean);
+    } else if (trimmed.startsWith('**Author:**')) {
+      result.author = trimmed.replace('**Author:**', '').trim();
+    } else if (trimmed.startsWith('**Branch:**')) {
+      result.branch = trimmed.replace('**Branch:**', '').trim();
     }
   }
 
@@ -146,6 +152,8 @@ knowledgeCommand
       let originTicketType: TicketType | null;
       let confidence: number;
       let scope: string;
+      let author: string;
+      let branch: string;
 
       if (options.stdin) {
         // Parse from stdin markdown
@@ -177,6 +185,8 @@ knowledgeCommand
         originTicketType = parsed.originTicketType || null;
         confidence = parsed.confidence;
         scope = parsed.scope;
+        author = parsed.author || getGitUsername();
+        branch = parsed.branch || getGitBranch();
       } else {
         // Use CLI options
         if (!options.title || !options.namespace || !options.content) {
@@ -199,6 +209,8 @@ knowledgeCommand
         originTicketType = null;  // CLI doesn't support this yet, use stdin for full control
         confidence = clampConfidence(parseFloat(options.confidence));
         scope = options.scope;
+        author = getGitUsername();
+        branch = getGitBranch();
       }
 
       const client = await getClient();
@@ -211,8 +223,9 @@ knowledgeCommand
         await client.execute({
           sql: `INSERT INTO knowledge (
             id, namespace, chunk_index, title, content, embedding,
-            category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope
-          ) VALUES (?, ?, 0, ?, ?, vector32(?), ?, ?, ?, ?, ?, ?, 1, ?)`,
+            category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+            author, branch
+          ) VALUES (?, ?, 0, ?, ?, vector32(?), ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
           args: [
             id,
             namespace,
@@ -226,6 +239,8 @@ knowledgeCommand
             originTicketType,
             confidence,
             scope,
+            author,
+            branch,
           ],
         });
 
@@ -277,7 +292,7 @@ knowledgeCommand
         result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
                 category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                usage_count, last_used_at, created_at
+                usage_count, last_used_at, author, branch, created_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
         });
@@ -319,6 +334,8 @@ knowledgeCommand
   .option('--category <category>', 'Filter by category')
   .option('--scope <scope>', 'Filter by decision scope (new-only|backward-compatible|global|legacy-frozen)')
   .option('--source <source>', 'Filter by source (ticket|discovery|manual)')
+  .option('--author <author>', 'Filter by author')
+  .option('--branch <branch>', 'Filter by branch')
   .option('--status <status>', 'Filter by status (active|inactive|all)', 'active')
   .option('--limit <n>', 'Limit results', '20')
   .action(async (options) => {
@@ -355,9 +372,19 @@ knowledgeCommand
           args.push(options.source);
         }
 
+        if (options.author) {
+          conditions.push('author = ?');
+          args.push(options.author);
+        }
+
+        if (options.branch) {
+          conditions.push('branch = ?');
+          args.push(options.branch);
+        }
+
         let sql = `SELECT id, namespace, chunk_index, title, content,
                    category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                   usage_count, last_used_at, created_at
+                   usage_count, last_used_at, author, branch, created_at
                    FROM knowledge`;
         if (conditions.length > 0) {
           sql += ` WHERE ${conditions.join(' AND ')}`;
@@ -639,6 +666,47 @@ knowledgeCommand
       const response: CliResponse = {
         success: false,
         error: `Failed to activate knowledge: ${(error as Error).message}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(1);
+    }
+  });
+
+// Promote subcommand — set branch to 'main'
+knowledgeCommand
+  .command('promote')
+  .description('Promote a knowledge entry to main branch')
+  .argument('<id>', 'Knowledge ID')
+  .action(async (id) => {
+    try {
+      const client = await getClient();
+      try {
+        const result = await client.execute({
+          sql: "UPDATE knowledge SET branch = 'main', updated_at = datetime('now') WHERE id = ?",
+          args: [id],
+        });
+
+        if (result.rowsAffected === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Knowledge ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const response: CliResponse<{ id: string; status: string }> = {
+          success: true,
+          data: { id, status: 'promoted to main' },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
+    } catch (error) {
+      const response: CliResponse = {
+        success: false,
+        error: `Failed to promote knowledge: ${(error as Error).message}`,
       };
       console.log(JSON.stringify(response));
       process.exit(1);

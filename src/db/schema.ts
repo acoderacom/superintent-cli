@@ -16,13 +16,15 @@ CREATE TABLE IF NOT EXISTS tickets (
   plan TEXT,
   derived_knowledge TEXT,
   origin_spec_id TEXT,
+  author TEXT DEFAULT 'unknown',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 )`;
 
 export const CREATE_TICKETS_INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
-CREATE INDEX IF NOT EXISTS idx_tickets_created ON tickets(created_at)`;
+CREATE INDEX IF NOT EXISTS idx_tickets_created ON tickets(created_at);
+CREATE INDEX IF NOT EXISTS idx_tickets_author ON tickets(author)`;
 
 export const CREATE_KNOWLEDGE_TABLE = `
 CREATE TABLE IF NOT EXISTS knowledge (
@@ -42,6 +44,8 @@ CREATE TABLE IF NOT EXISTS knowledge (
   decision_scope TEXT NOT NULL DEFAULT 'global',
   usage_count INTEGER DEFAULT 0,
   last_used_at TEXT,
+  author TEXT DEFAULT 'unknown',
+  branch TEXT DEFAULT 'main',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (origin_ticket_id) REFERENCES tickets(id)
@@ -51,7 +55,9 @@ export const CREATE_KNOWLEDGE_INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_knowledge_namespace ON knowledge(namespace);
 CREATE INDEX IF NOT EXISTS idx_knowledge_category ON knowledge(category);
 CREATE INDEX IF NOT EXISTS idx_knowledge_active ON knowledge(active);
-CREATE INDEX IF NOT EXISTS idx_knowledge_scope ON knowledge(decision_scope)`;
+CREATE INDEX IF NOT EXISTS idx_knowledge_scope ON knowledge(decision_scope);
+CREATE INDEX IF NOT EXISTS idx_knowledge_author ON knowledge(author);
+CREATE INDEX IF NOT EXISTS idx_knowledge_branch ON knowledge(branch)`;
 
 export const CREATE_VECTOR_INDEX = `
 CREATE INDEX IF NOT EXISTS knowledge_embedding_idx ON knowledge(libsql_vector_idx(embedding))`;

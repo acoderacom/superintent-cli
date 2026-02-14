@@ -34,6 +34,7 @@ export interface Ticket {
   plan?: TicketPlan;
   origin_spec_id?: string;
   derived_knowledge?: string[];
+  author?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -94,6 +95,8 @@ export interface Knowledge {
   decision_scope: DecisionScope;
   usage_count: number;
   last_used_at?: string;
+  author?: string;
+  branch?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -109,6 +112,8 @@ export interface KnowledgeInput {
   originTicketType?: TicketType;  // What kind of ticket spawned this
   confidence?: number;
   decisionScope?: DecisionScope;  // Defaults to 'global'
+  author?: string;
+  branch?: string;
 }
 
 // Content format by category:

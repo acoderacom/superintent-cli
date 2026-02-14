@@ -11,6 +11,8 @@ export const searchCommand = new Command('search')
   .option('--category <category>', 'Filter by category')
   .option('--ticket-type <type>', 'Filter by origin ticket type (feature|bugfix|refactor|docs|chore|test)')
   .option('--tags <tags...>', 'Filter by tags (OR logic)')
+  .option('--author <author>', 'Filter by author')
+  .option('--branch <branch>', 'Filter by branch')
   .option('--min-score <n>', 'Minimum similarity score 0-1', '0')
   .option('--limit <n>', 'Max results', '5')
   .action(async (query, options) => {
@@ -24,6 +26,8 @@ export const searchCommand = new Command('search')
           category: options.category,
           ticketType: options.ticketType,
           tags: options.tags,
+          author: options.author,
+          branch: options.branch,
           minScore: parseFloat(options.minScore),
           limit: parseInt(options.limit, 10),
         });

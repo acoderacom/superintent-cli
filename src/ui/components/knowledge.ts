@@ -93,6 +93,8 @@ export interface KnowledgeItem {
   confidence: number;
   active: boolean;
   decision_scope: string;
+  author?: string;
+  branch?: string;
   created_at?: string;
 }
 
@@ -132,6 +134,7 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
         <span><span class="text-gray-400">Source:</span> ${k.source || 'manual'}${k.source === 'ticket' && k.origin_ticket_type ? ` (${k.origin_ticket_type})` : ''}</span>
         ${k.category ? `<span><span class="text-gray-400">Category:</span> <span class="text-${color}-600 font-medium">${k.category}</span></span>` : ''}
         <span><span class="text-gray-400">Scope:</span> ${k.decision_scope}</span>
+        ${k.branch && k.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${escapeHtml(k.branch)}</span>` : ''}
       </div>
     </div>
   `;
@@ -208,6 +211,8 @@ export function renderKnowledgeModal(knowledge: {
   decision_scope: string;
   usage_count?: number;
   last_used_at?: string;
+  author?: string;
+  branch?: string;
   created_at?: string;
   updated_at?: string;
 }, comments?: Comment[]): string {
@@ -274,6 +279,8 @@ export function renderKnowledgeModal(knowledge: {
           <div><span class="text-gray-400">Namespace:</span> ${escapeHtml(knowledge.namespace)}</div>
           <div><span class="text-gray-400">Scope:</span> ${knowledge.decision_scope}</div>
           <div><span class="text-gray-400">Source:</span> ${knowledge.source}${knowledge.source === 'ticket' && knowledge.origin_ticket_type ? ` (${knowledge.origin_ticket_type})` : ''}</div>
+          ${knowledge.author ? `<div><span class="text-gray-400">Author:</span> ${escapeHtml(knowledge.author)}</div>` : ''}
+          ${knowledge.branch ? `<div><span class="text-gray-400">Branch:</span> ${knowledge.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium text-xs">${escapeHtml(knowledge.branch)}</span>` : 'main'}</div>` : ''}
         </div>
       </div>
 

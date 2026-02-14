@@ -8,6 +8,8 @@ export interface VectorSearchOptions {
   category?: string;
   ticketType?: string;
   tags?: string[];
+  author?: string;
+  branch?: string;
   minScore?: number;
   limit: number;
 }
@@ -39,6 +41,14 @@ export async function performVectorSearch(
     conditions.push('k.origin_ticket_type = ?');
     filterArgs.push(options.ticketType);
   }
+  if (options.author) {
+    conditions.push('k.author = ?');
+    filterArgs.push(options.author);
+  }
+  if (options.branch) {
+    conditions.push('k.branch = ?');
+    filterArgs.push(options.branch);
+  }
 
   const whereClause = conditions.join(' AND ');
   let result;
@@ -49,7 +59,7 @@ export async function performVectorSearch(
         SELECT
           k.id, k.namespace, k.chunk_index, k.title, k.content,
           k.category, k.tags, k.source, k.origin_ticket_id, k.origin_ticket_type, k.confidence, k.active, k.decision_scope,
-          k.usage_count, k.last_used_at, k.created_at,
+          k.usage_count, k.last_used_at, k.author, k.branch, k.created_at,
           vector_distance_cos(k.embedding, vector32(?)) as distance
         FROM vector_top_k('knowledge_embedding_idx', vector32(?), ${topK}) AS v
         JOIN knowledge k ON k.rowid = v.id

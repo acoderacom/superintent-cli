@@ -63,12 +63,13 @@ Before exploring the codebase, always run `npx superintent search` first — sto
 
 | Action | Command |
 | --- | --- |
-| Search | `npx superintent search "<query>" [--limit N] [--namespace] [--category] [--ticket-type] [--tags] [--min-score]` |
+| Search | `npx superintent search "<query>" [--limit N] [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score]` |
 | Extract | `npx superintent extract <ticket-id>` |
 | Create | `npx superintent knowledge create --stdin` (heredoc) |
 | Get | `npx superintent knowledge get <id>` |
-| List | `npx superintent knowledge list [--namespace] [--category] [--scope] [--source] [--status active\|inactive\|all] [--limit N]` |
+| List | `npx superintent knowledge list [--namespace] [--category] [--scope] [--source] [--author] [--branch] [--status active\|inactive\|all] [--limit N]` |
 | Update | `npx superintent knowledge update <id> [--title] [--content-stdin] [--namespace] [--category] [--tags] [--scope] [--origin] [--confidence] [--comment <text>] [--author <name>]` |
 | Activate | `npx superintent knowledge activate <id>` |
 | Deactivate | `npx superintent knowledge deactivate <id>` |
+| Promote | `npx superintent knowledge promote <id>` |
 | Recalculate | `npx superintent knowledge recalculate [--dry-run]` |

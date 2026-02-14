@@ -652,8 +652,8 @@ ticketCommand
           sql: `INSERT INTO tickets (
             id, type, title, status, intent, context,
             constraints_use, constraints_avoid, assumptions,
-            tasks, definition_of_done, change_class, change_class_reason, plan, origin_spec_id
-          ) VALUES (?, ?, ?, 'Backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            tasks, definition_of_done, change_class, change_class_reason, plan, origin_spec_id, author
+          ) VALUES (?, ?, ?, 'Backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             id,
             type,
@@ -669,6 +669,7 @@ ticketCommand
             changeClassReason,
             plan ? JSON.stringify(plan) : null,
             originSpecId,
+            getGitUsername(),
           ],
         });
 
