@@ -100,7 +100,7 @@ export function renderSearchResults(results: {
         const scorePercent = Math.round(r.score * 100);
         const inactiveClass = !r.active ? 'opacity-60 border-dashed' : '';
         return `
-          <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
+          <div class="bg-white border border-gray-200 shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
                hx-get="/partials/knowledge-modal/${encodeURIComponent(r.id)}"
                hx-target="#modal-content"
                hx-trigger="click"

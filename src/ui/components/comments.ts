@@ -25,8 +25,8 @@ export function renderCommentsSection(comments: Comment[], parentType: CommentPa
 function renderCommentCard(comment: Comment): string {
   const isAi = !comment.author || comment.author === 'anonymous' || ['claude', 'openai', 'gemini', 'gpt'].some(a => comment.author.toLowerCase().includes(a));
   const authorBadge = isAi
-    ? `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-purple-100 text-purple-700">${escapeHtml(comment.author)}</span>`
-    : `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-100 text-blue-700">${escapeHtml(comment.author)}</span>`;
+    ? `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-orange-100 text-orange-700">${escapeHtml(comment.author)}</span>`
+    : `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-200 text-gray-700">${escapeHtml(comment.author)}</span>`;
 
   return `
     <div class="bg-gray-100 rounded-lg p-3 group" id="comment-${escapeHtml(comment.id)}">

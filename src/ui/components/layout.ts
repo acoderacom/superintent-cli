@@ -71,7 +71,7 @@ export function getHtml(namespace: string, version: string): string {
 
             <!-- Sidebar Toggle -->
             <button type="button" onclick="toggleSidebar()" class="p-1 size-7 inline-flex items-center justify-center rounded-md border border-transparent text-gray-800 hover:bg-gray-200 cursor-pointer focus:outline-hidden focus:bg-gray-200">
-              <svg class="shrink-0 size-3.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>
+              <svg class="shrink-0 size-3.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path></svg>
               <span class="sr-only">Sidebar Toggle</span>
             </button>
           </li>

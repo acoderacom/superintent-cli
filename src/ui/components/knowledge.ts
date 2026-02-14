@@ -10,7 +10,7 @@ export function renderKnowledgeView(): string {
       <h1 class="text-xl font-bold text-gray-800 mb-4">Knowledge Base</h1>
       <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
       <aside class="w-full lg:w-64 shrink-0 lg:sticky lg:top-4 lg:self-start">
-        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white border border-gray-200 shadow-2xs rounded-xl p-3 lg:p-4">
+        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white border border-gray-200 shadow-2xs rounded-md p-3 lg:p-4">
           <div>
             <label for="k-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select id="k-status" name="k-status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
@@ -130,7 +130,7 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
   const color = categoryColors[k.category || ''] || 'gray';
   const inactiveClass = !k.active ? 'opacity-60 border-dashed' : '';
   return `
-    <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
+    <div class="bg-white border border-gray-200 shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
          hx-get="/partials/knowledge-modal/${encodeURIComponent(k.id)}"
          hx-target="#modal-content"
          hx-trigger="click"
@@ -310,7 +310,7 @@ export function renderKnowledgeModal(knowledge: {
       ${knowledge.origin_ticket_id ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 mb-2">Origin Ticket</h3>
-          <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 cursor-pointer font-mono font-medium"
+          <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 cursor-pointer font-mono font-medium"
                 hx-get="/partials/ticket-modal/${encodeURIComponent(knowledge.origin_ticket_id)}"
                 hx-target="#modal-content"
                 hx-trigger="click">

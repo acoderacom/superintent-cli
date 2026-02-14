@@ -42,7 +42,7 @@ export function renderTicketCard(ticket: {
   const displayTitle = ticket.title || ticket.intent;
 
   return `
-    <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-3 cursor-pointer hover:shadow-md transition group"
+    <div class="bg-white border border-gray-200 shadow-2xs rounded-md p-3 cursor-pointer hover:shadow-md transition group"
          draggable="true"
          ondragstart="onDragStart(event, '${ticket.id}')"
          ondragend="onDragEnd(event)"
@@ -96,7 +96,7 @@ export function renderKanbanView(): string {
 // Helper to render kanban columns with pagination
 export function renderKanbanColumns(columns: ColumnData[]): string {
   const columnStyles: Record<string, { color: string; bg: string; badgeBg?: string; badgeText?: string }> = {
-    'Backlog': { color: 'gray', bg: 'bg-gray-50' },
+    'Backlog': { color: 'gray', bg: 'bg-gray-100', badgeBg: 'bg-gray-200', badgeText: 'text-gray-600' },
     'In Progress': { color: 'yellow', bg: 'bg-yellow-50' },
     'In Review': { color: 'blue', bg: 'bg-blue-50' },
     'Done': { color: 'green', bg: 'bg-green-50' },
@@ -104,7 +104,7 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
     'Paused': { color: 'orange', bg: 'bg-orange-50' },
     'Abandoned': { color: 'gray', bg: 'bg-gray-100' },
     'Superseded': { color: 'purple', bg: 'bg-purple-50' },
-    'Archived': { color: 'slate', bg: 'bg-gray-100', badgeBg: 'bg-gray-200', badgeText: 'text-gray-600' },
+    'Archived': { color: 'gray', bg: 'bg-gray-100', badgeBg: 'bg-gray-200', badgeText: 'text-gray-600' },
   };
 
   return `

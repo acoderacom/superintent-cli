@@ -63,7 +63,7 @@ export function renderSpecMore(specs: Spec[], ticketCounts: Record<string, numbe
 // Helper to render spec card
 export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
   return `
-    <div class="bg-white border border-gray-200 shadow-2xs rounded-xl hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col group"
+    <div class="bg-white border border-gray-200 shadow-2xs rounded-md hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col group"
          hx-get="/partials/spec-modal/${encodeURIComponent(spec.id)}"
          hx-target="#modal-content"
          hx-trigger="click"
