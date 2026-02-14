@@ -115,12 +115,6 @@ export function getHtml(namespace: string): string {
           </li>
         </ul>
 
-        <!-- Right side: status -->
-        <ul class="flex flex-row items-center ms-auto">
-          <li class="inline-flex items-center text-xs text-gray-400">
-            <span class="hidden sm:inline">Connected</span>
-          </li>
-        </ul>
       </div>
     </nav>
   </header>

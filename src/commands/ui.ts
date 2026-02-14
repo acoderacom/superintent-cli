@@ -919,7 +919,7 @@ export const uiCommand = new Command('ui')
     const dbMode = isLocal ? 'Local' : 'Cloud';
 
     const banner = `
-\x1b[36m→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
+\x1b[38;2;37;99;235m→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
@@ -942,8 +942,8 @@ export const uiCommand = new Command('ui')
 
   \x1b[1mSuperintent\x1b[0m \x1b[90mv${version}\x1b[0m
 
-  \x1b[32m*\x1b[0m Ready at \x1b[1mhttp://localhost:${port}\x1b[0m
-  \x1b[90m>\x1b[0m Using \x1b[33mTurso ${dbMode}\x1b[0m
+  \x1b[38;2;79;248;210m*\x1b[0m Ready at \x1b[1mhttp://localhost:${port}\x1b[0m
+  \x1b[90m>\x1b[0m Using \x1b[38;2;79;248;210mTurso ${dbMode}\x1b[0m
 
   \x1b[90mPress Ctrl+C to stop\x1b[0m
 `;

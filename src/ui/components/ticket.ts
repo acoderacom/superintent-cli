@@ -93,7 +93,7 @@ export function renderKanbanView(): string {
 
 // Helper to render kanban columns with pagination
 export function renderKanbanColumns(columns: ColumnData[]): string {
-  const columnStyles: Record<string, { color: string; bg: string }> = {
+  const columnStyles: Record<string, { color: string; bg: string; badgeBg?: string; badgeText?: string }> = {
     'Backlog': { color: 'gray', bg: 'bg-gray-50' },
     'In Progress': { color: 'yellow', bg: 'bg-yellow-50' },
     'In Review': { color: 'blue', bg: 'bg-blue-50' },
@@ -102,7 +102,7 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
     'Paused': { color: 'orange', bg: 'bg-orange-50' },
     'Abandoned': { color: 'gray', bg: 'bg-gray-100' },
     'Superseded': { color: 'purple', bg: 'bg-purple-50' },
-    'Archived': { color: 'slate', bg: 'bg-slate-50' },
+    'Archived': { color: 'slate', bg: 'bg-gray-100', badgeBg: 'bg-gray-200', badgeText: 'text-gray-600' },
   };
 
   return `
@@ -129,7 +129,7 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
                     + Add
                   </button>
                 ` : ''}
-                <span class="text-xs text-${style.color}-500 bg-${style.color}-100 px-2 py-0.5 rounded-full">${col.tickets.length}${col.hasMore ? '+' : ''}</span>
+                <span class="text-xs ${style.badgeText || `text-${style.color}-500`} ${style.badgeBg || `bg-${style.color}-100`} px-2 py-0.5 rounded-full">${col.tickets.length}${col.hasMore ? '+' : ''}</span>
               </div>
             </div>
             <div id="tickets-${statusSlug}" class="space-y-3 overflow-y-auto flex-1 min-h-0 -mx-1 px-1 py-1">
