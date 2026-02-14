@@ -123,8 +123,9 @@ export function renderSearchResults(results: {
               <span><span class="text-gray-400">Source:</span> ${r.source || 'manual'}${r.source === 'ticket' && r.origin_ticket_type ? ` (${r.origin_ticket_type})` : ''}</span>
               ${r.category ? `<span><span class="text-gray-400">Category:</span> <span class="text-${color}-600 font-medium">${r.category}</span></span>` : ''}
               <span><span class="text-gray-400">Scope:</span> ${r.decision_scope}</span>
+              ${r.author ? `<span><span class="text-gray-400">Author:</span> ${escapeHtml(r.author)}</span>` : ''}
+              ${r.branch ? `<span><span class="text-gray-400">Branch:</span> ${r.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${escapeHtml(r.branch)}</span>` : 'main'}</span>` : ''}
               ${(r.tags || []).length > 0 ? `<span><span class="text-gray-400">Tags:</span> ${(r.tags || []).slice(0, 3).map(t => escapeHtml(t)).join(', ')}</span>` : ''}
-              ${r.branch && r.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${escapeHtml(r.branch)}</span>` : ''}
             </div>
             <div class="mt-2">
               <div class="w-full bg-gray-100 rounded-full h-1">

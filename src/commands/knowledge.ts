@@ -20,7 +20,7 @@ interface ParsedKnowledge {
   originTicketId?: string;
   originTicketType?: TicketType;
   confidence: number;
-  scope: DecisionScope;
+  scope?: DecisionScope;
   tags?: string[];
   content: string;
   author?: string;
@@ -52,7 +52,6 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
     namespace: '',
     source: 'manual',
     confidence: 0.8,
-    scope: 'global',
     content: '',
   };
 
@@ -138,7 +137,7 @@ knowledgeCommand
   .option('--source <source>', 'Source: ticket|discovery|manual', 'manual')
   .option('--origin <ticketId>', 'Origin ticket ID (sets origin-type to ticket)')
   .option('--confidence <n>', 'Confidence 0-1 (0.7-0.8 for patterns, 1.0 for invariants)', '0.8')
-  .option('--scope <scope>', 'Decision scope: new-only|backward-compatible|global|legacy-frozen', 'global')
+  .option('--scope <scope>', 'Decision scope: new-only|backward-compatible|global|legacy-frozen (required)')
   .action(async (options) => {
     try {
       let id: string;
@@ -164,6 +163,7 @@ knowledgeCommand
         const missing: string[] = [];
         if (!parsed.title) missing.push('title: Missing # Title header');
         if (!parsed.namespace) missing.push('namespace: Missing **Namespace:** field');
+        if (!parsed.scope) missing.push('scope: Missing **Scope:** field (new-only|backward-compatible|global|legacy-frozen)');
         if (!parsed.content) missing.push('content: Missing ## Content section or content is empty');
         if (missing.length > 0) {
           const response: CliResponse = {
@@ -184,15 +184,15 @@ knowledgeCommand
         originTicketId = parsed.originTicketId || null;
         originTicketType = parsed.originTicketType || null;
         confidence = parsed.confidence;
-        scope = parsed.scope;
+        scope = parsed.scope!;
         author = parsed.author || getGitUsername();
         branch = parsed.branch || getGitBranch();
       } else {
         // Use CLI options
-        if (!options.title || !options.namespace || !options.content) {
+        if (!options.title || !options.namespace || !options.content || !options.scope) {
           const response: CliResponse = {
             success: false,
-            error: 'Required: --title, --namespace, --content (or use --stdin)',
+            error: 'Required: --title, --namespace, --content, --scope (or use --stdin)',
           };
           console.log(JSON.stringify(response));
           process.exit(1);

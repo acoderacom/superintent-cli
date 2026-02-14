@@ -17,7 +17,7 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin']">
+                    hx-include="[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch']">
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="all">All</option>
@@ -30,7 +30,7 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-status'],[name='k-namespace'],[name='k-scope'],[name='k-origin']">
+                    hx-include="[name='k-status'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch']">
               <option value="">All</option>
               <option value="pattern">Pattern</option>
               <option value="truth">Truth</option>
@@ -46,7 +46,7 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-origin']">
+                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-origin'],[name='k-author'],[name='k-branch']">
               <option value="">All</option>
               <option value="global">Global</option>
               <option value="new-only">New Only</option>
@@ -61,12 +61,32 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope']">
+                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-author'],[name='k-branch']">
               <option value="">All</option>
               <option value="ticket">Ticket</option>
               <option value="discovery">Discovery</option>
               <option value="manual">Manual</option>
             </select>
+          </div>
+
+          <div>
+            <label for="k-author" class="block text-sm font-medium text-gray-700 mb-1">Author</label>
+            <input id="k-author" name="k-author" type="text" placeholder="Filter by author..."
+                   class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                   hx-get="/partials/knowledge-list"
+                   hx-trigger="keyup changed delay:400ms"
+                   hx-target="#knowledge-list"
+                   hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-branch']">
+          </div>
+
+          <div>
+            <label for="k-branch" class="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+            <input id="k-branch" name="k-branch" type="text" placeholder="Filter by branch..."
+                   class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                   hx-get="/partials/knowledge-list"
+                   hx-trigger="keyup changed delay:400ms"
+                   hx-target="#knowledge-list"
+                   hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author']">
           </div>
         </div>
       </aside>
@@ -134,14 +154,15 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
         <span><span class="text-gray-400">Source:</span> ${k.source || 'manual'}${k.source === 'ticket' && k.origin_ticket_type ? ` (${k.origin_ticket_type})` : ''}</span>
         ${k.category ? `<span><span class="text-gray-400">Category:</span> <span class="text-${color}-600 font-medium">${k.category}</span></span>` : ''}
         <span><span class="text-gray-400">Scope:</span> ${k.decision_scope}</span>
-        ${k.branch && k.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${escapeHtml(k.branch)}</span>` : ''}
+        ${k.author ? `<span><span class="text-gray-400">Author:</span> ${escapeHtml(k.author)}</span>` : ''}
+        ${k.branch ? `<span><span class="text-gray-400">Branch:</span> ${k.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${escapeHtml(k.branch)}</span>` : 'main'}</span>` : ''}
       </div>
     </div>
   `;
 }
 
 // Build query params string for knowledge filters (used in load-more URLs)
-function buildKnowledgeFilterParams(filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string }): string {
+function buildKnowledgeFilterParams(filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string }): string {
   if (!filters) return '';
   const params = new URLSearchParams();
   if (filters.status) params.set('k-status', filters.status);
@@ -149,12 +170,14 @@ function buildKnowledgeFilterParams(filters?: { status?: string; category?: stri
   if (filters.namespace) params.set('k-namespace', filters.namespace);
   if (filters.scope) params.set('k-scope', filters.scope);
   if (filters.source) params.set('k-origin', filters.source);
+  if (filters.author) params.set('k-author', filters.author);
+  if (filters.branch) params.set('k-branch', filters.branch);
   const str = params.toString();
   return str ? `&${str}` : '';
 }
 
 // Helper to render knowledge list with optional load-more
-export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string }): string {
+export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string }): string {
   if (items.length === 0) {
     return '<p class="text-gray-500 text-center py-8">No knowledge entries found</p>';
   }
@@ -176,7 +199,7 @@ export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, f
 }
 
 // Helper to render more knowledge items (pagination)
-export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, hasMore: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string }): string {
+export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, hasMore: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string }): string {
   const cards = items.map(k => renderKnowledgeCard(k)).join('');
 
   if (!hasMore) {

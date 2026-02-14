@@ -636,6 +636,8 @@ export const uiCommand = new Command('ui')
       const namespace = c.req.query('k-namespace');
       const scope = c.req.query('k-scope');
       const sourceFilter = c.req.query('k-origin');
+      const author = c.req.query('k-author');
+      const branch = c.req.query('k-branch');
       const status = c.req.query('k-status') || 'active';
 
       const conditions: string[] = [];
@@ -651,8 +653,10 @@ export const uiCommand = new Command('ui')
       if (namespace) { conditions.push('namespace = ?'); args.push(namespace); }
       if (scope) { conditions.push('decision_scope = ?'); args.push(scope); }
       if (sourceFilter) { conditions.push('source = ?'); args.push(sourceFilter); }
+      if (author) { conditions.push('author LIKE ?'); args.push(`%${author}%`); }
+      if (branch) { conditions.push('branch LIKE ?'); args.push(`%${branch}%`); }
 
-      const filters = { status, category, namespace, scope, source: sourceFilter };
+      const filters = { status, category, namespace, scope, source: sourceFilter, author, branch };
 
       return { conditions, args, filters };
     }
