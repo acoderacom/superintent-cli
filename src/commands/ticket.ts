@@ -532,11 +532,13 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
   // DoD → Verification patterns (validated criteria)
   if (ticket.plan?.dodVerification && ticket.plan.dodVerification.length > 0) {
     for (const dv of ticket.plan.dodVerification) {
-      if (!dv.dod || !dv.verify) continue;
+      if (!dv.dod) continue;
       suggestions.push({
         namespace,
         title: `Verify: ${dv.dod.slice(0, 70)}`,
-        content: `Criterion:\n${dv.dod}\n\nVerification:\n${dv.verify}\n\nValidated:\nTicket ${ticket.id}`,
+        content: dv.verify
+          ? `Criterion:\n${dv.dod}\n\nVerification:\n${dv.verify}\n\nValidated:\nTicket ${ticket.id}`
+          : `Criterion:\n${dv.dod}\n\nValidated:\nTicket ${ticket.id}`,
         category: 'pattern',
         source: 'ticket',
         originTicketId: ticket.id,
