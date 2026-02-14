@@ -1,7 +1,7 @@
 type IdPrefix = 'TICKET' | 'SPEC' | 'KNOWLEDGE' | 'COMMENT';
 
 /**
- * Generate a timestamp-based ID in format: PREFIX-YYYYMMDD-HHMMSS
+ * Generate a timestamp-based ID in format: PREFIX-YYYYMMDD-HHMMSSMMM
  */
 export function generateId(prefix: IdPrefix): string {
   const now = new Date();
@@ -11,5 +11,6 @@ export function generateId(prefix: IdPrefix): string {
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
   const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `${prefix}-${year}${month}${day}-${hours}${minutes}${seconds}`;
+  const millis = String(now.getMilliseconds()).padStart(3, '0');
+  return `${prefix}-${year}${month}${day}-${hours}${minutes}${seconds}${millis}`;
 }
