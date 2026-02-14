@@ -21,6 +21,7 @@ export {
 export {
   renderKnowledgeView,
   renderKnowledgeList,
+  renderKnowledgeMore,
   renderKnowledgeModal,
 } from './knowledge.js';
 
@@ -34,6 +35,7 @@ export {
 export {
   renderSpecView,
   renderSpecList,
+  renderSpecMore,
   renderSpecCard,
   renderSpecModal,
   renderNewSpecModal,

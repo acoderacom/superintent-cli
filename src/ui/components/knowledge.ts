@@ -70,7 +70,7 @@ export function renderKnowledgeView(): string {
       </aside>
 
       <main class="flex-1">
-        <div id="knowledge-list" hx-get="/partials/knowledge-list" hx-trigger="load, poll-refresh" hx-swap="innerHTML">
+        <div id="knowledge-list" hx-get="/partials/knowledge-list" hx-trigger="load, refresh" hx-swap="innerHTML">
         </div>
       </main>
     </div>
@@ -78,8 +78,8 @@ export function renderKnowledgeView(): string {
   `;
 }
 
-// Helper to render knowledge list
-export function renderKnowledgeList(items: {
+// Knowledge item type for rendering
+export interface KnowledgeItem {
   id: string;
   title: string;
   content: string;
@@ -92,11 +92,10 @@ export function renderKnowledgeList(items: {
   active: boolean;
   decision_scope: string;
   created_at?: string;
-}[]): string {
-  if (items.length === 0) {
-    return '<p class="text-gray-500 text-center py-8">No knowledge entries found</p>';
-  }
+}
 
+// Helper to render a single knowledge card
+function renderKnowledgeCard(k: KnowledgeItem): string {
   const categoryColors: Record<string, string> = {
     pattern: 'purple',
     truth: 'green',
@@ -104,42 +103,90 @@ export function renderKnowledgeList(items: {
     architecture: 'blue',
     gotcha: 'red',
   };
+  const color = categoryColors[k.category || ''] || 'gray';
+  const inactiveClass = !k.active ? 'opacity-60 border-dashed' : '';
+  return `
+    <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
+         hx-get="/partials/knowledge-modal/${encodeURIComponent(k.id)}"
+         hx-target="#modal-content"
+         hx-trigger="click"
+         onclick="showModal()">
+      <div class="text-xs font-mono text-gray-400 mb-1">${escapeHtml(k.id)}</div>
+      <div class="flex items-start justify-between">
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <div class="text-sm font-medium text-gray-800">${escapeHtml(k.title)}</div>
+            ${!k.active ? '<span class="px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600">Inactive</span>' : ''}
+          </div>
+          <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(k.content.slice(0, 200))}${k.content.length > 200 ? '...' : ''}</p>
+        </div>
+        <div class="text-right shrink-0 ml-4">
+          <div class="text-sm font-medium text-gray-600">${Math.round(k.confidence * 100)}%</div>
+          <div class="text-xs text-gray-400">confidence</div>
+        </div>
+      </div>
+      <div class="flex items-center mt-3 text-xs text-gray-500 gap-3">
+        <span><span class="text-gray-400">Namespace:</span> ${escapeHtml(k.namespace)}</span>
+        <span><span class="text-gray-400">Source:</span> ${k.source || 'manual'}${k.source === 'ticket' && k.origin_ticket_type ? ` (${k.origin_ticket_type})` : ''}</span>
+        ${k.category ? `<span><span class="text-gray-400">Category:</span> <span class="text-${color}-600 font-medium">${k.category}</span></span>` : ''}
+        <span><span class="text-gray-400">Scope:</span> ${k.decision_scope}</span>
+      </div>
+    </div>
+  `;
+}
+
+// Build query params string for knowledge filters (used in load-more URLs)
+function buildKnowledgeFilterParams(filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string }): string {
+  if (!filters) return '';
+  const params = new URLSearchParams();
+  if (filters.status) params.set('k-status', filters.status);
+  if (filters.category) params.set('k-category', filters.category);
+  if (filters.namespace) params.set('k-namespace', filters.namespace);
+  if (filters.scope) params.set('k-scope', filters.scope);
+  if (filters.source) params.set('k-origin', filters.source);
+  const str = params.toString();
+  return str ? `&${str}` : '';
+}
+
+// Helper to render knowledge list with optional load-more
+export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string }): string {
+  if (items.length === 0) {
+    return '<p class="text-gray-500 text-center py-8">No knowledge entries found</p>';
+  }
+
+  const filterParams = buildKnowledgeFilterParams(filters);
 
   return `
     <div class="space-y-3">
-      ${items.map(k => {
-        const color = categoryColors[k.category || ''] || 'gray';
-        const inactiveClass = !k.active ? 'opacity-60 border-dashed' : '';
-        return `
-          <div class="bg-white border border-gray-200 shadow-2xs rounded-xl p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
-               hx-get="/partials/knowledge-modal/${encodeURIComponent(k.id)}"
-               hx-target="#modal-content"
-               hx-trigger="click"
-               onclick="showModal()">
-            <div class="text-xs font-mono text-gray-400 mb-1">${escapeHtml(k.id)}</div>
-            <div class="flex items-start justify-between">
-              <div class="flex-1">
-                <div class="flex items-center gap-2">
-                  <div class="text-sm font-medium text-gray-800">${escapeHtml(k.title)}</div>
-                  ${!k.active ? '<span class="px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600">Inactive</span>' : ''}
-                </div>
-                <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(k.content.slice(0, 200))}${k.content.length > 200 ? '...' : ''}</p>
-              </div>
-              <div class="text-right shrink-0 ml-4">
-                <div class="text-sm font-medium text-gray-600">${Math.round(k.confidence * 100)}%</div>
-                <div class="text-xs text-gray-400">confidence</div>
-              </div>
-            </div>
-            <div class="flex items-center mt-3 text-xs text-gray-500 gap-3">
-              <span><span class="text-gray-400">Namespace:</span> ${escapeHtml(k.namespace)}</span>
-              <span><span class="text-gray-400">Source:</span> ${k.source || 'manual'}${k.source === 'ticket' && k.origin_ticket_type ? ` (${k.origin_ticket_type})` : ''}</span>
-              ${k.category ? `<span><span class="text-gray-400">Category:</span> <span class="text-${color}-600 font-medium">${k.category}</span></span>` : ''}
-              <span><span class="text-gray-400">Scope:</span> ${k.decision_scope}</span>
-            </div>
-          </div>
-        `;
-      }).join('')}
+      ${items.map(k => renderKnowledgeCard(k)).join('')}
+      ${hasMore ? `
+        <button class="block mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+                hx-get="/partials/knowledge-more?offset=12${filterParams}"
+                hx-swap="outerHTML">
+          Load More
+        </button>
+      ` : ''}
     </div>
+  `;
+}
+
+// Helper to render more knowledge items (pagination)
+export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, hasMore: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string }): string {
+  const cards = items.map(k => renderKnowledgeCard(k)).join('');
+
+  if (!hasMore) {
+    return cards;
+  }
+
+  const filterParams = buildKnowledgeFilterParams(filters);
+
+  return `
+    ${cards}
+    <button class="block mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+            hx-get="/partials/knowledge-more?offset=${nextOffset}${filterParams}"
+            hx-swap="outerHTML">
+      Load More
+    </button>
   `;
 }
 
@@ -265,7 +312,7 @@ export function renderKnowledgeModal(knowledge: {
                 hx-vals='{"active": ${!knowledge.active}}'
                 hx-target="#modal-content"
                 hx-swap="innerHTML"
-                hx-on::after-request="htmx.trigger('#knowledge-list', 'poll-refresh')">
+                hx-on::after-request="htmx.trigger('#knowledge-list', 'refresh')">
           ${knowledge.active ? 'Deactivate' : 'Activate'}
         </button>
       </div>

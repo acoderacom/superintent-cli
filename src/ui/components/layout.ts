@@ -179,7 +179,7 @@ export function getHtml(namespace: string, version: string): string {
 
       </nav>
       <!-- Version -->
-      <div class="p-3 border-t border-gray-200">
+      <div class="p-3">
         <span class="block ps-2.5 text-xs text-gray-400">Superintent v${escapeHtml(version)}</span>
       </div>
     </div>
@@ -196,9 +196,9 @@ export function getHtml(namespace: string, version: string): string {
         <!-- Ticket View (default) - full width -->
         <div id="view-ticket" hx-get="/partials/kanban-view" hx-trigger="load"></div>
         <!-- Knowledge View -->
-        <div id="view-knowledge" class="hidden max-w-7xl mx-auto" hx-get="/partials/knowledge-view" hx-trigger="revealed"></div>
+        <div id="view-knowledge" class="hidden mx-auto" hx-get="/partials/knowledge-view" hx-trigger="revealed"></div>
         <!-- Spec View -->
-        <div id="view-spec" class="hidden max-w-7xl mx-auto" hx-get="/partials/spec-view" hx-trigger="revealed"></div>
+        <div id="view-spec" class="hidden mx-auto" hx-get="/partials/spec-view" hx-trigger="revealed"></div>
       </div>
     </div>
   </main>
@@ -213,7 +213,7 @@ export function getHtml(namespace: string, version: string): string {
   </div>
 
   <!-- Modal (knowledge detail, tickets, specs — layers on top of search modal) -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onclick="if(event.target===this)hideModal()">
+  <div id="modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-60" onclick="if(event.target===this)hideModal()">
     <div id="modal-content" class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4">
       <!-- Modal content loaded via HTMX -->
     </div>
@@ -493,68 +493,6 @@ export function getHtml(namespace: string, version: string): string {
       processMarkdownElements();
     });
 
-    // Auto-refresh polling for Tickets and Knowledge tabs
-    (function() {
-      const POLL_INTERVAL = 5000; // 5 seconds
-      let pollTimer = null;
-      let currentTab = 'ticket';
-      let isPageVisible = true;
-
-      // Start polling for the current tab
-      function startPolling() {
-        stopPolling();
-        if (!isPageVisible) return;
-
-        pollTimer = setInterval(function() {
-          if (!isPageVisible) return;
-
-          if (currentTab === 'ticket') {
-            htmx.trigger('#kanban-columns', 'refresh');
-          } else if (currentTab === 'knowledge') {
-            htmx.trigger('#knowledge-list', 'poll-refresh');
-          } else if (currentTab === 'spec') {
-            htmx.trigger('#spec-list', 'poll-refresh');
-          }
-        }, POLL_INTERVAL);
-      }
-
-      // Stop polling
-      function stopPolling() {
-        if (pollTimer) {
-          clearInterval(pollTimer);
-          pollTimer = null;
-        }
-      }
-
-      // Handle tab switching - update currentTab and restart polling
-      const originalSwitchTab = window.switchTab;
-      window.switchTab = function(tab, updateHash) {
-        currentTab = tab;
-        originalSwitchTab(tab, updateHash);
-        startPolling();
-      };
-
-      // Handle page visibility changes
-      document.addEventListener('visibilitychange', function() {
-        isPageVisible = !document.hidden;
-        if (isPageVisible && (currentTab === 'ticket' || currentTab === 'knowledge' || currentTab === 'spec')) {
-          // Immediate refresh when tab becomes visible
-          if (currentTab === 'ticket') {
-            htmx.trigger('#kanban-columns', 'refresh');
-          } else if (currentTab === 'knowledge') {
-            htmx.trigger('#knowledge-list', 'poll-refresh');
-          } else if (currentTab === 'spec') {
-            htmx.trigger('#spec-list', 'poll-refresh');
-          }
-          startPolling();
-        } else {
-          stopPolling();
-        }
-      });
-
-      // Initialize polling for default tab (ticket)
-      startPolling();
-    })();
   </script>
 </body>
 </html>`;

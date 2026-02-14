@@ -17,22 +17,45 @@ export function renderSpecView(): string {
           + Add
         </button>
       </div>
-      <div id="spec-list" hx-get="/partials/spec-list" hx-trigger="load, poll-refresh" hx-swap="innerHTML">
+      <div id="spec-list" hx-get="/partials/spec-list" hx-trigger="load, refresh" hx-swap="innerHTML">
       </div>
     </div>
   `;
 }
 
-// Helper to render spec list
-export function renderSpecList(specs: Spec[], ticketCounts?: Record<string, number>): string {
+// Helper to render spec list with optional load-more
+export function renderSpecList(specs: Spec[], ticketCounts?: Record<string, number>, hasMore?: boolean): string {
   if (specs.length === 0) {
     return '<p class="text-gray-500 text-center py-8">No specs found.</p>';
   }
 
   return `
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       ${specs.map(s => renderSpecCard(s, ticketCounts?.[s.id] || 0)).join('')}
+      <button class="col-span-full mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors ${hasMore ? '' : 'hidden'}"
+              hx-get="/partials/spec-more?offset=12"
+              hx-swap="outerHTML">
+        Load More
+      </button>
     </div>
+  `;
+}
+
+// Helper to render more specs (pagination)
+export function renderSpecMore(specs: Spec[], ticketCounts: Record<string, number>, nextOffset: number, hasMore: boolean): string {
+  const cards = specs.map(s => renderSpecCard(s, ticketCounts[s.id] || 0)).join('');
+
+  if (!hasMore) {
+    return cards;
+  }
+
+  return `
+    ${cards}
+    <button class="col-span-full mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+            hx-get="/partials/spec-more?offset=${nextOffset}"
+            hx-swap="outerHTML">
+      Load More
+    </button>
   `;
 }
 

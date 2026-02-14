@@ -20,12 +20,14 @@ import {
   renderSearchResults,
   renderKnowledgeView,
   renderKnowledgeList,
+  renderKnowledgeMore,
   renderTicketModal,
   renderKnowledgeModal,
   renderNewTicketModal,
   renderEditTicketModal,
   renderSpecView,
   renderSpecList,
+  renderSpecMore,
   renderSpecModal,
   renderNewSpecModal,
   renderEditSpecModal,
@@ -243,7 +245,7 @@ export const uiCommand = new Command('ui')
         // Return refreshed kanban columns
         const statuses = ['Backlog', 'In Progress', 'In Review', 'Done'];
         const archiveStatuses = ['Blocked', 'Paused', 'Abandoned', 'Superseded'];
-        const limit = 20;
+        const limit = 12;
         const columnData = await Promise.all(
           statuses.map(async (status) => {
             const result = await client.execute({
@@ -414,7 +416,7 @@ export const uiCommand = new Command('ui')
         const sql = `SELECT id, namespace, chunk_index, title, content,
                      category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                      usage_count, last_used_at, created_at, updated_at
-                     FROM knowledge WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 50`;
+                     FROM knowledge WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 12`;
 
         const result = await client.execute({ sql, args });
         const knowledge = result.rows.map((row) => parseKnowledgeRow(row as Record<string, unknown>));
@@ -455,13 +457,13 @@ export const uiCommand = new Command('ui')
       return c.html(renderKanbanView());
     });
 
-    // Kanban columns - paginated per status (20 tickets per column initially)
+    // Kanban columns - paginated per status (10 tickets per column initially)
     app.get('/partials/kanban-columns', async (c) => {
       try {
         const client = await getClient();
         const statuses = ['Backlog', 'In Progress', 'In Review', 'Done'];
         const archiveStatuses = ['Blocked', 'Paused', 'Abandoned', 'Superseded'];
-        const limit = 20;
+        const limit = 12;
 
         const columnData = await Promise.all(
           statuses.map(async (status) => {
@@ -497,7 +499,7 @@ export const uiCommand = new Command('ui')
       try {
         const status = decodeURIComponent(c.req.param('status'));
         const offset = parseInt(c.req.query('offset') || '0', 10);
-        const limit = 20;
+        const limit = 12;
 
         const client = await getClient();
         let result;
@@ -610,43 +612,39 @@ export const uiCommand = new Command('ui')
       return c.html(renderKnowledgeView());
     });
 
-    // Knowledge list
+    // Helper: build knowledge query conditions from filter params
+    function buildKnowledgeConditions(c: { req: { query: (key: string) => string | undefined } }) {
+      const category = c.req.query('k-category');
+      const namespace = c.req.query('k-namespace');
+      const scope = c.req.query('k-scope');
+      const sourceFilter = c.req.query('k-origin');
+      const status = c.req.query('k-status') || 'active';
+
+      const conditions: string[] = [];
+      const args: InValue[] = [];
+
+      if (status === 'active') {
+        conditions.push('active = 1');
+      } else if (status === 'inactive') {
+        conditions.push('active = 0');
+      }
+
+      if (category) { conditions.push('category = ?'); args.push(category); }
+      if (namespace) { conditions.push('namespace = ?'); args.push(namespace); }
+      if (scope) { conditions.push('decision_scope = ?'); args.push(scope); }
+      if (sourceFilter) { conditions.push('source = ?'); args.push(sourceFilter); }
+
+      const filters = { status, category, namespace, scope, source: sourceFilter };
+
+      return { conditions, args, filters };
+    }
+
+    // Knowledge list (paginated, 10 per page)
     app.get('/partials/knowledge-list', async (c) => {
       try {
+        const limit = 12;
         const client = await getClient();
-        const category = c.req.query('k-category');
-        const namespace = c.req.query('k-namespace');
-        const scope = c.req.query('k-scope');
-        const sourceFilter = c.req.query('k-origin');
-        const status = c.req.query('k-status') || 'active';
-
-        const conditions: string[] = [];
-        const args: InValue[] = [];
-
-        // Status filter
-        if (status === 'active') {
-          conditions.push('active = 1');
-        } else if (status === 'inactive') {
-          conditions.push('active = 0');
-        }
-        // 'all' = no filter
-
-        if (category) {
-          conditions.push('category = ?');
-          args.push(category);
-        }
-        if (namespace) {
-          conditions.push('namespace = ?');
-          args.push(namespace);
-        }
-        if (scope) {
-          conditions.push('decision_scope = ?');
-          args.push(scope);
-        }
-        if (sourceFilter) {
-          conditions.push('source = ?');
-          args.push(sourceFilter);
-        }
+        const { conditions, args, filters } = buildKnowledgeConditions(c);
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
                      category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
@@ -655,11 +653,40 @@ export const uiCommand = new Command('ui')
         if (conditions.length > 0) {
           sql += ` WHERE ${conditions.join(' AND ')}`;
         }
-        sql += ' ORDER BY created_at DESC LIMIT 50';
+        args.push(limit + 1);
+        sql += ` ORDER BY created_at DESC LIMIT ?`;
 
         const result = await client.execute({ sql, args });
-        const knowledge = result.rows.map((row) => parseKnowledgeRow(row as Record<string, unknown>));
-        return c.html(renderKnowledgeList(knowledge));
+        const hasMore = result.rows.length > limit;
+        const knowledge = result.rows.slice(0, limit).map((row) => parseKnowledgeRow(row as Record<string, unknown>));
+        return c.html(renderKnowledgeList(knowledge, hasMore, filters));
+      } catch (error) {
+        return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
+    // Load more knowledge
+    app.get('/partials/knowledge-more', async (c) => {
+      try {
+        const offset = parseInt(c.req.query('offset') || '0', 10);
+        const limit = 12;
+        const client = await getClient();
+        const { conditions, args, filters } = buildKnowledgeConditions(c);
+
+        let sql = `SELECT id, namespace, chunk_index, title, content,
+                     category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                     usage_count, last_used_at, created_at, updated_at
+                     FROM knowledge`;
+        if (conditions.length > 0) {
+          sql += ` WHERE ${conditions.join(' AND ')}`;
+        }
+        args.push(limit + 1, offset);
+        sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+
+        const result = await client.execute({ sql, args });
+        const hasMore = result.rows.length > limit;
+        const knowledge = result.rows.slice(0, limit).map((row) => parseKnowledgeRow(row as Record<string, unknown>));
+        return c.html(renderKnowledgeMore(knowledge, offset + limit, hasMore, filters));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
       }
@@ -701,15 +728,17 @@ export const uiCommand = new Command('ui')
       return c.html(renderNewSpecModal());
     });
 
-    // Spec list
+    // Spec list (paginated, 10 per page)
     app.get('/partials/spec-list', async (c) => {
       try {
+        const limit = 12;
         const client = await getClient();
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT 50',
-          args: [],
+          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
+          args: [limit + 1],
         });
-        const specs = result.rows.map((row) => parseSpecRow(row as Record<string, unknown>));
+        const hasMore = result.rows.length > limit;
+        const specs = result.rows.slice(0, limit).map((row) => parseSpecRow(row as Record<string, unknown>));
 
         // Get ticket counts per spec
         const countResult = await client.execute({
@@ -721,7 +750,35 @@ export const uiCommand = new Command('ui')
           ticketCounts[row.origin_spec_id as string] = Number(row.cnt);
         }
 
-        return c.html(renderSpecList(specs, ticketCounts));
+        return c.html(renderSpecList(specs, ticketCounts, hasMore));
+      } catch (error) {
+        return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
+    // Load more specs
+    app.get('/partials/spec-more', async (c) => {
+      try {
+        const offset = parseInt(c.req.query('offset') || '0', 10);
+        const limit = 12;
+        const client = await getClient();
+        const result = await client.execute({
+          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ? OFFSET ?',
+          args: [limit + 1, offset],
+        });
+        const hasMore = result.rows.length > limit;
+        const specs = result.rows.slice(0, limit).map((row) => parseSpecRow(row as Record<string, unknown>));
+
+        const countResult = await client.execute({
+          sql: 'SELECT origin_spec_id, COUNT(*) as cnt FROM tickets WHERE origin_spec_id IS NOT NULL GROUP BY origin_spec_id',
+          args: [],
+        });
+        const ticketCounts: Record<string, number> = {};
+        for (const row of countResult.rows) {
+          ticketCounts[row.origin_spec_id as string] = Number(row.cnt);
+        }
+
+        return c.html(renderSpecMore(specs, ticketCounts, offset + limit, hasMore));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
       }
@@ -859,11 +916,13 @@ export const uiCommand = new Command('ui')
         });
 
         // Return refreshed spec list
+        const specLimit = 12;
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT 50',
-          args: [],
+          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
+          args: [specLimit + 1],
         });
-        const specs = result.rows.map((row) => parseSpecRow(row as Record<string, unknown>));
+        const specHasMore = result.rows.length > specLimit;
+        const specs = result.rows.slice(0, specLimit).map((row) => parseSpecRow(row as Record<string, unknown>));
 
         const countResult = await client.execute({
           sql: 'SELECT origin_spec_id, COUNT(*) as cnt FROM tickets WHERE origin_spec_id IS NOT NULL GROUP BY origin_spec_id',
@@ -874,7 +933,7 @@ export const uiCommand = new Command('ui')
           ticketCounts[row.origin_spec_id as string] = Number(row.cnt);
         }
 
-        return c.html(renderSpecList(specs, ticketCounts));
+        return c.html(renderSpecList(specs, ticketCounts, specHasMore));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-2">Error: ${(error as Error).message}</div>`, 500);
       }
@@ -891,11 +950,13 @@ export const uiCommand = new Command('ui')
         });
 
         // Return updated spec list
+        const specLimit = 12;
         const result = await client.execute({
-          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT 50',
-          args: [],
+          sql: 'SELECT id, title, content, created_at, updated_at FROM specs ORDER BY created_at DESC LIMIT ?',
+          args: [specLimit + 1],
         });
-        const specs = result.rows.map((row) => parseSpecRow(row as Record<string, unknown>));
+        const specHasMore = result.rows.length > specLimit;
+        const specs = result.rows.slice(0, specLimit).map((row) => parseSpecRow(row as Record<string, unknown>));
 
         const countResult = await client.execute({
           sql: 'SELECT origin_spec_id, COUNT(*) as cnt FROM tickets WHERE origin_spec_id IS NOT NULL GROUP BY origin_spec_id',
@@ -906,7 +967,7 @@ export const uiCommand = new Command('ui')
           ticketCounts[row.origin_spec_id as string] = Number(row.cnt);
         }
 
-        return c.html(renderSpecList(specs, ticketCounts));
+        return c.html(renderSpecList(specs, ticketCounts, specHasMore));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
       }

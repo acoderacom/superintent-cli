@@ -134,14 +134,14 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
             </div>
             <div id="tickets-${statusSlug}" class="space-y-3 overflow-y-auto flex-1 min-h-0 -mx-1 px-1 py-1">
               ${col.tickets.map(t => renderTicketCard(t, { isBacklog })).join('')}
+              ${col.hasMore ? `
+                <button class="w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors shrink-0"
+                        hx-get="/partials/kanban-column/${encodeURIComponent(col.status)}?offset=12"
+                        hx-swap="outerHTML">
+                  Load More
+                </button>
+              ` : ''}
             </div>
-            ${col.hasMore ? `
-              <button class="w-full mt-3 py-2 text-sm text-gray-600 bg-white rounded border hover:bg-gray-50 transition-colors shrink-0"
-                      hx-get="/partials/kanban-column/${encodeURIComponent(col.status)}?offset=20"
-                      hx-swap="outerHTML">
-                Load More
-              </button>
-            ` : ''}
           </div>
         `;
       }).join('')}
@@ -173,7 +173,7 @@ export function renderColumnMore(
 
   return `
     ${cards}
-    <button class="w-full mt-3 py-2 text-sm text-gray-600 bg-white rounded border hover:bg-gray-50 transition-colors"
+    <button class="w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
             hx-get="/partials/kanban-column/${encodeURIComponent(status)}?offset=${nextOffset}"
             hx-swap="outerHTML">
       Load More
