@@ -80,7 +80,7 @@ TICKET
 # Manage
 superintent ticket get <id>
 superintent ticket list [--status <status>] [--limit N]
-superintent ticket update <id> [--status] [--comment <text>] [--complete-task 0,1] [--complete-all] [--plan-stdin]
+superintent ticket update <id> [--status] [--context] [--comment <text>] [--author] [--complete-task 0,1] [--complete-dod 0,1] [--complete-all] [--plan-stdin] [--spec <spec-id>]
 superintent ticket delete <id>
 ```
 
@@ -112,10 +112,11 @@ KNOWLEDGE
 
 # Manage
 superintent knowledge get <id>
-superintent knowledge list [--namespace] [--category] [--scope] [--source] [--status active|inactive|all]
-superintent knowledge update <id> [--title] [--content-stdin] [--confidence <n>] [--category] [--tags]
+superintent knowledge list [--namespace] [--category] [--scope] [--source] [--author] [--branch] [--status active|inactive|all] [--limit N]
+superintent knowledge update <id> [--title] [--content-stdin] [--namespace] [--category] [--tags] [--scope] [--origin <ticketId>] [--confidence <n>] [--comment] [--author]
 superintent knowledge activate <id>
 superintent knowledge deactivate <id>
+superintent knowledge promote <id>
 superintent knowledge recalculate [--dry-run]
 ```
 
@@ -124,7 +125,7 @@ superintent knowledge recalculate [--dry-run]
 Semantic search using cosine similarity against 384-dimensional embeddings.
 
 ```bash
-superintent search "error handling" [--namespace] [--category] [--ticket-type] [--tags] [--min-score 0.45] [--limit 5]
+superintent search "error handling" [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score 0.45] [--limit 5]
 ```
 
 Score interpretation: ≥0.45 relevant, ≥0.55 strong match. Falls back to non-indexed search if vector index unavailable.
@@ -150,7 +151,7 @@ SPEC
 
 superintent spec get <id>
 superintent spec list [--limit N]
-superintent spec update <id> [--title] [--content-stdin]
+superintent spec update <id> [--title] [--content-stdin] [--comment] [--author]
 superintent spec delete <id>
 ```
 
@@ -183,9 +184,10 @@ superintent status                  # Check connection + counts
 
 | Table | Purpose | Key columns |
 | --- | --- | --- |
-| `tickets` | Work items | status, intent, plan (JSON), tasks (JSON), change_class, origin_spec_id |
-| `knowledge` | RAG entries | embedding F32_BLOB(384), category, confidence, active, decision_scope, usage_count |
-| `specs` | Feature specs | title, content (markdown) |
+| `tickets` | Work items | status, intent, plan (JSON TicketPlan), change_class, origin_spec_id, author |
+| `knowledge` | RAG entries | embedding F32_BLOB(384), category, confidence, active, decision_scope, usage_count, author, branch |
+| `specs` | Feature specs | title, content (markdown), author |
+| `comments` | Polymorphic comments | parent_type (ticket\|knowledge\|spec), parent_id, author, text |
 
 Vector search uses `vector_distance_cos` with `vector_top_k` index. Supports both local SQLite (`file:` URLs) and Turso Cloud (`libsql://` URLs).
 
