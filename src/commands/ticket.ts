@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { readFileSync, existsSync } from 'fs';
 import type { InValue } from '@libsql/client';
 import { getClient, closeClient } from '../db/client.js';
 import { parseTicketRow } from '../db/parsers.js';
@@ -44,229 +43,111 @@ function inferTicketType(intent: string): TicketType {
   return 'feature';
 }
 
-interface ParsedTicket {
-  type?: TicketType;
+const VALID_TICKET_TYPES: TicketType[] = ['feature', 'bugfix', 'refactor', 'docs', 'chore', 'test'];
+const VALID_CHANGE_CLASSES = ['A', 'B', 'C'];
+
+interface TicketJsonInput {
   title?: string;
-  intent: string;
+  type?: string;
+  intent?: string;
   context?: string;
-  constraintsUse?: string[];
-  constraintsAvoid?: string[];
+  constraints?: {
+    use?: string[];
+    avoid?: string[];
+  };
   assumptions?: string[];
   changeClass?: string;
   changeClassReason?: string;
-  planContent?: string;
-  // Track which fields were explicitly provided in markdown (for validation)
-  _explicit?: {
-    type?: string;       // Raw value before validation
-    title?: boolean;     // Whether # heading was present
-    changeClass?: string; // Raw value before validation
-  };
-}
-
-interface ValidationIssue {
-  field: string;
-  severity: 'error' | 'warning';
-  message: string;
+  plan?: TicketPlan;
+  author?: string;
 }
 
 /**
- * Validate a parsed ticket — errors block creation, warnings are informational
+ * Parse JSON ticket input from stdin.
  */
-function validateParsedTicket(parsed: ParsedTicket, plan?: TicketPlan): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
-  const validTypes = ['feature', 'bugfix', 'refactor', 'docs', 'chore', 'test'];
-  const validClasses = ['A', 'B', 'C'];
-
-  // Intent: required and must not be whitespace-only
-  if (!parsed.intent || !parsed.intent.trim()) {
-    issues.push({ field: 'intent', severity: 'error', message: 'Missing or empty **Intent:** field' });
-  }
-
-  // Title: optional, but if # heading was used it must have content
-  if (parsed._explicit?.title && (!parsed.title || !parsed.title.trim())) {
-    issues.push({ field: 'title', severity: 'error', message: 'Title heading is present but empty' });
-  }
-
-  // Type: optional (auto-inferred), but if **Type:** was provided the value must be valid
-  if (parsed._explicit?.type !== undefined) {
-    const raw = parsed._explicit.type;
-    if (!raw) {
-      issues.push({ field: 'type', severity: 'error', message: 'Empty **Type:** field. Must be one of: ' + validTypes.join(', ') });
-    } else if (!validTypes.includes(raw)) {
-      issues.push({ field: 'type', severity: 'error', message: `Invalid ticket type '${raw}'. Must be one of: ${validTypes.join(', ')}` });
+function parseJsonTicket(raw: string): TicketJsonInput {
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error('Expected a JSON object');
     }
-  }
+    const result: TicketJsonInput = {};
 
-  // Change Class: optional, but if provided must be A, B, or C
-  if (parsed._explicit?.changeClass !== undefined) {
-    const raw = parsed._explicit.changeClass.toUpperCase();
-    if (!raw) {
-      issues.push({ field: 'changeClass', severity: 'error', message: 'Empty **Change Class:** field. Must be A, B, or C' });
-    } else if (!validClasses.includes(raw)) {
-      issues.push({ field: 'changeClass', severity: 'error', message: `Invalid change class '${parsed._explicit.changeClass}'. Must be A, B, or C` });
+    if (parsed.title !== undefined) {
+      if (typeof parsed.title !== 'string') throw new Error('title must be a string');
+      result.title = parsed.title.trim();
     }
-  }
-
-  // Plan: validate tasks have descriptions and DoD items have criteria
-  if (plan) {
-    for (let i = 0; i < plan.taskSteps.length; i++) {
-      if (!plan.taskSteps[i].task || !plan.taskSteps[i].task.trim()) {
-        issues.push({ field: 'plan.taskSteps', severity: 'error', message: `Plan task #${i + 1} has empty task description` });
+    if (parsed.type !== undefined) {
+      if (typeof parsed.type !== 'string') throw new Error('type must be a string');
+      result.type = parsed.type.trim().toLowerCase();
+    }
+    if (parsed.intent !== undefined) {
+      if (typeof parsed.intent !== 'string') throw new Error('intent must be a string');
+      result.intent = parsed.intent.trim();
+    }
+    if (parsed.context !== undefined) {
+      if (typeof parsed.context !== 'string') throw new Error('context must be a string');
+      result.context = parsed.context.trim();
+    }
+    if (parsed.constraints !== undefined) {
+      if (typeof parsed.constraints !== 'object' || parsed.constraints === null || Array.isArray(parsed.constraints)) {
+        throw new Error('constraints must be an object with optional use/avoid arrays');
+      }
+      result.constraints = {};
+      if (parsed.constraints.use !== undefined) {
+        if (!Array.isArray(parsed.constraints.use) || !parsed.constraints.use.every((s: unknown) => typeof s === 'string')) {
+          throw new Error('constraints.use must be an array of strings');
+        }
+        result.constraints.use = parsed.constraints.use.map((s: string) => s.trim()).filter(Boolean);
+      }
+      if (parsed.constraints.avoid !== undefined) {
+        if (!Array.isArray(parsed.constraints.avoid) || !parsed.constraints.avoid.every((s: unknown) => typeof s === 'string')) {
+          throw new Error('constraints.avoid must be an array of strings');
+        }
+        result.constraints.avoid = parsed.constraints.avoid.map((s: string) => s.trim()).filter(Boolean);
       }
     }
-    for (let i = 0; i < plan.dodVerification.length; i++) {
-      if (!plan.dodVerification[i].dod || !plan.dodVerification[i].dod.trim()) {
-        issues.push({ field: 'plan.dodVerification', severity: 'error', message: `Plan DoD item #${i + 1} has empty criterion` });
+    if (parsed.assumptions !== undefined) {
+      if (!Array.isArray(parsed.assumptions) || !parsed.assumptions.every((s: unknown) => typeof s === 'string')) {
+        throw new Error('assumptions must be an array of strings');
       }
+      result.assumptions = parsed.assumptions.map((s: string) => s.trim()).filter(Boolean);
     }
-  }
+    if (parsed.changeClass !== undefined) {
+      if (typeof parsed.changeClass !== 'string') throw new Error('changeClass must be a string');
+      result.changeClass = parsed.changeClass.trim().toUpperCase();
+    }
+    if (parsed.changeClassReason !== undefined) {
+      if (typeof parsed.changeClassReason !== 'string') throw new Error('changeClassReason must be a string');
+      result.changeClassReason = parsed.changeClassReason.trim();
+    }
+    if (parsed.plan !== undefined) {
+      result.plan = validatePlanJson(parsed.plan);
+    }
+    if (parsed.author !== undefined) {
+      if (typeof parsed.author !== 'string') throw new Error('author must be a string');
+      result.author = parsed.author.trim();
+    }
 
-  return issues;
+    return result;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON: ${error.message}`);
+    }
+    throw error;
+  }
 }
 
 /**
- * Parse markdown ticket format matching SKILL.md ticket format
+ * Validate and normalize a plan JSON object into TicketPlan.
+ * Defaults `done` to false for taskSteps and dodVerification if not provided.
  */
-function parseMarkdownTicket(content: string): ParsedTicket {
-  // Check for ## Plan section and split content
-  const planMatch = content.match(/^##\s*Plan\s*$/im);
-  let ticketContent = content;
-  let planContent: string | undefined;
-
-  if (planMatch && planMatch.index !== undefined) {
-    ticketContent = content.substring(0, planMatch.index);
-    planContent = content.substring(planMatch.index + planMatch[0].length);
+function validatePlanJson(plan: unknown): TicketPlan {
+  if (typeof plan !== 'object' || plan === null || Array.isArray(plan)) {
+    throw new Error('plan must be an object');
   }
-
-  const lines = ticketContent.split('\n');
-  const ticket: ParsedTicket = { intent: '', planContent, _explicit: {} };
-
-  let currentSection = '';
-  let contextLines: string[] = [];
-  let inContext = false;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Parse title: # {intent summary} — also detect bare "#" as empty title
-    if ((trimmed === '#' || (trimmed.startsWith('# ') && !trimmed.startsWith('## '))) ) {
-      ticket.title = trimmed === '#' ? '' : trimmed.substring(2).trim();
-      ticket._explicit!.title = true;
-    }
-
-    // Parse fields — **Field:** format only (matches SKILL.md)
-    const isType = trimmed.startsWith('**Type:**');
-    const isIntent = trimmed.startsWith('**Intent:**');
-    const isContext = trimmed.startsWith('**Context:**');
-    const isConstraints = trimmed.startsWith('**Constraints:**');
-    const isAssumptions = trimmed.startsWith('**Assumptions:**');
-    const isChangeClass = trimmed.startsWith('**Change Class:**');
-
-    if (isType) {
-      const typeValue = trimmed.replace(/^\*\*Type:\*\*\s*/, '').trim().toLowerCase();
-      ticket._explicit!.type = typeValue;
-      if (['feature', 'bugfix', 'refactor', 'docs', 'chore', 'test'].includes(typeValue)) {
-        ticket.type = typeValue as TicketType;
-      }
-      inContext = false;
-      currentSection = '';
-    } else if (isIntent) {
-      ticket.intent = trimmed.replace(/^\*\*Intent:\*\*\s*/, '').trim();
-      inContext = false;
-      currentSection = '';
-    } else if (isContext) {
-      ticket.context = trimmed.replace(/^\*\*Context:\*\*\s*/, '').trim();
-      inContext = true;
-      currentSection = '';
-      contextLines = [];
-    } else if (isConstraints) {
-      inContext = false;
-      currentSection = 'constraints';
-      const parts = trimmed.replace(/^\*\*Constraints:\*\*\s*/, '').trim();
-      if (parts) {
-        const useMatch = parts.match(/Use:\s*([^|]+)/i);
-        const avoidMatch = parts.match(/Avoid:\s*(.+)/i);
-        if (useMatch) {
-          ticket.constraintsUse = useMatch[1].replace(/[[\]]/g, '').split(',').map(s => s.trim()).filter(Boolean);
-        }
-        if (avoidMatch) {
-          ticket.constraintsAvoid = avoidMatch[1].replace(/[[\]]/g, '').split(',').map(s => s.trim()).filter(Boolean);
-        }
-      }
-    } else if (isAssumptions) {
-      inContext = false;
-      currentSection = 'assumptions';
-      const assumptionText = trimmed.replace(/^\*\*Assumptions:\*\*\s*/, '').trim();
-      if (assumptionText) {
-        ticket.assumptions = assumptionText.replace(/[[\]]/g, '').split(',').map(s => s.trim()).filter(Boolean);
-      } else {
-        ticket.assumptions = [];
-      }
-    } else if (isChangeClass) {
-      inContext = false;
-      currentSection = '';
-      const classLine = trimmed.replace(/^\*\*Change Class:\*\*\s*/, '').trim();
-      const dashIndex = classLine.indexOf('-');
-      if (dashIndex > -1) {
-        ticket.changeClass = classLine.substring(0, dashIndex).trim();
-        ticket.changeClassReason = classLine.substring(dashIndex + 1).trim();
-      } else {
-        ticket.changeClass = classLine;
-      }
-      ticket._explicit!.changeClass = ticket.changeClass;
-    } else if (trimmed.startsWith('- ')) {
-      const text = trimmed.substring(2).trim();
-      if (currentSection === 'constraints') {
-        if (text.toLowerCase().startsWith('use:')) {
-          const items = text.substring(4).trim().split(',').map(s => s.trim()).filter(Boolean);
-          ticket.constraintsUse = ticket.constraintsUse || [];
-          ticket.constraintsUse.push(...items);
-        } else if (text.toLowerCase().startsWith('avoid:')) {
-          const items = text.substring(6).trim().split(',').map(s => s.trim()).filter(Boolean);
-          ticket.constraintsAvoid = ticket.constraintsAvoid || [];
-          ticket.constraintsAvoid.push(...items);
-        }
-      } else if (currentSection === 'assumptions') {
-        ticket.assumptions?.push(text);
-      }
-    } else if (trimmed.startsWith('**') && !trimmed.startsWith('**Status')) {
-      inContext = false;
-      currentSection = '';
-    } else if (inContext && trimmed && !trimmed.startsWith('**')) {
-      contextLines.push(trimmed);
-    }
-  }
-
-  // Append multi-line context
-  if (contextLines.length > 0 && ticket.context) {
-    ticket.context = ticket.context + '\n' + contextLines.join('\n');
-  }
-
-  return ticket;
-}
-
-/**
- * Parse plan from markdown format (synced with ticket structure):
- *
- * **Files:** src/api.ts, src/utils.ts
- *
- * **Tasks → Steps:**
- * - task: Implement API endpoint
- *   - Step 1: Create route handler
- *   - Step 2: Add validation
- * - task: Add tests
- *   - Step 1: Unit tests
- *
- * **DoD → Verification:**
- * - dod: API returns correct data | verify: Run integration tests
- * - dod: No TypeScript errors | verify: npx tsc --noEmit
- *
- * **Decisions:**
- * - choice: Use cursor pagination | reason: Better for large datasets
- */
-function parsePlanMarkdown(content: string): TicketPlan {
-  const plan: TicketPlan = {
+  const p = plan as Record<string, unknown>;
+  const result: TicketPlan = {
     files: [],
     taskSteps: [],
     dodVerification: [],
@@ -277,205 +158,98 @@ function parsePlanMarkdown(content: string): TicketPlan {
     edgeCases: [],
   };
 
-  const lines = content.split('\n');
-  let currentSection = '';
-  let currentTaskSteps: { task: string; steps: string[]; done: boolean } | null = null;
+  if (p.files !== undefined) {
+    if (!Array.isArray(p.files) || !p.files.every((f: unknown) => typeof f === 'string')) {
+      throw new Error('plan.files must be an array of strings');
+    }
+    result.files = p.files as string[];
+  }
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Parse section headers
-    if (trimmed.startsWith('**Files to Edit:**') || trimmed.startsWith('**Files:**') || trimmed.toLowerCase().startsWith('files to edit:') || trimmed.toLowerCase().startsWith('files:')) {
-      const filesStr = trimmed.replace(/^\*?\*?Files( to Edit)?:\*?\*?\s*/i, '').trim();
-      if (filesStr) {
-        plan.files = filesStr.split(',').map(f => f.trim()).filter(Boolean);
+  if (p.taskSteps !== undefined) {
+    if (!Array.isArray(p.taskSteps)) throw new Error('plan.taskSteps must be an array');
+    for (let i = 0; i < p.taskSteps.length; i++) {
+      const ts = p.taskSteps[i] as Record<string, unknown>;
+      if (typeof ts !== 'object' || ts === null) throw new Error(`plan.taskSteps[${i}] must be an object`);
+      if (typeof ts.task !== 'string') throw new Error(`plan.taskSteps[${i}].task must be a string`);
+      if (ts.steps !== undefined && (!Array.isArray(ts.steps) || !ts.steps.every((s: unknown) => typeof s === 'string'))) {
+        throw new Error(`plan.taskSteps[${i}].steps must be an array of strings`);
       }
-      currentSection = 'files';
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-    if (trimmed.match(/^\*?\*?Tasks?\s*(→|->)\s*Steps?:?\*?\*?$/i) || trimmed.toLowerCase().startsWith('tasks → steps:') || trimmed.toLowerCase().startsWith('tasks -> steps:')) {
-      currentSection = 'taskSteps';
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-    if (trimmed.match(/^\*?\*?(DoD|Definition of Done)\s*(→|->)\s*Verification:?\*?\*?$/i) || trimmed.toLowerCase().includes('→ verification:') || trimmed.toLowerCase().includes('-> verification:')) {
-      currentSection = 'dodVerification';
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-    if (trimmed.startsWith('**Decisions:**') || trimmed.toLowerCase().startsWith('decisions:')) {
-      currentSection = 'decisions';
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-    if (trimmed.startsWith('**Trade-offs:**') || trimmed.toLowerCase().startsWith('trade-offs:')) {
-      currentSection = 'tradeOffs';
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-    if (trimmed.startsWith('**Irreversible Actions:**') || trimmed.toLowerCase().startsWith('irreversible actions:')) {
-      currentSection = 'irreversibleActions';
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-    if (trimmed.startsWith('**Edge Cases:**') || trimmed.toLowerCase().startsWith('edge cases:')) {
-      currentSection = 'edgeCases';
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-    if (trimmed.startsWith('**Rollback:**') || trimmed.toLowerCase().startsWith('rollback:')) {
-      currentSection = 'rollback';
-      plan.rollback = { steps: [], reversibility: 'full' };
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-        currentTaskSteps = null;
-      }
-      continue;
-    }
-
-    // Parse numbered list items (e.g., "1. Task name") — also match empty "1. "
-    const numberedMatch = trimmed.match(/^\d+\.\s*(.*)/);
-    if (numberedMatch && currentSection === 'taskSteps') {
-      // Save previous task if exists
-      if (currentTaskSteps) {
-        plan.taskSteps.push(currentTaskSteps);
-      }
-      currentTaskSteps = {
-        task: (numberedMatch[1] || '').trim(),
-        steps: [],
-        done: false,
-      };
-      continue;
-    }
-
-    // Parse list items
-    if (trimmed.startsWith('- ')) {
-      const item = trimmed.substring(2).trim();
-
-      if (currentSection === 'files') {
-        plan.files.push(item);
-      } else if (currentSection === 'taskSteps') {
-        // Check if it's a new task (starts with "task:")
-        if (item.toLowerCase().startsWith('task:')) {
-          // Save previous task if exists
-          if (currentTaskSteps) {
-            plan.taskSteps.push(currentTaskSteps);
-          }
-          currentTaskSteps = {
-            task: item.substring(5).trim(),
-            steps: [],
-            done: false,
-          };
-        } else if (currentTaskSteps) {
-          // It's a step for the current task
-          currentTaskSteps.steps.push(item);
-        }
-      } else if (currentSection === 'dodVerification') {
-        // Parse "dod → verify", "dod: X | verify: Y", or plain text
-        let dod = item;
-        let verify = '';
-        const arrowParts = item.split(/\s*(?:→|->)\s*/);
-        if (arrowParts.length >= 2) {
-          dod = arrowParts[0].trim();
-          verify = arrowParts.slice(1).join(' → ').trim();
-        } else {
-          const pipeParts = item.split('|').map(p => p.trim());
-          for (const part of pipeParts) {
-            if (part.toLowerCase().startsWith('dod:')) {
-              dod = part.substring(4).trim();
-            } else if (part.toLowerCase().startsWith('verify:')) {
-              verify = part.substring(7).trim();
-            }
-          }
-        }
-        plan.dodVerification.push({ dod, verify, done: false });
-      } else if (currentSection === 'decisions') {
-        // Parse "choice → reason", "choice: X | reason: Y", or plain text
-        let choice = item;
-        let reason = '';
-        const arrowParts = item.split(/\s*(?:→|->)\s*/);
-        if (arrowParts.length >= 2) {
-          choice = arrowParts[0].trim();
-          reason = arrowParts.slice(1).join(' → ').trim();
-        } else {
-          const pipeParts = item.split('|').map(p => p.trim());
-          for (const part of pipeParts) {
-            if (part.toLowerCase().startsWith('choice:')) {
-              choice = part.substring(7).trim();
-            } else if (part.toLowerCase().startsWith('reason:')) {
-              reason = part.substring(7).trim();
-            }
-          }
-        }
-        plan.decisions.push({ choice, reason });
-      } else if (currentSection === 'tradeOffs') {
-        // Parse "considered: X | rejected: Y" or "limitation: Z" format
-        const parts = item.split('|').map(p => p.trim());
-        let considered = item;
-        let rejected = '';
-        for (const part of parts) {
-          if (part.toLowerCase().startsWith('considered:')) {
-            considered = part.substring(11).trim();
-          } else if (part.toLowerCase().startsWith('rejected:')) {
-            rejected = part.substring(9).trim();
-          } else if (part.toLowerCase().startsWith('limitation:')) {
-            considered = part.substring(11).trim();
-            rejected = 'Scale/performance limitation';
-          }
-        }
-        plan.tradeOffs.push({ considered, rejected });
-      } else if (currentSection === 'irreversibleActions') {
-        plan.irreversibleActions.push(item);
-      } else if (currentSection === 'edgeCases') {
-        plan.edgeCases.push(item);
-      } else if (currentSection === 'rollback' && plan.rollback) {
-        // Check for "Reversibility: full|partial|none" line
-        if (item.toLowerCase().startsWith('reversibility:')) {
-          const rev = item.substring(14).trim().toLowerCase();
-          if (rev === 'full' || rev === 'partial' || rev === 'none') {
-            plan.rollback.reversibility = rev;
-          }
-        } else if (item.toLowerCase() === 'steps:') {
-          // Skip the "steps:" label — it's a structural marker, not an actual step
-        } else {
-          plan.rollback.steps.push(item);
-        }
-      }
-    } else if (currentSection === 'taskSteps' && currentTaskSteps && line.match(/^\s{2,}- /)) {
-      // Indented step for current task (e.g., "   - step text")
-      const step = line.replace(/^\s*-\s*/, '').trim();
-      currentTaskSteps.steps.push(step);
+      result.taskSteps.push({
+        task: ts.task as string,
+        steps: (ts.steps as string[]) || [],
+        done: typeof ts.done === 'boolean' ? ts.done : false,
+      });
     }
   }
 
-  // Don't forget to save the last task
-  if (currentTaskSteps) {
-    plan.taskSteps.push(currentTaskSteps);
+  if (p.dodVerification !== undefined) {
+    if (!Array.isArray(p.dodVerification)) throw new Error('plan.dodVerification must be an array');
+    for (let i = 0; i < p.dodVerification.length; i++) {
+      const dv = p.dodVerification[i] as Record<string, unknown>;
+      if (typeof dv !== 'object' || dv === null) throw new Error(`plan.dodVerification[${i}] must be an object`);
+      if (typeof dv.dod !== 'string') throw new Error(`plan.dodVerification[${i}].dod must be a string`);
+      result.dodVerification.push({
+        dod: dv.dod as string,
+        verify: typeof dv.verify === 'string' ? dv.verify : '',
+        done: typeof dv.done === 'boolean' ? dv.done : false,
+      });
+    }
   }
 
-  return plan;
+  if (p.decisions !== undefined) {
+    if (!Array.isArray(p.decisions)) throw new Error('plan.decisions must be an array');
+    for (let i = 0; i < p.decisions.length; i++) {
+      const d = p.decisions[i] as Record<string, unknown>;
+      if (typeof d !== 'object' || d === null) throw new Error(`plan.decisions[${i}] must be an object`);
+      if (typeof d.choice !== 'string') throw new Error(`plan.decisions[${i}].choice must be a string`);
+      result.decisions.push({
+        choice: d.choice as string,
+        reason: typeof d.reason === 'string' ? d.reason : '',
+      });
+    }
+  }
+
+  if (p.tradeOffs !== undefined) {
+    if (!Array.isArray(p.tradeOffs)) throw new Error('plan.tradeOffs must be an array');
+    for (let i = 0; i < p.tradeOffs.length; i++) {
+      const t = p.tradeOffs[i] as Record<string, unknown>;
+      if (typeof t !== 'object' || t === null) throw new Error(`plan.tradeOffs[${i}] must be an object`);
+      if (typeof t.considered !== 'string') throw new Error(`plan.tradeOffs[${i}].considered must be a string`);
+      result.tradeOffs.push({
+        considered: t.considered as string,
+        rejected: typeof t.rejected === 'string' ? t.rejected : '',
+      });
+    }
+  }
+
+  if (p.rollback !== undefined) {
+    if (typeof p.rollback !== 'object' || p.rollback === null || Array.isArray(p.rollback)) {
+      throw new Error('plan.rollback must be an object');
+    }
+    const rb = p.rollback as Record<string, unknown>;
+    const rev = typeof rb.reversibility === 'string' ? rb.reversibility : 'full';
+    if (!['full', 'partial', 'none'].includes(rev)) throw new Error("plan.rollback.reversibility must be 'full', 'partial', or 'none'");
+    result.rollback = {
+      steps: Array.isArray(rb.steps) ? (rb.steps as string[]) : [],
+      reversibility: rev as 'full' | 'partial' | 'none',
+    };
+  }
+
+  if (p.irreversibleActions !== undefined) {
+    if (!Array.isArray(p.irreversibleActions) || !p.irreversibleActions.every((s: unknown) => typeof s === 'string')) {
+      throw new Error('plan.irreversibleActions must be an array of strings');
+    }
+    result.irreversibleActions = p.irreversibleActions as string[];
+  }
+
+  if (p.edgeCases !== undefined) {
+    if (!Array.isArray(p.edgeCases) || !p.edgeCases.every((s: unknown) => typeof s === 'string')) {
+      throw new Error('plan.edgeCases must be an array of strings');
+    }
+    result.edgeCases = p.edgeCases as string[];
+  }
+
+  return result;
 }
 
 // Generate knowledge extraction proposals from a completed ticket
@@ -662,9 +436,8 @@ export const ticketCommand = new Command('ticket')
 // Create subcommand
 ticketCommand
   .command('create')
-  .description('Create a new ticket from stdin, file, or options')
-  .option('--stdin', 'Read ticket markdown from stdin')
-  .option('--file <path>', 'Read ticket from markdown file')
+  .description('Create a new ticket from JSON stdin or options')
+  .option('--stdin', 'Read ticket JSON from stdin')
   .option('--intent <intent>', 'What user wants to achieve')
   .option('--context <context>', 'Relevant files, patterns, background')
   .option('--use <constraints...>', 'Constraints: things to use')
@@ -688,46 +461,58 @@ ticketCommand
       let originSpecId: string | null = null;
       let plan: TicketPlan | null = null;
 
-      // Read from stdin or file if provided
-      if (options.stdin || options.file) {
-        let content: string;
+      if (options.stdin) {
+        const raw = await readStdin();
+        const parsed = parseJsonTicket(raw);
 
-        if (options.stdin) {
-          content = await readStdin();
-        } else {
-          if (!existsSync(options.file)) {
-            throw new Error(`File not found: ${options.file}`);
+        // Field-level validation
+        const errors: string[] = [];
+        if (!parsed.intent) errors.push('intent: Missing or empty intent');
+
+        // Type: optional (auto-inferred), but if provided must be valid
+        if (parsed.type !== undefined && !VALID_TICKET_TYPES.includes(parsed.type as TicketType)) {
+          errors.push(`type: Invalid type '${parsed.type}'. Must be one of: ${VALID_TICKET_TYPES.join(', ')}`);
+        }
+
+        // Change class: optional, but if provided must be A, B, or C
+        if (parsed.changeClass !== undefined && !VALID_CHANGE_CLASSES.includes(parsed.changeClass)) {
+          errors.push(`changeClass: Invalid change class '${parsed.changeClass}'. Must be A, B, or C`);
+        }
+
+        // Plan-level validation
+        if (parsed.plan) {
+          for (let i = 0; i < parsed.plan.taskSteps.length; i++) {
+            if (!parsed.plan.taskSteps[i].task || !parsed.plan.taskSteps[i].task.trim()) {
+              errors.push(`plan.taskSteps[${i}]: Empty task description`);
+            }
           }
-          content = readFileSync(options.file, 'utf-8');
+          for (let i = 0; i < parsed.plan.dodVerification.length; i++) {
+            if (!parsed.plan.dodVerification[i].dod || !parsed.plan.dodVerification[i].dod.trim()) {
+              errors.push(`plan.dodVerification[${i}]: Empty DoD criterion`);
+            }
+          }
         }
-
-        const parsed = parseMarkdownTicket(content);
-        // Parse plan before validation so plan-level checks can run
-        if (parsed.planContent) {
-          plan = parsePlanMarkdown(parsed.planContent);
-        }
-        const issues = validateParsedTicket(parsed, plan || undefined);
-        const errors = issues.filter(i => i.severity === 'error');
 
         if (errors.length > 0) {
-          throw new Error(errors.map(e => `${e.field}: ${e.message}`).join('; '));
+          throw new Error(errors.join('; '));
         }
 
         id = generateId('TICKET');
         title = parsed.title || null;
-        intent = parsed.intent;
-        type = parsed.type || inferTicketType(intent);
+        intent = parsed.intent!;
+        type = (parsed.type as TicketType) || inferTicketType(intent);
         context = parsed.context || null;
-        constraintsUse = parsed.constraintsUse || null;
-        constraintsAvoid = parsed.constraintsAvoid || null;
+        constraintsUse = parsed.constraints?.use || null;
+        constraintsAvoid = parsed.constraints?.avoid || null;
         assumptions = parsed.assumptions || null;
         changeClass = parsed.changeClass || null;
         changeClassReason = parsed.changeClassReason || null;
+        plan = parsed.plan || null;
         originSpecId = options.spec || null;
       } else {
         // Use CLI options
         if (!options.intent) {
-          throw new Error('Either --file/--stdin or --intent is required');
+          throw new Error('--stdin or --intent is required');
         }
 
         id = generateId('TICKET');
@@ -829,11 +614,124 @@ ticketCommand
     }
   });
 
+// Preview subcommand — returns formatted markdown for review
+ticketCommand
+  .command('preview')
+  .description('Preview a ticket as formatted markdown')
+  .argument('<id>', 'Ticket ID')
+  .action(async (id) => {
+    try {
+      const client = await getClient();
+      try {
+        const result = await client.execute({
+          sql: 'SELECT * FROM tickets WHERE id = ?',
+          args: [id],
+        });
+
+        if (result.rows.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Ticket ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const t = parseTicketRow(result.rows[0] as Record<string, unknown>);
+        const lines: string[] = [];
+
+        if (t.title) lines.push(`# ${t.title}`, '');
+        if (t.type) lines.push(`**Type:** ${t.type}`);
+        lines.push(`**Intent:** ${t.intent}`);
+        if (t.context) lines.push(`**Context:** ${t.context}`);
+        if (t.constraints_use?.length || t.constraints_avoid?.length) {
+          lines.push('**Constraints:**');
+          if (t.constraints_use?.length) lines.push(`- Use: ${t.constraints_use.join(', ')}`);
+          if (t.constraints_avoid?.length) lines.push(`- Avoid: ${t.constraints_avoid.join(', ')}`);
+        }
+        if (t.assumptions?.length) {
+          lines.push('**Assumptions:**');
+          for (const a of t.assumptions) lines.push(`- ${a}`);
+        }
+        if (t.change_class) {
+          lines.push(`**Change Class:** ${t.change_class}${t.change_class_reason ? ' - ' + t.change_class_reason : ''}`);
+        }
+
+        if (t.plan) {
+          lines.push('', '## Plan', '');
+          if (t.plan.files.length > 0) lines.push(`**Files:** ${t.plan.files.join(', ')}`, '');
+          if (t.plan.taskSteps.length > 0) {
+            lines.push('**Tasks → Steps:**');
+            for (let i = 0; i < t.plan.taskSteps.length; i++) {
+              const ts = t.plan.taskSteps[i];
+              lines.push(`${i + 1}. ${ts.task}${ts.done ? ' ✓' : ''}`);
+              for (const step of ts.steps) lines.push(`   - ${step}`);
+            }
+            lines.push('');
+          }
+          if (t.plan.dodVerification.length > 0) {
+            lines.push('**DoD → Verification:**');
+            for (const dv of t.plan.dodVerification) {
+              lines.push(`- ${dv.dod}${dv.verify ? ' → ' + dv.verify : ''}${dv.done ? ' ✓' : ''}`);
+            }
+            lines.push('');
+          }
+          if (t.plan.decisions.length > 0) {
+            lines.push('**Decisions:**');
+            for (const d of t.plan.decisions) {
+              lines.push(`- ${d.choice}${d.reason ? ' — ' + d.reason : ''}`);
+            }
+            lines.push('');
+          }
+          if (t.plan.tradeOffs.length > 0) {
+            lines.push('**Trade-offs:**');
+            for (const to of t.plan.tradeOffs) {
+              lines.push(`- considered: ${to.considered}${to.rejected ? ' | rejected: ' + to.rejected : ''}`);
+            }
+            lines.push('');
+          }
+          if (t.plan.rollback) {
+            lines.push('**Rollback:**');
+            lines.push(`- Reversibility: ${t.plan.rollback.reversibility}`);
+            for (const step of t.plan.rollback.steps) lines.push(`- ${step}`);
+            lines.push('');
+          }
+          if (t.plan.irreversibleActions.length > 0) {
+            lines.push('**Irreversible Actions:**');
+            for (const a of t.plan.irreversibleActions) lines.push(`- ${a}`);
+            lines.push('');
+          }
+          if (t.plan.edgeCases.length > 0) {
+            lines.push('**Edge Cases:**');
+            for (const e of t.plan.edgeCases) lines.push(`- ${e}`);
+            lines.push('');
+          }
+        }
+
+        const response: CliResponse<{ id: string; preview: string }> = {
+          success: true,
+          data: { id: t.id, preview: lines.join('\n').trimEnd() },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
+    } catch (error) {
+      const response: CliResponse = {
+        success: false,
+        error: `Failed to preview ticket: ${(error as Error).message}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(1);
+    }
+  });
+
 // Update subcommand
 ticketCommand
   .command('update')
   .description('Update a ticket')
   .argument('<id>', 'Ticket ID')
+  .option('--stdin', 'Read JSON updates from stdin')
   .option('--status <status>', 'New status (Backlog|In Progress|In Review|Done)')
   .option('--context <context>', 'Update context')
   .option('--comment <comment>', 'Add a comment')
@@ -841,7 +739,6 @@ ticketCommand
   .option('--complete-task <indices>', 'Mark plan tasks as done (comma-separated indices, e.g., 0,1,2)')
   .option('--complete-dod <indices>', 'Mark plan DoD items as done (comma-separated indices, e.g., 0,1,2)')
   .option('--complete-all', 'Mark all plan tasks and DoD items as complete')
-  .option('--plan-stdin', 'Read plan from stdin (markdown format)')
   .option('--spec <spec-id>', 'Set origin spec ID')
   .action(async (id, options) => {
     try {
@@ -866,9 +763,22 @@ ticketCommand
         const updates: string[] = [];
         const args: InValue[] = [];
 
+        // Read JSON from stdin for field updates
+        let stdinParsed: TicketJsonInput | undefined;
+        if (options.stdin) {
+          const raw = await readStdin();
+          stdinParsed = parseJsonTicket(raw);
+        }
+
         // Plan is single source of truth for tasks and DoD completion
         let plan = currentTicket.plan ? { ...currentTicket.plan } : null;
         let planModified = false;
+
+        // JSON stdin can replace the entire plan
+        if (stdinParsed?.plan) {
+          plan = stdinParsed.plan;
+          planModified = true;
+        }
 
         // Handle --complete-all flag (highest priority for completion)
         if (options.completeAll && plan) {
@@ -921,14 +831,48 @@ ticketCommand
           }
         }
 
-        if (options.context) {
+        // Apply stdin field updates
+        if (stdinParsed?.title) {
+          updates.push('title = ?');
+          args.push(stdinParsed.title);
+        }
+        if (stdinParsed?.intent) {
+          updates.push('intent = ?');
+          args.push(stdinParsed.intent);
+        }
+        if (stdinParsed?.type && VALID_TICKET_TYPES.includes(stdinParsed.type as TicketType)) {
+          updates.push('type = ?');
+          args.push(stdinParsed.type);
+        }
+        if (stdinParsed?.constraints?.use) {
+          updates.push('constraints_use = ?');
+          args.push(JSON.stringify(stdinParsed.constraints.use));
+        }
+        if (stdinParsed?.constraints?.avoid) {
+          updates.push('constraints_avoid = ?');
+          args.push(JSON.stringify(stdinParsed.constraints.avoid));
+        }
+        if (stdinParsed?.assumptions) {
+          updates.push('assumptions = ?');
+          args.push(JSON.stringify(stdinParsed.assumptions));
+        }
+        if (stdinParsed?.changeClass && VALID_CHANGE_CLASSES.includes(stdinParsed.changeClass)) {
+          updates.push('change_class = ?');
+          args.push(stdinParsed.changeClass);
+        }
+        if (stdinParsed?.changeClassReason) {
+          updates.push('change_class_reason = ?');
+          args.push(stdinParsed.changeClassReason);
+        }
+
+        if (options.context || stdinParsed?.context) {
           updates.push('context = ?');
-          args.push(options.context);
+          args.push(options.context || stdinParsed!.context!);
         }
 
         if (options.comment) {
           const commentId = generateId('COMMENT');
-          const author = options.author || getGitUsername();
+          const author = options.author || stdinParsed?.author || getGitUsername();
           await client.execute({
             sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
             args: [commentId, 'ticket', id, author, options.comment],
@@ -938,12 +882,6 @@ ticketCommand
         if (options.spec) {
           updates.push('origin_spec_id = ?');
           args.push(options.spec);
-        }
-
-        // Handle --plan-stdin: read and parse plan from stdin
-        if (options.planStdin) {
-          plan = parsePlanMarkdown(await readStdin());
-          planModified = true;
         }
 
         // Apply plan modifications

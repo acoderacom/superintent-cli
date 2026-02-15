@@ -12,126 +12,96 @@ function clampConfidence(value: number): number {
   return Math.max(0.1, Math.min(1.0, value));
 }
 
-interface ParsedKnowledge {
-  title: string;
-  namespace: string;
-  category?: KnowledgeCategory;
-  source: KnowledgeSource;
+const VALID_CATEGORIES: KnowledgeCategory[] = ['pattern', 'truth', 'principle', 'architecture', 'gotcha'];
+const VALID_SOURCES: KnowledgeSource[] = ['ticket', 'discovery', 'manual'];
+const VALID_SCOPES: DecisionScope[] = ['new-only', 'backward-compatible', 'global', 'legacy-frozen'];
+const VALID_TICKET_TYPES: TicketType[] = ['feature', 'bugfix', 'refactor', 'docs', 'chore', 'test'];
+
+interface KnowledgeJsonInput {
+  title?: string;
+  namespace?: string;
+  content?: string;
+  category?: string;
+  source?: string;
   originTicketId?: string;
-  originTicketType?: TicketType;
-  confidence: number;
-  scope?: DecisionScope;
+  originTicketType?: string;
+  confidence?: number;
+  scope?: string;
   tags?: string[];
-  content: string;
   author?: string;
   branch?: string;
-  // Track raw values for enum validation
-  _explicit?: {
-    category?: string;
-    source?: string;
-    scope?: string;
-    confidence?: string;
-  };
 }
 
 /**
- * Parse markdown knowledge format matching SKILL.md:
- *
- * # {Title}
- *
- * **Namespace:** {project-namespace}
- * **Category:** architecture|pattern|truth|principle|gotcha
- * **Source:** discovery|ticket|manual
- * **Origin Ticket:** {ticket-id}        (optional, from ticket skill)
- * **Origin Ticket Type:** {ticket-type}  (optional, from ticket skill)
- * **Confidence:** {0.75-0.95}
- * **Scope:** new-only|global|backward-compatible|legacy-frozen
- * **Tags:** {kebab-case, comma-separated}
- *
- * ## Content
- *
- * {content body}
+ * Parse JSON knowledge input from stdin.
+ * Expected format: {"title": "...", "namespace": "...", "content": "...", ...}
  */
-function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
-  const lines = markdown.split('\n');
-  const result: ParsedKnowledge = {
-    title: '',
-    namespace: '',
-    source: 'manual',
-    confidence: 0.8,
-    content: '',
-    _explicit: {},
-  };
+function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error('Expected a JSON object');
+    }
+    const result: KnowledgeJsonInput = {};
 
-  let inContent = false;
-  const contentLines: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Parse title: # {Title}
-    if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
-      result.title = trimmed.substring(2).trim();
-      continue;
+    if (parsed.title !== undefined) {
+      if (typeof parsed.title !== 'string') throw new Error('title must be a string');
+      result.title = parsed.title.trim();
+    }
+    if (parsed.namespace !== undefined) {
+      if (typeof parsed.namespace !== 'string') throw new Error('namespace must be a string');
+      result.namespace = parsed.namespace.trim();
+    }
+    if (parsed.content !== undefined) {
+      if (typeof parsed.content !== 'string') throw new Error('content must be a string');
+      result.content = parsed.content.trim();
+    }
+    if (parsed.category !== undefined) {
+      if (typeof parsed.category !== 'string') throw new Error('category must be a string');
+      result.category = parsed.category.trim();
+    }
+    if (parsed.source !== undefined) {
+      if (typeof parsed.source !== 'string') throw new Error('source must be a string');
+      result.source = parsed.source.trim();
+    }
+    if (parsed.originTicketId !== undefined) {
+      if (typeof parsed.originTicketId !== 'string') throw new Error('originTicketId must be a string');
+      result.originTicketId = parsed.originTicketId.trim();
+    }
+    if (parsed.originTicketType !== undefined) {
+      if (typeof parsed.originTicketType !== 'string') throw new Error('originTicketType must be a string');
+      result.originTicketType = parsed.originTicketType.trim().toLowerCase();
+    }
+    if (parsed.confidence !== undefined) {
+      if (typeof parsed.confidence !== 'number') throw new Error('confidence must be a number');
+      result.confidence = parsed.confidence;
+    }
+    if (parsed.scope !== undefined) {
+      if (typeof parsed.scope !== 'string') throw new Error('scope must be a string');
+      result.scope = parsed.scope.trim();
+    }
+    if (parsed.tags !== undefined) {
+      if (!Array.isArray(parsed.tags) || !parsed.tags.every((t: unknown) => typeof t === 'string')) {
+        throw new Error('tags must be an array of strings');
+      }
+      result.tags = parsed.tags.map((t: string) => t.trim()).filter(Boolean);
+    }
+    if (parsed.author !== undefined) {
+      if (typeof parsed.author !== 'string') throw new Error('author must be a string');
+      result.author = parsed.author.trim();
+    }
+    if (parsed.branch !== undefined) {
+      if (typeof parsed.branch !== 'string') throw new Error('branch must be a string');
+      result.branch = parsed.branch.trim();
     }
 
-    // Start content section — everything after ## Content is content
-    if (trimmed === '## Content') {
-      inContent = true;
-      continue;
+    return result;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON: ${error.message}`);
     }
-
-    // Collect content lines
-    if (inContent) {
-      contentLines.push(line);
-      continue;
-    }
-
-    // Parse metadata fields — **Field:** format only
-    if (trimmed.startsWith('**Namespace:**')) {
-      result.namespace = trimmed.replace('**Namespace:**', '').trim();
-    } else if (trimmed.startsWith('**Category:**')) {
-      const catValue = trimmed.replace('**Category:**', '').trim();
-      result._explicit!.category = catValue;
-      if (['pattern', 'truth', 'principle', 'architecture', 'gotcha'].includes(catValue)) {
-        result.category = catValue as KnowledgeCategory;
-      }
-    } else if (trimmed.startsWith('**Source:**')) {
-      const srcValue = trimmed.replace('**Source:**', '').trim();
-      result._explicit!.source = srcValue;
-      if (['ticket', 'discovery', 'manual'].includes(srcValue)) {
-        result.source = srcValue as KnowledgeSource;
-      }
-    } else if (trimmed.startsWith('**Origin Ticket:**')) {
-      result.originTicketId = trimmed.replace('**Origin Ticket:**', '').trim();
-      if (result.originTicketId) result.source = 'ticket';
-    } else if (trimmed.startsWith('**Origin Ticket Type:**')) {
-      const typeValue = trimmed.replace('**Origin Ticket Type:**', '').trim().toLowerCase();
-      if (['feature', 'bugfix', 'refactor', 'docs', 'chore', 'test'].includes(typeValue)) {
-        result.originTicketType = typeValue as TicketType;
-      }
-    } else if (trimmed.startsWith('**Confidence:**')) {
-      const confStr = trimmed.replace('**Confidence:**', '').trim();
-      result._explicit!.confidence = confStr;
-      result.confidence = clampConfidence(parseFloat(confStr));
-    } else if (trimmed.startsWith('**Scope:**')) {
-      const scopeValue = trimmed.replace('**Scope:**', '').trim();
-      result._explicit!.scope = scopeValue;
-      if (['new-only', 'backward-compatible', 'global', 'legacy-frozen'].includes(scopeValue)) {
-        result.scope = scopeValue as DecisionScope;
-      }
-    } else if (trimmed.startsWith('**Tags:**')) {
-      const tagStr = trimmed.replace('**Tags:**', '').trim();
-      result.tags = tagStr.split(',').map(t => t.trim()).filter(Boolean);
-    } else if (trimmed.startsWith('**Author:**')) {
-      result.author = trimmed.replace('**Author:**', '').trim();
-    } else if (trimmed.startsWith('**Branch:**')) {
-      result.branch = trimmed.replace('**Branch:**', '').trim();
-    }
+    throw error;
   }
-
-  result.content = contentLines.join('\n').trim();
-  return result;
 }
 
 export const knowledgeCommand = new Command('knowledge')
@@ -141,7 +111,7 @@ export const knowledgeCommand = new Command('knowledge')
 knowledgeCommand
   .command('create')
   .description('Create a new knowledge entry')
-  .option('--stdin', 'Read markdown from stdin')
+  .option('--stdin', 'Read JSON from stdin')
   .option('--title <title>', 'Knowledge title')
   .option('--content <content>', 'Knowledge content')
   .option('--namespace <namespace>', 'Project namespace (use domain, not "global")')
@@ -168,36 +138,35 @@ knowledgeCommand
       let branch: string;
 
       if (options.stdin) {
-        // Parse from stdin markdown
-        const markdown = await readStdin();
-        const parsed = parseMarkdownKnowledge(markdown);
+        const raw = await readStdin();
+        const parsed = parseJsonKnowledge(raw);
 
         // Field-level validation
         const missing: string[] = [];
-        if (!parsed.title || !parsed.title.trim()) missing.push('title: Missing or empty # Title header');
-        if (!parsed.namespace || !parsed.namespace.trim()) missing.push('namespace: Missing or empty **Namespace:** field');
-        if (!parsed.content || !parsed.content.trim()) missing.push('content: Missing ## Content section or content is empty');
+        if (!parsed.title) missing.push('title: Missing or empty title');
+        if (!parsed.namespace) missing.push('namespace: Missing or empty namespace');
+        if (!parsed.content) missing.push('content: Missing or empty content');
 
         // Scope: required and must be valid enum
-        if (!parsed._explicit?.scope) {
-          missing.push('scope: Missing **Scope:** field (new-only|backward-compatible|global|legacy-frozen)');
-        } else if (!parsed.scope) {
-          missing.push(`scope: Invalid scope '${parsed._explicit.scope}'. Must be one of: new-only, backward-compatible, global, legacy-frozen`);
+        if (!parsed.scope) {
+          missing.push('scope: Missing scope (new-only|backward-compatible|global|legacy-frozen)');
+        } else if (!VALID_SCOPES.includes(parsed.scope as DecisionScope)) {
+          missing.push(`scope: Invalid scope '${parsed.scope}'. Must be one of: ${VALID_SCOPES.join(', ')}`);
         }
 
         // Category: optional, but if provided must be valid
-        if (parsed._explicit?.category !== undefined && !parsed.category) {
-          missing.push(`category: Invalid category '${parsed._explicit.category}'. Must be one of: pattern, truth, principle, architecture, gotcha`);
+        if (parsed.category !== undefined && !VALID_CATEGORIES.includes(parsed.category as KnowledgeCategory)) {
+          missing.push(`category: Invalid category '${parsed.category}'. Must be one of: ${VALID_CATEGORIES.join(', ')}`);
         }
 
         // Source: optional, but if provided must be valid
-        if (parsed._explicit?.source !== undefined && !['ticket', 'discovery', 'manual'].includes(parsed._explicit.source)) {
-          missing.push(`source: Invalid source '${parsed._explicit.source}'. Must be one of: ticket, discovery, manual`);
+        if (parsed.source !== undefined && !VALID_SOURCES.includes(parsed.source as KnowledgeSource)) {
+          missing.push(`source: Invalid source '${parsed.source}'. Must be one of: ${VALID_SOURCES.join(', ')}`);
         }
 
-        // Confidence: if provided must be a valid number
-        if (parsed._explicit?.confidence !== undefined && isNaN(parseFloat(parsed._explicit.confidence))) {
-          missing.push(`confidence: Invalid confidence '${parsed._explicit.confidence}'. Must be a number between 0 and 1`);
+        // Origin ticket type: optional, but if provided must be valid
+        if (parsed.originTicketType !== undefined && !VALID_TICKET_TYPES.includes(parsed.originTicketType as TicketType)) {
+          missing.push(`originTicketType: Invalid type '${parsed.originTicketType}'. Must be one of: ${VALID_TICKET_TYPES.join(', ')}`);
         }
 
         if (missing.length > 0) {
@@ -210,15 +179,15 @@ knowledgeCommand
         }
 
         id = generateId('KNOWLEDGE');
-        title = parsed.title;
-        content = parsed.content;
-        namespace = parsed.namespace;
+        title = parsed.title!;
+        content = parsed.content!;
+        namespace = parsed.namespace!;
         category = parsed.category || null;
         tags = parsed.tags || null;
-        source = parsed.source;
+        source = parsed.originTicketId ? 'ticket' : (parsed.source as KnowledgeSource) || 'manual';
         originTicketId = parsed.originTicketId || null;
-        originTicketType = parsed.originTicketType || null;
-        confidence = parsed.confidence;
+        originTicketType = (parsed.originTicketType as TicketType) || null;
+        confidence = parsed.confidence !== undefined ? clampConfidence(parsed.confidence) : 0.8;
         scope = parsed.scope!;
         author = parsed.author || getGitUsername();
         branch = parsed.branch || getGitBranch();
@@ -241,7 +210,7 @@ knowledgeCommand
         tags = options.tags || null;
         source = options.origin ? 'ticket' : options.source;
         originTicketId = options.origin || null;
-        originTicketType = null;  // CLI doesn't support this yet, use stdin for full control
+        originTicketType = null;
         confidence = clampConfidence(parseFloat(options.confidence));
         scope = options.scope;
         author = getGitUsername();
@@ -361,6 +330,58 @@ knowledgeCommand
     }
   });
 
+// Preview subcommand — returns formatted markdown for review
+knowledgeCommand
+  .command('preview')
+  .description('Preview a knowledge entry as formatted markdown')
+  .argument('<id>', 'Knowledge ID')
+  .action(async (id) => {
+    try {
+      const client = await getClient();
+      try {
+        const result = await client.execute({
+          sql: `SELECT id, namespace, chunk_index, title, content,
+                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                usage_count, last_used_at, author, branch, created_at
+                FROM knowledge WHERE id = ?`,
+          args: [id],
+        });
+
+        if (result.rows.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Knowledge ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const k = parseKnowledgeRow(result.rows[0] as Record<string, unknown>);
+
+        const lines: string[] = [
+          `# ${k.title}`,
+          '',
+          k.content,
+        ];
+
+        const response: CliResponse<{ id: string; preview: string }> = {
+          success: true,
+          data: { id: k.id, preview: lines.join('\n') },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
+    } catch (error) {
+      const response: CliResponse = {
+        success: false,
+        error: `Failed to preview knowledge: ${(error as Error).message}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(1);
+    }
+  });
+
 // List subcommand
 knowledgeCommand
   .command('list')
@@ -456,8 +477,8 @@ knowledgeCommand
   .command('update')
   .description('Update a knowledge entry')
   .argument('<id>', 'Knowledge ID')
+  .option('--stdin', 'Read JSON updates from stdin')
   .option('--title <title>', 'New title')
-  .option('--content-stdin', 'Read new content from stdin')
   .option('--namespace <namespace>', 'New namespace')
   .option('--category <category>', 'New category')
   .option('--tags <tags...>', 'New tags')
@@ -470,86 +491,61 @@ knowledgeCommand
     try {
       const client = await getClient();
       try {
-        // Read content from stdin — parse as full markdown if it has ## Content section
-        let stdinContent: string | undefined;
-        let stdinParsed: ParsedKnowledge | undefined;
-        if (options.contentStdin) {
+        // Read JSON from stdin
+        let stdinParsed: KnowledgeJsonInput | undefined;
+        if (options.stdin) {
           const raw = await readStdin();
-          if (raw.includes('## Content')) {
-            // Full knowledge markdown format — parse all fields
-            stdinParsed = parseMarkdownKnowledge(raw);
-          } else {
-            // Plain content text
-            stdinContent = raw;
-          }
+          stdinParsed = parseJsonKnowledge(raw);
         }
 
-        // Build dynamic update
+        // Build dynamic update — CLI flags take priority over stdin fields
         const updates: string[] = [];
         const args: (string | number | null)[] = [];
+        let contentChanged = false;
 
-        // CLI flags take priority over parsed stdin fields
-        if (options.title) {
+        if (options.title || stdinParsed?.title) {
           updates.push('title = ?');
-          args.push(options.title);
-        } else if (stdinParsed?.title) {
-          updates.push('title = ?');
-          args.push(stdinParsed.title);
+          args.push(options.title || stdinParsed!.title!);
+          contentChanged = true;
         }
         if (stdinParsed?.content) {
           updates.push('content = ?');
           args.push(stdinParsed.content);
-        } else if (stdinContent) {
-          updates.push('content = ?');
-          args.push(stdinContent);
+          contentChanged = true;
         }
-        if (options.namespace) {
+        if (options.namespace || stdinParsed?.namespace) {
           updates.push('namespace = ?');
-          args.push(options.namespace);
-        } else if (stdinParsed?.namespace) {
-          updates.push('namespace = ?');
-          args.push(stdinParsed.namespace);
+          args.push(options.namespace || stdinParsed!.namespace!);
         }
-        if (options.category) {
+        if (options.category || stdinParsed?.category) {
           updates.push('category = ?');
-          args.push(options.category);
-        } else if (stdinParsed?.category) {
-          updates.push('category = ?');
-          args.push(stdinParsed.category);
+          args.push(options.category || stdinParsed!.category!);
         }
-        if (options.tags) {
+        if (options.tags || stdinParsed?.tags?.length) {
           updates.push('tags = ?');
-          args.push(JSON.stringify(options.tags));
-        } else if (stdinParsed?.tags?.length) {
-          updates.push('tags = ?');
-          args.push(JSON.stringify(stdinParsed.tags));
+          args.push(JSON.stringify(options.tags || stdinParsed!.tags));
+          contentChanged = true;
         }
-        if (options.origin) {
+        if (options.origin || stdinParsed?.originTicketId) {
           updates.push('origin_ticket_id = ?');
-          args.push(options.origin);
-        } else if (stdinParsed?.originTicketId) {
-          updates.push('origin_ticket_id = ?');
-          args.push(stdinParsed.originTicketId);
+          args.push(options.origin || stdinParsed!.originTicketId!);
         }
-        if (options.confidence) {
+        if (options.confidence || stdinParsed?.confidence !== undefined) {
           updates.push('confidence = ?');
-          args.push(clampConfidence(parseFloat(options.confidence)));
-        } else if (stdinParsed?.confidence) {
-          updates.push('confidence = ?');
-          args.push(stdinParsed.confidence);
+          const conf = options.confidence
+            ? clampConfidence(parseFloat(options.confidence))
+            : clampConfidence(stdinParsed!.confidence!);
+          args.push(conf);
         }
-        if (options.scope) {
+        if (options.scope || stdinParsed?.scope) {
           updates.push('decision_scope = ?');
-          args.push(options.scope);
-        } else if (stdinParsed?.scope) {
-          updates.push('decision_scope = ?');
-          args.push(stdinParsed.scope);
+          args.push(options.scope || stdinParsed!.scope!);
         }
 
         // Add comment if provided
         if (options.comment) {
           const commentId = generateId('COMMENT');
-          const author = options.author || getGitUsername();
+          const author = options.author || stdinParsed?.author || getGitUsername();
           await client.execute({
             sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
             args: [commentId, 'knowledge', id, author, options.comment],
@@ -576,16 +572,16 @@ knowledgeCommand
         }
 
         // Re-generate embedding if title, content, or tags changed
-        if (options.title || stdinContent || stdinParsed || options.tags) {
+        if (contentChanged) {
           const current = await client.execute({
             sql: 'SELECT title, content, tags FROM knowledge WHERE id = ?',
             args: [id],
           });
           if (current.rows.length > 0) {
             const row = current.rows[0] as Record<string, unknown>;
-            const newTitle = options.title || row.title;
-            const newContent = stdinContent || row.content;
-            const newTags: string[] = options.tags || (row.tags ? JSON.parse(row.tags as string) : []);
+            const newTitle = options.title || stdinParsed?.title || row.title;
+            const newContent = stdinParsed?.content || row.content;
+            const newTags: string[] = options.tags || stdinParsed?.tags || (row.tags ? JSON.parse(row.tags as string) : []);
             const tagsText = newTags?.length ? ' ' + newTags.join(' ') : '';
             const embedding = await embed(`${newTitle} ${newContent}${tagsText}`);
             updates.push('embedding = vector32(?)');
@@ -607,9 +603,9 @@ knowledgeCommand
           process.exit(1);
         }
 
-        const response: CliResponse<{ id: string; status: string; updated: string[] }> = {
+        const response: CliResponse<{ id: string; status: string }> = {
           success: true,
-          data: { id, status: 'updated', updated: Object.keys(options).filter(k => options[k]) },
+          data: { id, status: 'updated' },
         };
         console.log(JSON.stringify(response));
       } finally {

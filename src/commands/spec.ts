@@ -6,40 +6,42 @@ import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
 import type { Spec, CliResponse } from '../types.js';
 
-interface ParsedSpec {
-  title: string;
-  content: string;
+interface SpecInput {
+  title?: string;
+  content?: string;
+  author?: string;
 }
 
 /**
- * Parse markdown spec format matching SKILL.md:
- *
- * # {spec name}
- *
- * ## Summary
- * ...rest of spec content...
+ * Parse JSON spec input from stdin.
+ * Expected format: {"title": "...", "content": "...", "author": "..."}
  */
-function parseMarkdownSpec(markdown: string): ParsedSpec {
-  const lines = markdown.split('\n');
-  const result: ParsedSpec = { title: '', content: '' };
-
-  let contentStartIndex = 0;
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-
-    // Parse title: # {spec name}
-    if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
-      result.title = trimmed.substring(2).trim();
-      contentStartIndex = i + 1;
-      break;
+function parseJsonSpec(raw: string): SpecInput {
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error('Expected a JSON object');
     }
+    const result: SpecInput = {};
+    if (parsed.title !== undefined) {
+      if (typeof parsed.title !== 'string') throw new Error('title must be a string');
+      result.title = parsed.title.trim();
+    }
+    if (parsed.content !== undefined) {
+      if (typeof parsed.content !== 'string') throw new Error('content must be a string');
+      result.content = parsed.content.trim();
+    }
+    if (parsed.author !== undefined) {
+      if (typeof parsed.author !== 'string') throw new Error('author must be a string');
+      result.author = parsed.author.trim();
+    }
+    return result;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON: ${error.message}`);
+    }
+    throw error;
   }
-
-  // Everything after the title line is content
-  result.content = lines.slice(contentStartIndex).join('\n').trim();
-
-  return result;
 }
 
 export const specCommand = new Command('spec')
@@ -48,8 +50,8 @@ export const specCommand = new Command('spec')
 // Create subcommand
 specCommand
   .command('create')
-  .description('Create a new spec from stdin')
-  .option('--stdin', 'Read spec markdown from stdin')
+  .description('Create a new spec from JSON stdin')
+  .option('--stdin', 'Read spec JSON from stdin')
   .option('--title <title>', 'Spec title')
   .option('--content <content>', 'Spec content')
   .option('--author <author>', 'Author (default: git user.name)')
@@ -58,15 +60,16 @@ specCommand
       let id: string;
       let title: string;
       let content: string;
+      let author: string | undefined;
 
       if (options.stdin) {
-        const markdown = await readStdin();
-        const parsed = parseMarkdownSpec(markdown);
+        const raw = await readStdin();
+        const parsed = parseJsonSpec(raw);
 
         // Field-level validation
         const missing: string[] = [];
-        if (!parsed.title) missing.push('title: Missing # Title header');
-        if (!parsed.content) missing.push('content: No content found after header');
+        if (!parsed.title) missing.push('title: Missing or empty title');
+        if (!parsed.content) missing.push('content: Missing or empty content');
         if (missing.length > 0) {
           const response: CliResponse = {
             success: false,
@@ -77,8 +80,9 @@ specCommand
         }
 
         id = generateId('SPEC');
-        title = parsed.title;
-        content = parsed.content;
+        title = parsed.title!;
+        content = parsed.content!;
+        author = parsed.author;
       } else {
         if (!options.title) {
           const response: CliResponse = {
@@ -94,12 +98,12 @@ specCommand
         content = options.content || '';
       }
 
-      const author = options.author || getGitUsername();
+      const finalAuthor = author || options.author || getGitUsername();
       const client = await getClient();
       try {
         await client.execute({
           sql: `INSERT INTO specs (id, title, content, author) VALUES (?, ?, ?, ?)`,
-          args: [id, title, content, author],
+          args: [id, title, content, finalAuthor],
         });
 
         const response: CliResponse<{ id: string; status: string }> = {
@@ -164,6 +168,55 @@ specCommand
     }
   });
 
+// Preview subcommand — returns formatted markdown for review
+specCommand
+  .command('preview')
+  .description('Preview a spec as formatted markdown')
+  .argument('<id>', 'Spec ID')
+  .action(async (id) => {
+    try {
+      const client = await getClient();
+      try {
+        const result = await client.execute({
+          sql: 'SELECT * FROM specs WHERE id = ?',
+          args: [id],
+        });
+
+        if (result.rows.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Spec ${id} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const spec = parseSpecRow(result.rows[0] as Record<string, unknown>);
+
+        const lines: string[] = [
+          `# ${spec.title}`,
+          '',
+          spec.content,
+        ];
+
+        const response: CliResponse<{ id: string; preview: string }> = {
+          success: true,
+          data: { id: spec.id, preview: lines.join('\n') },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
+    } catch (error) {
+      const response: CliResponse = {
+        success: false,
+        error: `Failed to preview spec: ${(error as Error).message}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(1);
+    }
+  });
+
 // List subcommand
 specCommand
   .command('list')
@@ -205,8 +258,8 @@ specCommand
   .command('update')
   .description('Update a spec')
   .argument('<id>', 'Spec ID')
+  .option('--stdin', 'Read JSON updates from stdin')
   .option('--title <title>', 'New title')
-  .option('--content-stdin', 'Read new content from stdin')
   .option('--comment <comment>', 'Add a comment')
   .option('--author <author>', 'Comment author (default: git user.name)')
   .action(async (id, options) => {
@@ -216,26 +269,16 @@ specCommand
         const updates: string[] = [];
         const args: (string | number)[] = [];
 
-        // Read stdin — parse as full spec markdown if it has a # title
-        let stdinParsed: ParsedSpec | undefined;
-        if (options.contentStdin) {
+        // Read JSON from stdin
+        let stdinParsed: SpecInput | undefined;
+        if (options.stdin) {
           const raw = await readStdin();
-          const parsed = parseMarkdownSpec(raw);
-          if (parsed.title) {
-            stdinParsed = parsed;
-          } else {
-            // Plain content text (no title header)
-            updates.push('content = ?');
-            args.push(raw.trim());
-          }
+          stdinParsed = parseJsonSpec(raw);
         }
 
-        if (options.title) {
+        if (options.title || stdinParsed?.title) {
           updates.push('title = ?');
-          args.push(options.title);
-        } else if (stdinParsed?.title) {
-          updates.push('title = ?');
-          args.push(stdinParsed.title);
+          args.push(options.title || stdinParsed!.title!);
         }
         if (stdinParsed?.content) {
           updates.push('content = ?');
@@ -245,7 +288,7 @@ specCommand
         // Add comment if provided
         if (options.comment) {
           const commentId = generateId('COMMENT');
-          const author = options.author || getGitUsername();
+          const author = options.author || stdinParsed?.author || getGitUsername();
           await client.execute({
             sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
             args: [commentId, 'spec', id, author, options.comment],
@@ -255,7 +298,7 @@ specCommand
         if (updates.length === 0 && !options.comment) {
           const response: CliResponse = {
             success: false,
-            error: 'No updates provided. Use --title, --content-stdin, or --comment',
+            error: 'No updates provided. Use --stdin, --title, or --comment',
           };
           console.log(JSON.stringify(response));
           process.exit(1);
