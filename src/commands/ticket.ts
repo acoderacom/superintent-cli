@@ -406,6 +406,8 @@ function parsePlanMarkdown(content: string): TicketPlan {
           if (rev === 'full' || rev === 'partial' || rev === 'none') {
             plan.rollback.reversibility = rev;
           }
+        } else if (item.toLowerCase() === 'steps:') {
+          // Skip the "steps:" label — it's a structural marker, not an actual step
         } else {
           plan.rollback.steps.push(item);
         }
@@ -473,7 +475,7 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
         source: 'ticket',
         originTicketId: ticket.id,
         originTicketType: ticketType,
-        confidence: 0.7,
+        confidence: 0.8,
         decisionScope: 'new-only',
       });
     }
@@ -489,7 +491,7 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
         source: 'ticket',
         originTicketId: ticket.id,
         originTicketType: ticketType,
-        confidence: 0.7,
+        confidence: 0.8,
         decisionScope: 'new-only',
       });
     }
@@ -549,6 +551,55 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
         decisionScope: 'new-only',
       });
     }
+  }
+
+  // Edge cases from plan → gotcha (pitfalls discovered during work)
+  if (ticket.plan?.edgeCases && ticket.plan.edgeCases.length > 0) {
+    for (const edgeCase of ticket.plan.edgeCases) {
+      suggestions.push({
+        namespace,
+        title: `Edge case: ${edgeCase.slice(0, 70)}`,
+        content: `Attempted:\n[AI: What was being done when this edge case was found]\n\nFailed Because:\n${edgeCase}\n\nInstead:\n[AI: How to handle this edge case]\n\nSymptoms:\n[AI: How this manifests if not handled]`,
+        category: 'gotcha',
+        source: 'ticket',
+        originTicketId: ticket.id,
+        originTicketType: ticketType,
+        confidence: 0.85,
+        decisionScope: 'new-only',
+      });
+    }
+  }
+
+  // Irreversible actions from plan → gotcha (warnings for dangerous operations)
+  if (ticket.plan?.irreversibleActions && ticket.plan.irreversibleActions.length > 0) {
+    for (const action of ticket.plan.irreversibleActions) {
+      suggestions.push({
+        namespace,
+        title: `Warning: ${action.slice(0, 70)}`,
+        content: `Attempted:\n${action}\n\nFailed Because:\nThis action cannot be undone\n\nInstead:\n[AI: What precautions to take before performing this action]\n\nSymptoms:\nData loss or irreversible state change if performed without preparation`,
+        category: 'gotcha',
+        source: 'ticket',
+        originTicketId: ticket.id,
+        originTicketType: ticketType,
+        confidence: 0.85,
+        decisionScope: 'global',
+      });
+    }
+  }
+
+  // Rollback strategy from plan → pattern (reusable recovery approach)
+  if (ticket.plan?.rollback && ticket.plan.rollback.steps.length > 0) {
+    suggestions.push({
+      namespace,
+      title: `Rollback: ${ticket.title || ticket.intent.slice(0, 70)}`,
+      content: `Why:\nRecovery strategy for ${ticket.change_class ? `Class ${ticket.change_class}` : 'this type of'} change\n\nWhen:\nSimilar changes that modify ${ticket.plan.files?.join(', ') || 'related files'}\n\nPattern:\nReversibility: ${ticket.plan.rollback.reversibility}\nSteps:\n${ticket.plan.rollback.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
+      category: 'pattern',
+      source: 'ticket',
+      originTicketId: ticket.id,
+      originTicketType: ticketType,
+      confidence: 0.8,
+      decisionScope: 'backward-compatible',
+    });
   }
 
   return suggestions;
