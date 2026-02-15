@@ -254,8 +254,8 @@ export const uiCommand = new Command('ui')
 
         const client = await getClient();
         await client.execute({
-          sql: `INSERT INTO tickets (id, type, title, intent, status) VALUES (?, ?, ?, ?, 'Backlog')`,
-          args: [id, type, title, intent],
+          sql: `INSERT INTO tickets (id, type, title, intent, status, author) VALUES (?, ?, ?, ?, 'Backlog', ?)`,
+          args: [id, type, title, intent, getGitUsername()],
         });
 
         // Return refreshed kanban columns
