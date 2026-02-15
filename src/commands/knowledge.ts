@@ -25,6 +25,13 @@ interface ParsedKnowledge {
   content: string;
   author?: string;
   branch?: string;
+  // Track raw values for enum validation
+  _explicit?: {
+    category?: string;
+    source?: string;
+    scope?: string;
+    confidence?: string;
+  };
 }
 
 /**
@@ -53,6 +60,7 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
     source: 'manual',
     confidence: 0.8,
     content: '',
+    _explicit: {},
   };
 
   let inContent = false;
@@ -84,11 +92,13 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
       result.namespace = trimmed.replace('**Namespace:**', '').trim();
     } else if (trimmed.startsWith('**Category:**')) {
       const catValue = trimmed.replace('**Category:**', '').trim();
+      result._explicit!.category = catValue;
       if (['pattern', 'truth', 'principle', 'architecture', 'gotcha'].includes(catValue)) {
         result.category = catValue as KnowledgeCategory;
       }
     } else if (trimmed.startsWith('**Source:**')) {
       const srcValue = trimmed.replace('**Source:**', '').trim();
+      result._explicit!.source = srcValue;
       if (['ticket', 'discovery', 'manual'].includes(srcValue)) {
         result.source = srcValue as KnowledgeSource;
       }
@@ -101,9 +111,12 @@ function parseMarkdownKnowledge(markdown: string): ParsedKnowledge {
         result.originTicketType = typeValue as TicketType;
       }
     } else if (trimmed.startsWith('**Confidence:**')) {
-      result.confidence = clampConfidence(parseFloat(trimmed.replace('**Confidence:**', '').trim()));
+      const confStr = trimmed.replace('**Confidence:**', '').trim();
+      result._explicit!.confidence = confStr;
+      result.confidence = clampConfidence(parseFloat(confStr));
     } else if (trimmed.startsWith('**Scope:**')) {
       const scopeValue = trimmed.replace('**Scope:**', '').trim();
+      result._explicit!.scope = scopeValue;
       if (['new-only', 'backward-compatible', 'global', 'legacy-frozen'].includes(scopeValue)) {
         result.scope = scopeValue as DecisionScope;
       }
@@ -161,10 +174,32 @@ knowledgeCommand
 
         // Field-level validation
         const missing: string[] = [];
-        if (!parsed.title) missing.push('title: Missing # Title header');
-        if (!parsed.namespace) missing.push('namespace: Missing **Namespace:** field');
-        if (!parsed.scope) missing.push('scope: Missing **Scope:** field (new-only|backward-compatible|global|legacy-frozen)');
-        if (!parsed.content) missing.push('content: Missing ## Content section or content is empty');
+        if (!parsed.title || !parsed.title.trim()) missing.push('title: Missing or empty # Title header');
+        if (!parsed.namespace || !parsed.namespace.trim()) missing.push('namespace: Missing or empty **Namespace:** field');
+        if (!parsed.content || !parsed.content.trim()) missing.push('content: Missing ## Content section or content is empty');
+
+        // Scope: required and must be valid enum
+        if (!parsed._explicit?.scope) {
+          missing.push('scope: Missing **Scope:** field (new-only|backward-compatible|global|legacy-frozen)');
+        } else if (!parsed.scope) {
+          missing.push(`scope: Invalid scope '${parsed._explicit.scope}'. Must be one of: new-only, backward-compatible, global, legacy-frozen`);
+        }
+
+        // Category: optional, but if provided must be valid
+        if (parsed._explicit?.category !== undefined && !parsed.category) {
+          missing.push(`category: Invalid category '${parsed._explicit.category}'. Must be one of: pattern, truth, principle, architecture, gotcha`);
+        }
+
+        // Source: optional, but if provided must be valid
+        if (parsed._explicit?.source !== undefined && !['ticket', 'discovery', 'manual'].includes(parsed._explicit.source)) {
+          missing.push(`source: Invalid source '${parsed._explicit.source}'. Must be one of: ticket, discovery, manual`);
+        }
+
+        // Confidence: if provided must be a valid number
+        if (parsed._explicit?.confidence !== undefined && isNaN(parseFloat(parsed._explicit.confidence))) {
+          missing.push(`confidence: Invalid confidence '${parsed._explicit.confidence}'. Must be a number between 0 and 1`);
+        }
+
         if (missing.length > 0) {
           const response: CliResponse = {
             success: false,
