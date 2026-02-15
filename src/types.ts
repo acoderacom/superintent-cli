@@ -1,8 +1,8 @@
-// Plan structure - synced with Ticket (Tasks → Steps, DoD → Verification)
+// Plan structure - single source of truth for tasks, DoD, and execution state
 export interface TicketPlan {
   files: string[];                                    // Files to edit
-  taskSteps: { task: string; steps: string[] }[];    // Each task → implementation steps
-  dodVerification: { dod: string; verify: string }[]; // Each DoD → verification method
+  taskSteps: { task: string; steps: string[]; done: boolean }[];    // Each task → implementation steps + completion
+  dodVerification: { dod: string; verify: string; done: boolean }[]; // Each DoD → verification method + completion
   decisions: { choice: string; reason: string }[];   // Key decisions made
   tradeOffs: { considered: string; rejected: string }[]; // Alternatives rejected & why
   rollback?: {                                        // How to undo (required for Class B/C)
@@ -27,8 +27,6 @@ export interface Ticket {
   constraints_use?: string[];
   constraints_avoid?: string[];
   assumptions?: string[];
-  tasks?: TaskItem[];
-  definition_of_done?: TaskItem[];
   change_class?: 'A' | 'B' | 'C';
   change_class_reason?: string;
   plan?: TicketPlan;
@@ -37,11 +35,6 @@ export interface Ticket {
   author?: string;
   created_at?: string;
   updated_at?: string;
-}
-
-export interface TaskItem {
-  text: string;
-  done: boolean;
 }
 
 // Comment types (polymorphic)
@@ -68,8 +61,6 @@ export interface TicketInput {
     avoid?: string[];
   };
   assumptions?: string[];
-  tasks?: string[] | TaskItem[];
-  definitionOfDone?: string[] | TaskItem[];
   changeClass?: 'A' | 'B' | 'C';
   changeClassReason?: string;
 }

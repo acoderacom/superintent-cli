@@ -128,27 +128,28 @@ export const uiCommand = new Command('ui')
 
         const client = await getClient();
 
-        // If setting to Done, auto-complete all tasks and DoD
+        // If setting to Done, auto-complete all plan tasks and DoD
         if (newStatus === 'Done') {
           const current = await client.execute({
-            sql: 'SELECT tasks, definition_of_done FROM tickets WHERE id = ?',
+            sql: 'SELECT plan FROM tickets WHERE id = ?',
             args: [id],
           });
 
           if (current.rows.length > 0) {
             const row = current.rows[0] as Record<string, unknown>;
-            const tasks = row.tasks ? JSON.parse(row.tasks as string) : [];
-            const dod = row.definition_of_done ? JSON.parse(row.definition_of_done as string) : [];
+            const plan = row.plan ? JSON.parse(row.plan as string) : null;
 
-            const completedTasks = tasks.map((t: { text: string; done: boolean }) => ({ ...t, done: true }));
-            const completedDod = dod.map((d: { text: string; done: boolean }) => ({ ...d, done: true }));
+            if (plan) {
+              plan.taskSteps = (plan.taskSteps || []).map((ts: Record<string, unknown>) => ({ ...ts, done: true }));
+              plan.dodVerification = (plan.dodVerification || []).map((dv: Record<string, unknown>) => ({ ...dv, done: true }));
 
-            await client.execute({
-              sql: `UPDATE tickets SET status = ?, tasks = ?, definition_of_done = ?, updated_at = datetime('now') WHERE id = ?`,
-              args: [newStatus, JSON.stringify(completedTasks), JSON.stringify(completedDod), id],
-            });
+              await client.execute({
+                sql: `UPDATE tickets SET status = ?, plan = ?, updated_at = datetime('now') WHERE id = ?`,
+                args: [newStatus, JSON.stringify(plan), id],
+              });
 
-            return c.json({ success: true, data: { id, status: newStatus } });
+              return c.json({ success: true, data: { id, status: newStatus } });
+            }
           }
         }
 
@@ -163,7 +164,7 @@ export const uiCommand = new Command('ui')
       }
     });
 
-    // Toggle task completion
+    // Toggle task completion (operates on plan.taskSteps)
     app.patch('/api/tickets/:id/task/:index', async (c) => {
       try {
         const id = c.req.param('id');
@@ -171,7 +172,7 @@ export const uiCommand = new Command('ui')
 
         const client = await getClient();
         const result = await client.execute({
-          sql: 'SELECT tasks FROM tickets WHERE id = ?',
+          sql: 'SELECT plan FROM tickets WHERE id = ?',
           args: [id],
         });
 
@@ -180,13 +181,13 @@ export const uiCommand = new Command('ui')
         }
 
         const row = result.rows[0] as Record<string, unknown>;
-        const tasks = row.tasks ? JSON.parse(row.tasks as string) : [];
+        const plan = row.plan ? JSON.parse(row.plan as string) : null;
 
-        if (index >= 0 && index < tasks.length) {
-          tasks[index].done = !tasks[index].done;
+        if (plan && index >= 0 && index < (plan.taskSteps || []).length) {
+          plan.taskSteps[index].done = !plan.taskSteps[index].done;
           await client.execute({
-            sql: `UPDATE tickets SET tasks = ?, updated_at = datetime('now') WHERE id = ?`,
-            args: [JSON.stringify(tasks), id],
+            sql: `UPDATE tickets SET plan = ?, updated_at = datetime('now') WHERE id = ?`,
+            args: [JSON.stringify(plan), id],
           });
         }
 
@@ -196,7 +197,7 @@ export const uiCommand = new Command('ui')
       }
     });
 
-    // Toggle DoD completion
+    // Toggle DoD completion (operates on plan.dodVerification)
     app.patch('/api/tickets/:id/dod/:index', async (c) => {
       try {
         const id = c.req.param('id');
@@ -204,7 +205,7 @@ export const uiCommand = new Command('ui')
 
         const client = await getClient();
         const result = await client.execute({
-          sql: 'SELECT definition_of_done FROM tickets WHERE id = ?',
+          sql: 'SELECT plan FROM tickets WHERE id = ?',
           args: [id],
         });
 
@@ -213,13 +214,13 @@ export const uiCommand = new Command('ui')
         }
 
         const row = result.rows[0] as Record<string, unknown>;
-        const dod = row.definition_of_done ? JSON.parse(row.definition_of_done as string) : [];
+        const plan = row.plan ? JSON.parse(row.plan as string) : null;
 
-        if (index >= 0 && index < dod.length) {
-          dod[index].done = !dod[index].done;
+        if (plan && index >= 0 && index < (plan.dodVerification || []).length) {
+          plan.dodVerification[index].done = !plan.dodVerification[index].done;
           await client.execute({
-            sql: `UPDATE tickets SET definition_of_done = ?, updated_at = datetime('now') WHERE id = ?`,
-            args: [JSON.stringify(dod), id],
+            sql: `UPDATE tickets SET plan = ?, updated_at = datetime('now') WHERE id = ?`,
+            args: [JSON.stringify(plan), id],
           });
         }
 
@@ -264,7 +265,7 @@ export const uiCommand = new Command('ui')
         const columnData = await Promise.all(
           statuses.map(async (status) => {
             const result = await client.execute({
-              sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
+              sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
                     FROM tickets WHERE status = ? ORDER BY created_at DESC LIMIT ?`,
               args: [status, limit + 1],
             });
@@ -276,7 +277,7 @@ export const uiCommand = new Command('ui')
 
         // Add Archived column
         const archiveResult = await client.execute({
-          sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
+          sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
                 FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
           args: [...archiveStatuses, limit + 1],
         });
@@ -343,7 +344,7 @@ export const uiCommand = new Command('ui')
         // Fetch updated ticket and return detail modal
         const result = await client.execute({
           sql: `SELECT id, type, title, status, intent, context, constraints_use, constraints_avoid,
-                assumptions, tasks, definition_of_done, change_class, change_class_reason,
+                assumptions, change_class, change_class_reason,
                 origin_spec_id, plan, derived_knowledge, author, created_at, updated_at FROM tickets WHERE id = ?`,
           args: [id],
         });
@@ -485,7 +486,7 @@ export const uiCommand = new Command('ui')
         const columnData = await Promise.all(
           statuses.map(async (status) => {
             const result = await client.execute({
-              sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
+              sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
                     FROM tickets WHERE status = ? ORDER BY created_at DESC LIMIT ?`,
               args: [status, limit + 1],
             });
@@ -497,7 +498,7 @@ export const uiCommand = new Command('ui')
 
         // Add Archived column (Blocked, Paused, Abandoned, Superseded)
         const archiveResult = await client.execute({
-          sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
+          sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
                 FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
           args: [...archiveStatuses, limit + 1],
         });
@@ -525,13 +526,13 @@ export const uiCommand = new Command('ui')
         if (status === 'Archived') {
           const archiveStatuses = ['Blocked', 'Paused', 'Abandoned', 'Superseded'];
           result = await client.execute({
-            sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
+            sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
                   FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ? OFFSET ?`,
             args: [...archiveStatuses, limit + 1, offset],
           });
         } else {
           result = await client.execute({
-            sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, tasks
+            sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
                   FROM tickets WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
             args: [status, limit + 1, offset],
           });
@@ -554,7 +555,7 @@ export const uiCommand = new Command('ui')
         const client = await getClient();
         const result = await client.execute({
           sql: `SELECT id, type, title, status, intent, context, constraints_use, constraints_avoid,
-                assumptions, tasks, definition_of_done, change_class, change_class_reason,
+                assumptions, change_class, change_class_reason,
                 origin_spec_id, plan, derived_knowledge, author, created_at, updated_at FROM tickets WHERE id = ?`,
           args: [id],
         });

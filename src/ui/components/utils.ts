@@ -53,7 +53,7 @@ export interface ColumnData {
     intent: string;
     change_class?: string;
     change_class_reason?: string;
-    tasks?: { text: string; done: boolean }[];
+    plan?: { taskSteps?: { task: string; steps: string[]; done: boolean }[] };
   }[];
   hasMore: boolean;
 }

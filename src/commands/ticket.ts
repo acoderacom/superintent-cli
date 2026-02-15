@@ -7,7 +7,7 @@ import { getProjectNamespace } from '../utils/config.js';
 import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
-import type { Ticket, TaskItem, CliResponse, KnowledgeInput, TicketPlan, TicketType } from '../types.js';
+import type { Ticket, CliResponse, KnowledgeInput, TicketPlan, TicketType } from '../types.js';
 
 /**
  * Infer ticket type from intent keywords
@@ -228,7 +228,7 @@ function parsePlanMarkdown(content: string): TicketPlan {
 
   const lines = content.split('\n');
   let currentSection = '';
-  let currentTaskSteps: { task: string; steps: string[] } | null = null;
+  let currentTaskSteps: { task: string; steps: string[]; done: boolean } | null = null;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -314,6 +314,7 @@ function parsePlanMarkdown(content: string): TicketPlan {
       currentTaskSteps = {
         task: numberedMatch[1].trim(),
         steps: [],
+        done: false,
       };
       continue;
     }
@@ -334,6 +335,7 @@ function parsePlanMarkdown(content: string): TicketPlan {
           currentTaskSteps = {
             task: item.substring(5).trim(),
             steps: [],
+            done: false,
           };
         } else if (currentTaskSteps) {
           // It's a step for the current task
@@ -357,7 +359,7 @@ function parsePlanMarkdown(content: string): TicketPlan {
             }
           }
         }
-        plan.dodVerification.push({ dod, verify });
+        plan.dodVerification.push({ dod, verify, done: false });
       } else if (currentSection === 'decisions') {
         // Parse "choice → reason", "choice: X | reason: Y", or plain text
         let choice = item;
@@ -579,8 +581,6 @@ ticketCommand
       let constraintsUse: string[] | null = null;
       let constraintsAvoid: string[] | null = null;
       let assumptions: string[] | null = null;
-      let tasks: TaskItem[] | undefined;
-      let dod: TaskItem[] | undefined;
       let changeClass: string | null = null;
       let changeClassReason: string | null = null;
       let originSpecId: string | null = null;
@@ -618,15 +618,9 @@ ticketCommand
         changeClass = parsed.changeClass || null;
         changeClassReason = parsed.changeClassReason || null;
         originSpecId = options.spec || null;
-        // Parse plan and extract tasks/DoD from it
+        // Parse plan (tasks and DoD live inside plan with done tracking)
         if (parsed.planContent) {
           plan = parsePlanMarkdown(parsed.planContent);
-          if (plan.taskSteps.length > 0) {
-            tasks = plan.taskSteps.map(ts => ({ text: ts.task, done: false }));
-          }
-          if (plan.dodVerification.length > 0) {
-            dod = plan.dodVerification.map(dv => ({ text: dv.dod, done: false }));
-          }
         }
       } else {
         // Use CLI options
@@ -652,8 +646,8 @@ ticketCommand
           sql: `INSERT INTO tickets (
             id, type, title, status, intent, context,
             constraints_use, constraints_avoid, assumptions,
-            tasks, definition_of_done, change_class, change_class_reason, plan, origin_spec_id, author
-          ) VALUES (?, ?, ?, 'Backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            change_class, change_class_reason, plan, origin_spec_id, author
+          ) VALUES (?, ?, ?, 'Backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             id,
             type,
@@ -663,8 +657,6 @@ ticketCommand
             constraintsUse ? JSON.stringify(constraintsUse) : null,
             constraintsAvoid ? JSON.stringify(constraintsAvoid) : null,
             assumptions ? JSON.stringify(assumptions) : null,
-            tasks ? JSON.stringify(tasks) : null,
-            dod ? JSON.stringify(dod) : null,
             changeClass,
             changeClassReason,
             plan ? JSON.stringify(plan) : null,
@@ -744,11 +736,9 @@ ticketCommand
   .option('--context <context>', 'Update context')
   .option('--comment <comment>', 'Add a comment')
   .option('--author <author>', 'Comment author (default: git user.name)')
-  .option('--tasks <tasks...>', 'Replace tasks')
-  .option('--dod <criteria...>', 'Replace definition of done')
-  .option('--complete-task <indices>', 'Mark tasks as done (comma-separated indices, e.g., 0,1,2)')
-  .option('--complete-dod <indices>', 'Mark DoD items as done (comma-separated indices, e.g., 0,1,2)')
-  .option('--complete-all', 'Mark all tasks and DoD items as complete')
+  .option('--complete-task <indices>', 'Mark plan tasks as done (comma-separated indices, e.g., 0,1,2)')
+  .option('--complete-dod <indices>', 'Mark plan DoD items as done (comma-separated indices, e.g., 0,1,2)')
+  .option('--complete-all', 'Mark all plan tasks and DoD items as complete')
   .option('--plan-stdin', 'Read plan from stdin (markdown format)')
   .option('--spec <spec-id>', 'Set origin spec ID')
   .action(async (id, options) => {
@@ -774,42 +764,40 @@ ticketCommand
         const updates: string[] = [];
         const args: InValue[] = [];
 
-        // Track if tasks/dod have been modified to avoid duplicate updates
-        let tasksModified = false;
-        let dodModified = false;
-        let tasks = currentTicket.tasks ? [...currentTicket.tasks] : [];
-        let dod = currentTicket.definition_of_done ? [...currentTicket.definition_of_done] : [];
+        // Plan is single source of truth for tasks and DoD completion
+        let plan = currentTicket.plan ? { ...currentTicket.plan } : null;
+        let planModified = false;
 
         // Handle --complete-all flag (highest priority for completion)
-        if (options.completeAll) {
-          if (tasks.length > 0) {
-            tasks = tasks.map(t => ({ ...t, done: true }));
-            tasksModified = true;
+        if (options.completeAll && plan) {
+          if (plan.taskSteps.length > 0) {
+            plan.taskSteps = plan.taskSteps.map(ts => ({ ...ts, done: true }));
+            planModified = true;
           }
-          if (dod.length > 0) {
-            dod = dod.map(d => ({ ...d, done: true }));
-            dodModified = true;
+          if (plan.dodVerification.length > 0) {
+            plan.dodVerification = plan.dodVerification.map(dv => ({ ...dv, done: true }));
+            planModified = true;
           }
         }
 
         // Handle --complete-task with comma-separated indices
-        if (options.completeTask !== undefined && !options.completeAll) {
+        if (options.completeTask !== undefined && !options.completeAll && plan) {
           const indices = String(options.completeTask).split(',').map(s => parseInt(s.trim(), 10));
           for (const idx of indices) {
-            if (tasks[idx]) {
-              tasks[idx].done = true;
-              tasksModified = true;
+            if (plan.taskSteps[idx]) {
+              plan.taskSteps[idx] = { ...plan.taskSteps[idx], done: true };
+              planModified = true;
             }
           }
         }
 
         // Handle --complete-dod with comma-separated indices
-        if (options.completeDod !== undefined && !options.completeAll) {
+        if (options.completeDod !== undefined && !options.completeAll && plan) {
           const indices = String(options.completeDod).split(',').map(s => parseInt(s.trim(), 10));
           for (const idx of indices) {
-            if (dod[idx]) {
-              dod[idx].done = true;
-              dodModified = true;
+            if (plan.dodVerification[idx]) {
+              plan.dodVerification[idx] = { ...plan.dodVerification[idx], done: true };
+              planModified = true;
             }
           }
         }
@@ -818,15 +806,15 @@ ticketCommand
           updates.push('status = ?');
           args.push(options.status);
 
-          // Auto-complete all tasks and DoD when status is "Done" (unless already handled by --complete-all)
-          if (options.status === 'Done' && !options.completeAll) {
-            if (tasks.length > 0 && !tasksModified) {
-              tasks = tasks.map(t => ({ ...t, done: true }));
-              tasksModified = true;
+          // Auto-complete all tasks and DoD when status is "Done"
+          if (options.status === 'Done' && !options.completeAll && plan) {
+            if (plan.taskSteps.length > 0) {
+              plan.taskSteps = plan.taskSteps.map(ts => ({ ...ts, done: true }));
+              planModified = true;
             }
-            if (dod.length > 0 && !dodModified) {
-              dod = dod.map(d => ({ ...d, done: true }));
-              dodModified = true;
+            if (plan.dodVerification.length > 0) {
+              plan.dodVerification = plan.dodVerification.map(dv => ({ ...dv, done: true }));
+              planModified = true;
             }
           }
         }
@@ -845,16 +833,6 @@ ticketCommand
           });
         }
 
-        if (options.tasks) {
-          tasks = (options.tasks as string[]).map((text: string) => ({ text, done: false }));
-          tasksModified = true;
-        }
-
-        if (options.dod) {
-          dod = (options.dod as string[]).map((text: string) => ({ text, done: false }));
-          dodModified = true;
-        }
-
         if (options.spec) {
           updates.push('origin_spec_id = ?');
           args.push(options.spec);
@@ -862,22 +840,14 @@ ticketCommand
 
         // Handle --plan-stdin: read and parse plan from stdin
         if (options.planStdin) {
-          const planContent = await readStdin();
-          const plan = parsePlanMarkdown(planContent);
+          plan = parsePlanMarkdown(await readStdin());
+          planModified = true;
+        }
+
+        // Apply plan modifications
+        if (planModified && plan) {
           updates.push('plan = ?');
           args.push(JSON.stringify(plan));
-        }
-
-        // Apply task modifications
-        if (tasksModified) {
-          updates.push('tasks = ?');
-          args.push(JSON.stringify(tasks));
-        }
-
-        // Apply dod modifications
-        if (dodModified) {
-          updates.push('definition_of_done = ?');
-          args.push(JSON.stringify(dod));
         }
 
         if (updates.length === 0 && !options.comment) {

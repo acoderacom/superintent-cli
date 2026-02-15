@@ -20,8 +20,6 @@ export function parseTicketRow(row: Record<string, unknown>): Ticket {
     constraints_use: row.constraints_use ? JSON.parse(row.constraints_use as string) : undefined,
     constraints_avoid: row.constraints_avoid ? JSON.parse(row.constraints_avoid as string) : undefined,
     assumptions: row.assumptions ? JSON.parse(row.assumptions as string) : undefined,
-    tasks: row.tasks ? JSON.parse(row.tasks as string) : undefined,
-    definition_of_done: row.definition_of_done ? JSON.parse(row.definition_of_done as string) : undefined,
     change_class: row.change_class as Ticket['change_class'],
     change_class_reason: row.change_class_reason as string | undefined,
     plan: row.plan ? JSON.parse(row.plan as string) : undefined,

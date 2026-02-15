@@ -11,11 +11,11 @@ export function renderTicketCard(ticket: {
   intent: string;
   change_class?: string;
   change_class_reason?: string;
-  tasks?: { text: string; done: boolean }[];
+  plan?: { taskSteps?: { task: string; steps: string[]; done: boolean }[] };
 }, options?: { isBacklog?: boolean }): string {
   const isBacklog = options?.isBacklog ?? false;
-  const taskCount = ticket.tasks?.length || 0;
-  const doneCount = ticket.tasks?.filter(t => t.done).length || 0;
+  const taskCount = ticket.plan?.taskSteps?.length || 0;
+  const doneCount = ticket.plan?.taskSteps?.filter(t => t.done).length || 0;
   const progress = taskCount > 0 ? Math.round((doneCount / taskCount) * 100) : 0;
 
   const remaining = taskCount - doneCount;
@@ -160,7 +160,7 @@ export function renderColumnMore(
     intent: string;
     change_class?: string;
     change_class_reason?: string;
-    tasks?: { text: string; done: boolean }[];
+    plan?: { taskSteps?: { task: string; steps: string[]; done: boolean }[] };
   }[],
   status: string,
   nextOffset: number,
@@ -194,15 +194,13 @@ export function renderTicketModal(ticket: {
   constraints_use?: string[];
   constraints_avoid?: string[];
   assumptions?: string[];
-  tasks?: { text: string; done: boolean }[];
-  definition_of_done?: { text: string; done: boolean }[];
   change_class?: string;
   change_class_reason?: string;
   origin_spec_id?: string;
   plan?: {
     files: string[];
-    taskSteps: { task: string; steps: string[] }[];
-    dodVerification: { dod: string; verify: string }[];
+    taskSteps: { task: string; steps: string[]; done: boolean }[];
+    dodVerification: { dod: string; verify: string; done: boolean }[];
     decisions: { choice: string; reason: string }[];
     tradeOffs: { considered: string; rejected: string }[];
     rollback?: { steps: string[]; reversibility: 'full' | 'partial' | 'none' };
@@ -324,8 +322,7 @@ export function renderTicketModal(ticket: {
                 <span class="font-medium text-blue-700">Tasks → Steps:</span>
                 <div class="mt-1 space-y-2">
                   ${ticket.plan.taskSteps.map((ts, i) => {
-                    const taskItem = ticket.tasks?.[i];
-                    const isDone = taskItem?.done ?? false;
+                    const isDone = ts.done ?? false;
                     return `
                     <div class="ml-1">
                       <div class="flex items-center gap-2">
@@ -350,8 +347,7 @@ export function renderTicketModal(ticket: {
                 <span class="font-medium text-blue-700">Definition of Done → Verification:</span>
                 <div class="mt-1 space-y-1">
                   ${ticket.plan.dodVerification.map((dv, i) => {
-                    const dodItem = ticket.definition_of_done?.[i];
-                    const isDone = dodItem?.done ?? false;
+                    const isDone = dv.done ?? false;
                     return `
                     <div class="flex items-start gap-2 ml-1">
                       <input type="checkbox" ${isDone ? 'checked' : ''}
@@ -414,40 +410,7 @@ export function renderTicketModal(ticket: {
             ` : ''}
           </div>
         </div>
-      ` : /* Fallback: show tasks/DoD without plan */ `
-        ${ticket.tasks?.length ? `
-          <div class="mb-4">
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">Tasks</h3>
-            <ul class="space-y-1">
-              ${ticket.tasks.map((t, i) => `
-                <li class="flex items-center gap-2">
-                  <input type="checkbox" ${t.done ? 'checked' : ''}
-                         class="rounded border-gray-300"
-                         hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/task/${i}"
-                         hx-swap="none">
-                  <span class="${t.done ? 'line-through text-gray-400' : 'text-gray-700'} text-sm">${escapeHtml(t.text)}</span>
-                </li>
-              `).join('')}
-            </ul>
-          </div>
-        ` : ''}
-        ${ticket.definition_of_done?.length ? `
-          <div class="mb-4">
-            <h3 class="text-sm font-semibold text-gray-700 mb-2">Definition of Done</h3>
-            <ul class="space-y-1">
-              ${ticket.definition_of_done.map((d, i) => `
-                <li class="flex items-center gap-2">
-                  <input type="checkbox" ${d.done ? 'checked' : ''}
-                         class="rounded border-gray-300"
-                         hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/dod/${i}"
-                         hx-swap="none">
-                  <span class="${d.done ? 'line-through text-gray-400' : 'text-gray-700'} text-sm">${escapeHtml(d.text)}</span>
-                </li>
-              `).join('')}
-            </ul>
-          </div>
-        ` : ''}
-      `}
+      ` : ''}
 
       ${ticket.derived_knowledge?.length ? `
         <div class="mb-4">

@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS tickets (
   constraints_use TEXT,
   constraints_avoid TEXT,
   assumptions TEXT,
-  tasks TEXT,
-  definition_of_done TEXT,
   change_class TEXT,
   change_class_reason TEXT,
   plan TEXT,
