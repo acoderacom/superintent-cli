@@ -55,6 +55,12 @@ interface ParsedTicket {
   changeClass?: string;
   changeClassReason?: string;
   planContent?: string;
+  // Track which fields were explicitly provided in markdown (for validation)
+  _explicit?: {
+    type?: string;       // Raw value before validation
+    title?: boolean;     // Whether # heading was present
+    changeClass?: string; // Raw value before validation
+  };
 }
 
 interface ValidationIssue {
@@ -66,11 +72,53 @@ interface ValidationIssue {
 /**
  * Validate a parsed ticket — errors block creation, warnings are informational
  */
-function validateParsedTicket(parsed: ParsedTicket): ValidationIssue[] {
+function validateParsedTicket(parsed: ParsedTicket, plan?: TicketPlan): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  const validTypes = ['feature', 'bugfix', 'refactor', 'docs', 'chore', 'test'];
+  const validClasses = ['A', 'B', 'C'];
 
-  if (!parsed.intent) {
-    issues.push({ field: 'intent', severity: 'error', message: 'Missing **Intent:** field' });
+  // Intent: required and must not be whitespace-only
+  if (!parsed.intent || !parsed.intent.trim()) {
+    issues.push({ field: 'intent', severity: 'error', message: 'Missing or empty **Intent:** field' });
+  }
+
+  // Title: optional, but if # heading was used it must have content
+  if (parsed._explicit?.title && (!parsed.title || !parsed.title.trim())) {
+    issues.push({ field: 'title', severity: 'error', message: 'Title heading is present but empty' });
+  }
+
+  // Type: optional (auto-inferred), but if **Type:** was provided the value must be valid
+  if (parsed._explicit?.type !== undefined) {
+    const raw = parsed._explicit.type;
+    if (!raw) {
+      issues.push({ field: 'type', severity: 'error', message: 'Empty **Type:** field. Must be one of: ' + validTypes.join(', ') });
+    } else if (!validTypes.includes(raw)) {
+      issues.push({ field: 'type', severity: 'error', message: `Invalid ticket type '${raw}'. Must be one of: ${validTypes.join(', ')}` });
+    }
+  }
+
+  // Change Class: optional, but if provided must be A, B, or C
+  if (parsed._explicit?.changeClass !== undefined) {
+    const raw = parsed._explicit.changeClass.toUpperCase();
+    if (!raw) {
+      issues.push({ field: 'changeClass', severity: 'error', message: 'Empty **Change Class:** field. Must be A, B, or C' });
+    } else if (!validClasses.includes(raw)) {
+      issues.push({ field: 'changeClass', severity: 'error', message: `Invalid change class '${parsed._explicit.changeClass}'. Must be A, B, or C` });
+    }
+  }
+
+  // Plan: validate tasks have descriptions and DoD items have criteria
+  if (plan) {
+    for (let i = 0; i < plan.taskSteps.length; i++) {
+      if (!plan.taskSteps[i].task || !plan.taskSteps[i].task.trim()) {
+        issues.push({ field: 'plan.taskSteps', severity: 'error', message: `Plan task #${i + 1} has empty task description` });
+      }
+    }
+    for (let i = 0; i < plan.dodVerification.length; i++) {
+      if (!plan.dodVerification[i].dod || !plan.dodVerification[i].dod.trim()) {
+        issues.push({ field: 'plan.dodVerification', severity: 'error', message: `Plan DoD item #${i + 1} has empty criterion` });
+      }
+    }
   }
 
   return issues;
@@ -91,7 +139,7 @@ function parseMarkdownTicket(content: string): ParsedTicket {
   }
 
   const lines = ticketContent.split('\n');
-  const ticket: ParsedTicket = { intent: '', planContent };
+  const ticket: ParsedTicket = { intent: '', planContent, _explicit: {} };
 
   let currentSection = '';
   let contextLines: string[] = [];
@@ -101,9 +149,10 @@ function parseMarkdownTicket(content: string): ParsedTicket {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // Parse title: # {intent summary}
-    if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
-      ticket.title = trimmed.substring(2).trim();
+    // Parse title: # {intent summary} — also detect bare "#" as empty title
+    if ((trimmed === '#' || (trimmed.startsWith('# ') && !trimmed.startsWith('## '))) ) {
+      ticket.title = trimmed === '#' ? '' : trimmed.substring(2).trim();
+      ticket._explicit!.title = true;
     }
 
     // Parse fields — **Field:** format only (matches SKILL.md)
@@ -116,6 +165,7 @@ function parseMarkdownTicket(content: string): ParsedTicket {
 
     if (isType) {
       const typeValue = trimmed.replace(/^\*\*Type:\*\*\s*/, '').trim().toLowerCase();
+      ticket._explicit!.type = typeValue;
       if (['feature', 'bugfix', 'refactor', 'docs', 'chore', 'test'].includes(typeValue)) {
         ticket.type = typeValue as TicketType;
       }
@@ -164,6 +214,7 @@ function parseMarkdownTicket(content: string): ParsedTicket {
       } else {
         ticket.changeClass = classLine;
       }
+      ticket._explicit!.changeClass = ticket.changeClass;
     } else if (trimmed.startsWith('- ')) {
       const text = trimmed.substring(2).trim();
       if (currentSection === 'constraints') {
@@ -304,15 +355,15 @@ function parsePlanMarkdown(content: string): TicketPlan {
       continue;
     }
 
-    // Parse numbered list items (e.g., "1. Task name")
-    const numberedMatch = trimmed.match(/^\d+\.\s+(.+)/);
+    // Parse numbered list items (e.g., "1. Task name") — also match empty "1. "
+    const numberedMatch = trimmed.match(/^\d+\.\s*(.*)/);
     if (numberedMatch && currentSection === 'taskSteps') {
       // Save previous task if exists
       if (currentTaskSteps) {
         plan.taskSteps.push(currentTaskSteps);
       }
       currentTaskSteps = {
-        task: numberedMatch[1].trim(),
+        task: (numberedMatch[1] || '').trim(),
         steps: [],
         done: false,
       };
@@ -651,7 +702,11 @@ ticketCommand
         }
 
         const parsed = parseMarkdownTicket(content);
-        const issues = validateParsedTicket(parsed);
+        // Parse plan before validation so plan-level checks can run
+        if (parsed.planContent) {
+          plan = parsePlanMarkdown(parsed.planContent);
+        }
+        const issues = validateParsedTicket(parsed, plan || undefined);
         const errors = issues.filter(i => i.severity === 'error');
 
         if (errors.length > 0) {
@@ -669,10 +724,6 @@ ticketCommand
         changeClass = parsed.changeClass || null;
         changeClassReason = parsed.changeClassReason || null;
         originSpecId = options.spec || null;
-        // Parse plan (tasks and DoD live inside plan with done tracking)
-        if (parsed.planContent) {
-          plan = parsePlanMarkdown(parsed.planContent);
-        }
       } else {
         // Use CLI options
         if (!options.intent) {
