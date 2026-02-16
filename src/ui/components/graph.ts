@@ -5,7 +5,11 @@ export function renderGraphView(): string {
     <div>
       <h1 class="text-xl font-bold text-gray-800 mb-4">Knowledge Graph</h1>
       <div id="graph-container" class="relative bg-white border border-gray-200 shadow-2xs rounded-md">
-        <div id="graph-canvas" style="height: calc(100dvh - 160px); width: 100%;"></div>
+        <div id="graph-loading" class="flex flex-col justify-center items-center gap-3" style="height: calc(100dvh - 160px);">
+          <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+          <p class="text-sm text-gray-500">Stabilizing graph…</p>
+        </div>
+        <div id="graph-canvas" style="height: calc(100dvh - 160px); width: 100%; opacity: 0;"></div>
 
         <!-- Legend -->
         <div class="absolute bottom-3 left-3 right-3 md:right-auto md:max-w-fit bg-white/90 border border-gray-200 rounded-lg px-3 py-2 text-xs">
@@ -50,7 +54,8 @@ export function getGraphScript(): string {
           .then(function(r) { return r.json(); })
           .then(function(data) {
             if (!data.nodes || data.nodes.length === 0) {
-              container.innerHTML = '<p class="text-gray-500 text-center py-16">No knowledge entries yet. Create some knowledge to see the graph.</p>';
+              var loader = document.getElementById('graph-loading');
+              if (loader) loader.innerHTML = '<p class="text-gray-500 text-center py-16">No knowledge entries yet. Create some knowledge to see the graph.</p>';
               return;
             }
 
@@ -109,8 +114,13 @@ export function getGraphScript(): string {
             graphNetwork = new vis.Network(container, { nodes: nodes, edges: edges }, options);
 
             graphNetwork.once('stabilizationIterationsDone', function() {
+              graphNetwork.setOptions({ physics: { stabilization: false } });
               graphNetwork.redraw();
               graphNetwork.fit();
+              // Reveal canvas, hide loader
+              container.style.opacity = '1';
+              var loader = document.getElementById('graph-loading');
+              if (loader) loader.style.display = 'none';
             });
 
             graphNetwork.on('click', function(params) {
@@ -122,7 +132,8 @@ export function getGraphScript(): string {
             });
           })
           .catch(function() {
-            container.innerHTML = '<p class="text-red-500 text-center py-16">Failed to load graph data.</p>';
+            var loader = document.getElementById('graph-loading');
+            if (loader) loader.innerHTML = '<p class="text-red-500 text-center py-16">Failed to load graph data.</p>';
           });
       }
 
@@ -142,8 +153,12 @@ export function getGraphScript(): string {
       }
 
       window._refreshGraph = function() {
-        if (document.getElementById('graph-canvas')) {
+        var canvas = document.getElementById('graph-canvas');
+        if (canvas) {
           graphNetwork = null;
+          canvas.style.opacity = '0';
+          var loader = document.getElementById('graph-loading');
+          if (loader) { loader.style.display = ''; loader.innerHTML = '<div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div><p class="text-sm text-gray-500">Stabilizing graph…</p>'; }
           loadGraphData();
         }
       };

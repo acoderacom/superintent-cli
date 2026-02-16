@@ -177,7 +177,7 @@ export function getHtml(namespace: string, version: string): string {
         <!-- Spec View -->
         <div id="view-spec" class="hidden mx-auto" hx-get="/partials/spec-view" hx-trigger="revealed"></div>
         <!-- Knowledge Graph View -->
-        <div id="view-graph" class="hidden" hx-get="/partials/graph-view" hx-trigger="revealed"></div>
+        <div id="view-graph" class="hidden" hx-get="/partials/graph-view" hx-trigger="intersect once"></div>
       </div>
     </div>
   </main>
