@@ -1,3 +1,4 @@
+import type http from 'node:http';
 import { Command } from 'commander';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
@@ -78,7 +79,7 @@ export const uiCommand = new Command('ui')
     }
 
     // ============ SSE ENDPOINT ============
-    app.get('/api/events', (c) => {
+    app.get('/api/events', () => {
       const stream = createSSEStream();
       return new Response(stream, {
         headers: {
@@ -1267,13 +1268,18 @@ export const uiCommand = new Command('ui')
     // that holds mutexes. Forceful exit kills those threads mid-lock, causing:
     //   "libc++abi: terminating due to uncaught exception of type std::__1::system_error: mutex lock failed"
     // Instead, close all JS-side handles and let Node.js exit on its own.
+    let shuttingDown = false;
     const shutdown = () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
       console.log('\n\x1b[90m  See ya!\x1b[0m\n');
       closeAllSSEClients();
-      server.close(async () => {
-        await disposeEmbedder();
-        closeClient();
-      });
+      // closeAllConnections forces immediate shutdown instead of waiting for drain
+      if ('closeAllConnections' in server) {
+        (server as http.Server).closeAllConnections();
+      }
+      server.close();
+      disposeEmbedder().then(() => closeClient());
     };
 
     process.on('SIGINT', shutdown);

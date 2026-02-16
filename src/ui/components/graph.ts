@@ -108,6 +108,11 @@ export function getGraphScript(): string {
 
             graphNetwork = new vis.Network(container, { nodes: nodes, edges: edges }, options);
 
+            graphNetwork.once('stabilizationIterationsDone', function() {
+              graphNetwork.redraw();
+              graphNetwork.fit();
+            });
+
             graphNetwork.on('click', function(params) {
               if (params.nodes.length > 0) {
                 var nodeId = params.nodes[0];
@@ -125,7 +130,10 @@ export function getGraphScript(): string {
         var canvas = document.getElementById('graph-canvas');
         if (!canvas) return;
         if (graphNetwork) return;
-        loadVisNetwork(function() { loadGraphData(); });
+        // Defer until browser has computed container dimensions
+        requestAnimationFrame(function() {
+          loadVisNetwork(function() { loadGraphData(); });
+        });
       }
 
       window._refreshGraph = function() {
