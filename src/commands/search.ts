@@ -19,7 +19,7 @@ export const searchCommand = new Command('search')
     try {
       const client = await getClient();
       try {
-        const queryEmbedding = await embed(query);
+        const queryEmbedding = await embed(query, true);
 
         const results = await performVectorSearch(client, queryEmbedding, {
           namespace: options.namespace,

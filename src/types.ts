@@ -74,7 +74,7 @@ export interface Comment {
 }
 
 // ── Knowledge ───────────────────────────────────────────────────────
-// RAG entries with 384-dim vector embeddings for semantic search.
+// RAG entries with 384-dim vector embeddings (snowflake-arctic-embed-s) for semantic search.
 // Content follows a structured format per category:
 //   pattern:      Why / When / Pattern
 //   truth:        Fact / Verified

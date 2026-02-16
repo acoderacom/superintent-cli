@@ -458,7 +458,7 @@ export const uiCommand = new Command('ui')
         }
 
         const client = await getClient();
-        const queryEmbedding = await embed(query);
+        const queryEmbedding = await embed(query, true);
         const results = await performVectorSearch(client, queryEmbedding, {
           namespace, category, limit,
         });
@@ -616,7 +616,7 @@ export const uiCommand = new Command('ui')
         }
 
         const client = await getClient();
-        const queryEmbedding = await embed(query);
+        const queryEmbedding = await embed(query, true);
         const results = await performVectorSearch(client, queryEmbedding, {
           namespace, category, limit,
         });
