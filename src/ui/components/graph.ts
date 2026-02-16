@@ -129,7 +129,12 @@ export function getGraphScript(): string {
       function initGraph() {
         var canvas = document.getElementById('graph-canvas');
         if (!canvas) return;
-        if (graphNetwork) return;
+        if (graphNetwork) {
+          // Redraw and fit when tab becomes visible again (may have had 0 dimensions)
+          graphNetwork.redraw();
+          graphNetwork.fit();
+          return;
+        }
         // Defer until browser has computed container dimensions
         requestAnimationFrame(function() {
           loadVisNetwork(function() { loadGraphData(); });

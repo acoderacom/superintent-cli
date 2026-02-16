@@ -285,6 +285,12 @@ export function getHtml(namespace: string, version: string): string {
       if (updateHash) {
         history.replaceState(null, '', '#' + tab);
       }
+      // Init graph when switching to graph tab (afterSettle won't fire if partial already loaded)
+      if (tab === 'graph') {
+        setTimeout(function() {
+          if (typeof window._initGraph === 'function') window._initGraph();
+        }, 50);
+      }
       // Close sidebar on mobile after selection
       closeSidebarOnMobile();
     }
