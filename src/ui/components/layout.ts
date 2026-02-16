@@ -10,50 +10,10 @@ export function getHtml(namespace: string, version: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Superintent</title>
   <link rel="stylesheet" href="/styles.css">
-<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@17.0.1/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@4.1.0/dist/jspdf.umd.min.js"></script>
-  <style>
-    .drag-over { outline: 2px dashed var(--color-blue-500); background: var(--color-blue-50); }
-    .dragging { opacity: 0.5; }
-    .htmx-indicator { display: none; }
-    .htmx-request .htmx-indicator { display: inline-block; }
-    .htmx-request.htmx-indicator { display: inline-block; }
-    .nav-active { background: var(--color-gray-200); font-weight: 500; }
-    .score-bar { height: 4px; border-radius: 2px; }
-    .modal-content { max-height: 85vh; min-height: 200px; }
-    #modal { opacity: 0; transition: opacity 150ms ease-out; }
-    #modal.show { opacity: 1; }
-    #modal-content { transform: scale(0.95); transition: transform 150ms ease-out; }
-    #modal.show #modal-content { transform: scale(1); }
-    /* Search modal */
-    #search-modal { opacity: 0; transition: opacity 150ms ease-out; }
-    #search-modal.show { opacity: 1; }
-    #search-modal-content { transform: scale(0.95) translateY(-10px); transition: transform 150ms ease-out; }
-    #search-modal.show #search-modal-content { transform: scale(1) translateY(0); }
-    /* Sidebar transitions */
-    #sidebar { transition: translate 300ms ease-in-out, transform 300ms ease-in-out; }
-    #sidebar-backdrop { transition: opacity 200ms ease-in-out; }
-    /* Markdown prose styles */
-    .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; }
-    .markdown-content h1 { font-size: 1.25em; }
-    .markdown-content h2 { font-size: 1.1em; }
-    .markdown-content h3 { font-size: 1em; }
-    .markdown-content p { margin-bottom: 0.75em; }
-    .markdown-content ul, .markdown-content ol { margin-left: 1.5em; margin-bottom: 0.75em; }
-    .markdown-content ul { list-style-type: disc; }
-    .markdown-content ol { list-style-type: decimal; }
-    .markdown-content li { margin-bottom: 0.25em; }
-    .markdown-content code { background: var(--color-gray-200); padding: 0.125em 0.25em; border-radius: 0.25em; font-size: 0.9em; }
-    .markdown-content pre { background: var(--color-gray-800); color: var(--color-gray-100); padding: 0.75em; border-radius: 0.375em; overflow-x: auto; margin-bottom: 0.75em; }
-    .markdown-content pre code { background: none; padding: 0; color: inherit; }
-    .markdown-content strong { font-weight: 600; }
-    .markdown-content a { color: var(--color-blue-600); text-decoration: underline; }
-    .markdown-content blockquote { border-left: 3px solid var(--color-gray-300); padding-left: 1em; color: var(--color-gray-500); margin-bottom: 0.75em; }
-    .markdown-content li:has(> input[type="checkbox"]) { list-style: none; display: flex; align-items: baseline; gap: 0.4em; margin-left: -1.5em; }
-    .markdown-content li > input[type="checkbox"] { margin: 0; pointer-events: none; }
-  </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
 

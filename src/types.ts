@@ -1,25 +1,30 @@
-// Plan structure - single source of truth for tasks, DoD, and execution state
+// ── Ticket Plan ─────────────────────────────────────────────────────
+// Execution blueprint attached to a ticket. Tracks implementation tasks,
+// definition of done, architectural decisions, and rollback strategy.
+
 export interface TicketPlan {
-  files: string[];                                    // Files to edit
-  taskSteps: { task: string; steps: string[]; done: boolean }[];    // Each task → implementation steps + completion
-  dodVerification: { dod: string; verify: string; done: boolean }[]; // Each DoD → verification method + completion
-  decisions: { choice: string; reason: string }[];   // Key decisions made
-  tradeOffs: { considered: string; rejected: string }[]; // Alternatives rejected & why
-  rollback?: {                                        // How to undo (required for Class B/C)
+  files: string[];
+  taskSteps: { task: string; steps: string[]; done: boolean }[];
+  dodVerification: { dod: string; verify: string; done: boolean }[];
+  decisions: { choice: string; reason: string }[];
+  tradeOffs: { considered: string; rejected: string }[];
+  rollback?: {
     steps: string[];
     reversibility: 'full' | 'partial' | 'none';
   };
-  irreversibleActions: string[];                     // Actions that can't be undone
-  edgeCases: string[];                               // Conditions that might cause issues
+  irreversibleActions: string[];
+  edgeCases: string[];
 }
 
-// Ticket type (AI-inferred from intent)
+// ── Tickets ─────────────────────────────────────────────────────────
+// Development work items with an 8-status lifecycle.
+// Type is auto-inferred from intent keywords when omitted.
+
 export type TicketType = 'feature' | 'bugfix' | 'refactor' | 'docs' | 'chore' | 'test';
 
-// Ticket types
 export interface Ticket {
   id: string;
-  type?: TicketType;                                  // AI-inferred from intent
+  type?: TicketType;
   title?: string;
   status: 'Backlog' | 'In Progress' | 'In Review' | 'Done' | 'Blocked' | 'Paused' | 'Abandoned' | 'Superseded';
   intent: string;
@@ -37,19 +42,7 @@ export interface Ticket {
   updated_at?: string;
 }
 
-// Comment types (polymorphic)
-export type CommentParentType = 'ticket' | 'knowledge' | 'spec';
-
-export interface Comment {
-  id: string;
-  parent_type: CommentParentType;
-  parent_id: string;
-  author: string;
-  text: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
+// JSON input shape for ticket create/update via --stdin (camelCase keys).
 export interface TicketInput {
   id: string;
   type?: TicketType;
@@ -65,7 +58,30 @@ export interface TicketInput {
   changeClassReason?: string;
 }
 
-// Knowledge types (RAG-based)
+// ── Comments ────────────────────────────────────────────────────────
+// Polymorphic: attached to tickets, knowledge, or specs via parent_type/parent_id.
+
+export type CommentParentType = 'ticket' | 'knowledge' | 'spec';
+
+export interface Comment {
+  id: string;
+  parent_type: CommentParentType;
+  parent_id: string;
+  author: string;
+  text: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ── Knowledge ───────────────────────────────────────────────────────
+// RAG entries with 384-dim vector embeddings for semantic search.
+// Content follows a structured format per category:
+//   pattern:      Why / When / Pattern
+//   truth:        Fact / Verified
+//   principle:    Rule / Why / Applies
+//   architecture: Component / Responsibility / Interfaces
+//   gotcha:       Attempted / Failed Because / Instead / Symptoms
+
 export type KnowledgeCategory = 'pattern' | 'truth' | 'principle' | 'architecture' | 'gotcha';
 export type DecisionScope = 'new-only' | 'backward-compatible' | 'global' | 'legacy-frozen';
 export type KnowledgeSource = 'ticket' | 'discovery' | 'manual';
@@ -80,7 +96,7 @@ export interface Knowledge {
   tags?: string[];
   source: KnowledgeSource;
   origin_ticket_id?: string;
-  origin_ticket_type?: TicketType;                    // What kind of ticket spawned this
+  origin_ticket_type?: TicketType;
   confidence: number;
   active: boolean;
   decision_scope: DecisionScope;
@@ -92,33 +108,29 @@ export interface Knowledge {
   updated_at?: string;
 }
 
+// JSON input shape for knowledge create/update via --stdin (camelCase keys).
 export interface KnowledgeInput {
-  namespace?: string;  // Defaults to 'global'
+  namespace?: string;
   title: string;
-  content: string;    // Structured format: Why:\n...\n\nWhen:\n...\n\nPattern:\n...
+  content: string;
   category?: KnowledgeCategory;
   tags?: string[];
-  source?: KnowledgeSource;  // Defaults to 'manual'
+  source?: KnowledgeSource;
   originTicketId?: string;
-  originTicketType?: TicketType;  // What kind of ticket spawned this
+  originTicketType?: TicketType;
   confidence?: number;
-  decisionScope?: DecisionScope;  // Defaults to 'global'
+  decisionScope?: DecisionScope;
   author?: string;
   branch?: string;
 }
-
-// Content format by category:
-// - pattern:   Why:\n...\n\nWhen:\n...\n\nPattern:\n...
-// - truth:     Fact:\n...\n\nVerified:\n...
-// - principle: Rule:\n...\n\nWhy:\n...\n\nApplies:\n...
-// - architecture: Component:\n...\n\nResponsibility:\n...\n\nInterfaces:\n...
-// - gotcha:    Attempted:\n...\n\nFailed Because:\n...\n\nInstead:\n...\n\nSymptoms:\n...
 
 export interface SearchResult extends Knowledge {
   score: number;
 }
 
-// Spec types
+// ── Specs ───────────────────────────────────────────────────────────
+// Feature specifications. Describe what to build; tickets come later.
+
 export interface Spec {
   id: string;
   title: string;
@@ -128,7 +140,9 @@ export interface Spec {
   updated_at?: string;
 }
 
-// CLI output types
+// ── CLI Response ────────────────────────────────────────────────────
+// Uniform JSON envelope for all CLI command output.
+
 export interface CliResponse<T = unknown> {
   success: boolean;
   data?: T;

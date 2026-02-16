@@ -1069,12 +1069,6 @@ export const uiCommand = new Command('ui')
         const id = c.req.param('id');
         const client = await getClient();
 
-        // Get comment info before deleting (for re-rendering parent)
-        const commentResult = await client.execute({
-          sql: 'SELECT parent_type, parent_id FROM comments WHERE id = ?',
-          args: [id],
-        });
-
         await client.execute({
           sql: 'DELETE FROM comments WHERE id = ?',
           args: [id],

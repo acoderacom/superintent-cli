@@ -113,7 +113,7 @@ export function renderSearchResults(results: {
                 </div>
                 <p class="text-sm text-gray-600 mt-1 line-clamp-3">${escapeHtml(r.content.slice(0, 300))}${r.content.length > 300 ? '...' : ''}</p>
               </div>
-              <div class="text-right flex-shrink-0">
+              <div class="text-right shrink-0">
                 <div class="text-lg font-bold text-${color}-600">${scorePercent}%</div>
                 <div class="text-xs text-gray-400">match</div>
               </div>
