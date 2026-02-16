@@ -37,7 +37,7 @@ function renderCommentCard(comment: Comment): string {
         </div>
         <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button type="button"
-                  class="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                  class="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer"
                   title="Edit comment"
                   hx-get="/partials/edit-comment/${encodeURIComponent(comment.id)}"
                   hx-target="#comment-${escapeHtml(comment.id)}"
@@ -47,7 +47,7 @@ function renderCommentCard(comment: Comment): string {
             </svg>
           </button>
           <button type="button"
-                  class="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                  class="p-1 text-gray-400 hover:text-red-600 rounded transition-colors cursor-pointer"
                   title="Delete comment"
                   hx-delete="/api/comments/${encodeURIComponent(comment.id)}"
                   hx-target="#comment-${escapeHtml(comment.id)}"
@@ -77,14 +77,14 @@ export function renderEditCommentForm(comment: Comment): string {
                   class="w-full px-2 py-1.5 text-sm border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">${escapeHtml(comment.text)}</textarea>
         <div class="flex justify-end gap-2 mt-2">
           <button type="button"
-                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
+                  class="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 cursor-pointer"
                   hx-get="/partials/comment/${encodeURIComponent(comment.id)}"
                   hx-target="#comments-section"
                   hx-swap="outerHTML">
             Cancel
           </button>
           <button type="submit"
-                  class="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700">
+                  class="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 cursor-pointer">
             Save
           </button>
         </div>
@@ -108,7 +108,7 @@ function renderInlineCommentForm(parentType: CommentParentType, parentId: string
              required
              class="flex-1 px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
       <button type="submit"
-              class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shrink-0">
+              class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shrink-0 cursor-pointer">
         Comment
       </button>
     </form>

@@ -13,6 +13,7 @@ export function getHtml(namespace: string, version: string): string {
 <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@17.0.1/lib/marked.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@4.1.0/dist/jspdf.umd.min.js"></script>
   <style>
     .drag-over { outline: 2px dashed var(--color-blue-500); background: var(--color-blue-50); }
     .dragging { opacity: 0.5; }
@@ -437,6 +438,243 @@ export function getHtml(namespace: string, version: string): string {
         showSearchModal();
       }
     });
+
+    // Export knowledge as Markdown file
+    function exportKnowledgeAsMarkdown(id) {
+      const dataEl = document.getElementById('knowledge-export-data');
+      if (!dataEl) return;
+      const k = JSON.parse(dataEl.textContent);
+      const lines = [
+        '# ' + k.title,
+        '',
+        '**ID:** ' + k.id,
+        '**Namespace:** ' + k.namespace,
+        '**Category:** ' + (k.category || 'N/A'),
+        '**Source:** ' + k.source + (k.origin_ticket_type ? ' (' + k.origin_ticket_type + ')' : ''),
+        '**Confidence:** ' + Math.round(k.confidence * 100) + '%',
+        '**Scope:** ' + k.decision_scope,
+        '**Status:** ' + (k.active ? 'Active' : 'Inactive'),
+      ];
+      if (k.author) lines.push('**Author:** ' + k.author);
+      if (k.branch) lines.push('**Branch:** ' + k.branch);
+      if (k.origin_ticket_id) lines.push('**Origin Ticket:** ' + k.origin_ticket_id);
+      if (k.tags && k.tags.length) lines.push('**Tags:** ' + k.tags.join(', '));
+      lines.push('', '---', '', k.content, '', '---', '', '*Created: ' + (k.created_at || 'N/A') + '*', '*Updated: ' + (k.updated_at || 'N/A') + '*');
+      const blob = new Blob([lines.join('\\n')], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = k.id + '.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Export knowledge as PDF file
+    function exportKnowledgeAsPDF(id) {
+      const dataEl = document.getElementById('knowledge-export-data');
+      if (!dataEl || typeof jspdf === 'undefined') return;
+      const k = JSON.parse(dataEl.textContent);
+      const { jsPDF } = jspdf;
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 15;
+      const maxWidth = pageWidth - margin * 2;
+      let y = 20;
+
+      function checkPage(needed) {
+        if (y + needed > doc.internal.pageSize.getHeight() - 15) {
+          doc.addPage();
+          y = 20;
+        }
+      }
+
+      // Title
+      doc.setFontSize(18);
+      doc.setFont(undefined, 'bold');
+      const titleLines = doc.splitTextToSize(k.title, maxWidth);
+      checkPage(titleLines.length * 8);
+      doc.text(titleLines, margin, y);
+      y += titleLines.length * 8 + 4;
+
+      // Metadata
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(100);
+      const meta = [
+        'ID: ' + k.id,
+        'Category: ' + (k.category || 'N/A') + '  |  Confidence: ' + Math.round(k.confidence * 100) + '%  |  Scope: ' + k.decision_scope,
+        'Source: ' + k.source + (k.origin_ticket_type ? ' (' + k.origin_ticket_type + ')' : '') + '  |  Status: ' + (k.active ? 'Active' : 'Inactive'),
+        'Namespace: ' + k.namespace + (k.author ? '  |  Author: ' + k.author : '') + (k.branch ? '  |  Branch: ' + k.branch : ''),
+      ];
+      if (k.origin_ticket_id) meta.push('Origin Ticket: ' + k.origin_ticket_id);
+      if (k.tags && k.tags.length) meta.push('Tags: ' + k.tags.join(', '));
+      for (const line of meta) {
+        checkPage(6);
+        doc.text(line, margin, y);
+        y += 5;
+      }
+      y += 4;
+
+      // Separator
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      // Unicode replacements for jsPDF built-in fonts
+      function sanitizePdf(text) {
+        return text
+          .replace(/\\u2192|\\u279c|\\u2794/g, '->')   // → arrows
+          .replace(/\\u2190/g, '<-')                    // ←
+          .replace(/\\u2194/g, '<->')                   // ↔
+          .replace(/\\u2013/g, '--')                    // en dash
+          .replace(/\\u2014/g, '---')                   // em dash
+          .replace(/\\u2018|\\u2019/g, "'")             // smart quotes
+          .replace(/\\u201c|\\u201d/g, '"')             // smart double quotes
+          .replace(/\\u2026/g, '...')                   // ellipsis
+          .replace(/\\u2022/g, '*')                     // bullet
+          .replace(/\\u2713|\\u2714/g, '[x]')           // checkmarks
+          .replace(/\\u2717|\\u2718/g, '[ ]')           // crosses
+          .replace(/\\u00d7/g, 'x')                     // × multiplication sign
+          .replace(/[^\\x00-\\x7F]/g, '?');             // fallback for remaining non-ASCII
+      }
+
+      // Render segments with inline bold and code on one line
+      function renderSegments(doc, text, startX, y, mw) {
+        var segRegex = /(\\*\\*(.+?)\\*\\*|\`([^\`]+)\`)/g;
+        var segments = [];
+        var last = 0;
+        var m;
+        while ((m = segRegex.exec(text)) !== null) {
+          if (m.index > last) segments.push({ t: text.slice(last, m.index), s: 'n' });
+          if (m[2]) segments.push({ t: m[2], s: 'b' });
+          else if (m[3]) segments.push({ t: m[3], s: 'c' });
+          last = m.index + m[0].length;
+        }
+        if (last < text.length) segments.push({ t: text.slice(last), s: 'n' });
+        if (segments.length === 0) segments.push({ t: text, s: 'n' });
+
+        var curX = startX;
+        var lineH = 5.5;
+        for (var si = 0; si < segments.length; si++) {
+          var seg = segments[si];
+          var st = sanitizePdf(seg.t);
+          if (seg.s === 'b') {
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(11);
+          } else if (seg.s === 'c') {
+            doc.setFont('Courier', 'normal');
+            doc.setFontSize(10);
+          } else {
+            doc.setFont('Helvetica', 'normal');
+            doc.setFontSize(11);
+          }
+          var tw = doc.getTextWidth(st);
+          if (curX + tw > startX + mw && curX > startX) {
+            y += lineH;
+            curX = startX;
+            checkPage(lineH);
+          }
+          if (tw > mw) {
+            var words = st.split(' ');
+            for (var wi = 0; wi < words.length; wi++) {
+              var word = (wi > 0 ? ' ' : '') + words[wi];
+              var ww = doc.getTextWidth(word);
+              if (curX + ww > startX + mw && curX > startX) {
+                y += lineH;
+                curX = startX;
+                checkPage(lineH);
+                word = words[wi];
+              }
+              doc.text(word, curX, y);
+              curX += doc.getTextWidth(word);
+            }
+          } else {
+            doc.text(st, curX, y);
+            curX += tw;
+          }
+        }
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(11);
+        return y;
+      }
+
+      // Content — parse markdown for code blocks, headings, inline bold/code
+      doc.setTextColor(0);
+      var inCodeBlock = false;
+      var codeBlockPad = 3;
+      var codeIndent = margin + codeBlockPad;
+      var codeMaxWidth = maxWidth - codeBlockPad * 2;
+      var rawLines = k.content.split('\\n');
+
+      for (var li = 0; li < rawLines.length; li++) {
+        var rawLine = rawLines[li];
+
+        // Toggle fenced code blocks
+        if (rawLine.trimStart().startsWith('\`\`\`')) {
+          if (!inCodeBlock) {
+            inCodeBlock = true;
+            y += 2;
+          } else {
+            inCodeBlock = false;
+            y += 2;
+          }
+          continue;
+        }
+
+        if (inCodeBlock) {
+          // Code block line: gray bg, monospace
+          doc.setFont('Courier', 'normal');
+          doc.setFontSize(9);
+          var codeLine = sanitizePdf(rawLine || ' ');
+          var codeWrapped = doc.splitTextToSize(codeLine, codeMaxWidth);
+          var blockH = codeWrapped.length * 4.5;
+          checkPage(blockH + 1);
+          doc.setFillColor(240, 240, 240);
+          doc.rect(margin, y - 3.5, maxWidth, blockH + 2, 'F');
+          doc.setTextColor(50);
+          for (var ci = 0; ci < codeWrapped.length; ci++) {
+            doc.text(codeWrapped[ci], codeIndent, y);
+            y += 4.5;
+          }
+          doc.setTextColor(0);
+        } else if (rawLine.trim() === '') {
+          y += 3;
+        } else {
+          // Detect headings
+          var headingMatch = rawLine.match(/^(#{1,3})\\s+(.*)/);
+          if (headingMatch) {
+            var level = headingMatch[1].length;
+            var headingText = sanitizePdf(headingMatch[2]);
+            y += 3;
+            doc.setFont('Helvetica', 'bold');
+            doc.setFontSize(level === 1 ? 15 : level === 2 ? 13 : 11.5);
+            doc.setTextColor(0);
+            var hLines = doc.splitTextToSize(headingText, maxWidth);
+            checkPage(hLines.length * 6 + 2);
+            doc.text(hLines, margin, y);
+            y += hLines.length * 6 + 2;
+            continue;
+          }
+
+          // Render line with inline bold/code segments
+          checkPage(6);
+          doc.setTextColor(0);
+          y = renderSegments(doc, rawLine, margin, y, maxWidth);
+          y += 5.5;
+        }
+      }
+
+      // Footer
+      y += 6;
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      checkPage(10);
+      doc.text('Created: ' + (k.created_at || 'N/A') + '  |  Updated: ' + (k.updated_at || 'N/A'), margin, y);
+
+      doc.save(k.id + '.pdf');
+    }
 
     // Drag and drop
     let draggedId = null;

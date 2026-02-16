@@ -188,7 +188,7 @@ export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, f
     <div class="space-y-3">
       ${items.map(k => renderKnowledgeCard(k)).join('')}
       ${hasMore ? `
-        <button class="block mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+        <button class="block mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors cursor-pointer"
                 hx-get="/partials/knowledge-more?offset=12${filterParams}"
                 hx-swap="outerHTML">
           Load More
@@ -210,7 +210,7 @@ export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, 
 
   return `
     ${cards}
-    <button class="block mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+    <button class="block mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors cursor-pointer"
             hx-get="/partials/knowledge-more?offset=${nextOffset}${filterParams}"
             hx-swap="outerHTML">
       Load More
@@ -255,7 +255,7 @@ export function renderKnowledgeModal(knowledge: {
           <div class="flex items-center gap-2 mb-1">
             <span class="text-xs font-mono text-gray-400">${escapeHtml(knowledge.id)}</span>
             <button type="button"
-                    class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                    class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer"
                     title="Copy knowledge ID"
                     onclick="navigator.clipboard.writeText('${escapeHtml(knowledge.id)}').then(() => { const svg = this.querySelector('svg'); const originalPath = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = originalPath; this.classList.remove('text-green-600'); }, 1500); })">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,21 +334,55 @@ export function renderKnowledgeModal(knowledge: {
 
       ${renderCommentsSection(comments || [], 'knowledge', knowledge.id)}
 
+      <!-- Hidden export data -->
+      <script id="knowledge-export-data" type="application/json">${JSON.stringify({
+        id: knowledge.id,
+        title: knowledge.title,
+        content: knowledge.content,
+        namespace: knowledge.namespace,
+        category: knowledge.category,
+        source: knowledge.source,
+        origin_ticket_id: knowledge.origin_ticket_id,
+        origin_ticket_type: knowledge.origin_ticket_type,
+        confidence: knowledge.confidence,
+        active: knowledge.active,
+        decision_scope: knowledge.decision_scope,
+        tags: knowledge.tags,
+        author: knowledge.author,
+        branch: knowledge.branch,
+        created_at: knowledge.created_at,
+        updated_at: knowledge.updated_at,
+      })}</script>
+
       <!-- Actions & Metadata Footer -->
       <div class="mt-6 pt-4 border-t flex items-center justify-between">
         <div class="text-xs text-gray-400">
           <span>Created: ${knowledge.created_at || 'N/A'}</span>
           <span class="ml-4">Updated: ${knowledge.updated_at || 'N/A'}</span>
         </div>
-        <button type="button"
-                class="px-3 py-1.5 text-xs font-medium ${knowledge.active ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-green-700 bg-green-50 hover:bg-green-100'} rounded transition-colors"
-                hx-patch="/api/knowledge/${knowledge.id}/active"
-                hx-vals='{"active": ${!knowledge.active}}'
-                hx-target="#modal-content"
-                hx-swap="innerHTML"
-                hx-on::after-request="htmx.trigger('#knowledge-list', 'refresh')">
-          ${knowledge.active ? 'Deactivate' : 'Activate'}
-        </button>
+        <div class="flex items-center gap-2">
+          <button type="button"
+                  class="p-1.5 text-gray-500 bg-gray-100 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                  onclick="exportKnowledgeAsMarkdown('${escapeHtml(knowledge.id)}')"
+                  title="Export as Markdown">
+            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M212.24,83.76l-56-56A6,6,0,0,0,152,26H56A14,14,0,0,0,42,40v72a6,6,0,0,0,12,0V40a2,2,0,0,1,2-2h90V88a6,6,0,0,0,6,6h50V224a6,6,0,0,0,12,0V88A6,6,0,0,0,212.24,83.76ZM158,46.48,193.52,82H158ZM144,146H128a6,6,0,0,0-6,6v56a6,6,0,0,0,6,6h16a34,34,0,0,0,0-68Zm0,56H134V158h10a22,22,0,0,1,0,44Zm-42-50v56a6,6,0,0,1-12,0V171L72.92,195.44a6,6,0,0,1-9.84,0L46,171v37a6,6,0,0,1-12,0V152a6,6,0,0,1,10.92-3.44l23.08,33,23.08-33A6,6,0,0,1,102,152Z"></path></svg>
+          </button>
+          <button type="button"
+                  class="p-1.5 text-gray-500 bg-gray-100 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                  onclick="exportKnowledgeAsPDF('${escapeHtml(knowledge.id)}')"
+                  title="Export as PDF">
+            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M222,152a6,6,0,0,1-6,6H190v20h18a6,6,0,0,1,0,12H190v18a6,6,0,0,1-12,0V152a6,6,0,0,1,6-6h32A6,6,0,0,1,222,152ZM90,172a26,26,0,0,1-26,26H54v10a6,6,0,0,1-12,0V152a6,6,0,0,1,6-6H64A26,26,0,0,1,90,172Zm-12,0a14,14,0,0,0-14-14H54v28H64A14,14,0,0,0,78,172Zm84,8a34,34,0,0,1-34,34H112a6,6,0,0,1-6-6V152a6,6,0,0,1,6-6h16A34,34,0,0,1,162,180Zm-12,0a22,22,0,0,0-22-22H118v44h10A22,22,0,0,0,150,180ZM42,112V40A14,14,0,0,1,56,26h96a6,6,0,0,1,4.25,1.76l56,56A6,6,0,0,1,214,88v24a6,6,0,0,1-12,0V94H152a6,6,0,0,1-6-6V38H56a2,2,0,0,0-2,2v72a6,6,0,0,1-12,0ZM158,82h35.52L158,46.48Z"></path></svg>
+          </button>
+          <button type="button"
+                  class="px-3 py-1.5 text-xs font-medium ${knowledge.active ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-green-700 bg-green-50 hover:bg-green-100'} rounded transition-colors cursor-pointer"
+                  hx-patch="/api/knowledge/${knowledge.id}/active"
+                  hx-vals='{"active": ${!knowledge.active}}'
+                  hx-target="#modal-content"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="htmx.trigger('#knowledge-list', 'refresh')">
+            ${knowledge.active ? 'Deactivate' : 'Activate'}
+          </button>
+        </div>
       </div>
     </div>
   `;

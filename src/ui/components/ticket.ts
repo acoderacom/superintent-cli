@@ -53,7 +53,7 @@ export function renderTicketCard(ticket: {
       <div class="flex items-start justify-between mb-1">
         <div class="text-xs font-mono text-gray-400">${escapeHtml(ticket.id)}</div>
         ${isBacklog ? `
-          <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
+          <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all cursor-pointer"
                   title="Edit ticket"
                   hx-get="/partials/edit-ticket-modal/${encodeURIComponent(ticket.id)}"
                   hx-target="#modal-content"
@@ -123,7 +123,7 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
               <h2 class="font-semibold text-${style.color}-700">${col.status}</h2>
               <div class="flex items-center gap-2">
                 ${isBacklog ? `
-                  <button class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+                  <button class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors cursor-pointer"
                           hx-get="/partials/new-ticket-modal"
                           hx-target="#modal-content"
                           hx-trigger="click"
@@ -137,7 +137,7 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
             <div id="tickets-${statusSlug}" class="space-y-3 overflow-y-auto flex-1 min-h-0 -mx-1 px-1 py-1">
               ${col.tickets.map(t => renderTicketCard(t, { isBacklog })).join('')}
               ${col.hasMore ? `
-                <button class="w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors shrink-0"
+                <button class="w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors shrink-0 cursor-pointer"
                         hx-get="/partials/kanban-column/${encodeURIComponent(col.status)}?offset=12"
                         hx-swap="outerHTML">
                   Load More
@@ -175,7 +175,7 @@ export function renderColumnMore(
 
   return `
     ${cards}
-    <button class="w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+    <button class="w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors cursor-pointer"
             hx-get="/partials/kanban-column/${encodeURIComponent(status)}?offset=${nextOffset}"
             hx-swap="outerHTML">
       Load More
@@ -241,7 +241,7 @@ export function renderTicketModal(ticket: {
           <div class="flex items-center gap-2 mb-1">
             <span class="text-xs font-mono text-gray-400">${escapeHtml(ticket.id)}</span>
             <button type="button"
-                    class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                    class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer"
                     title="Copy ticket ID"
                     onclick="navigator.clipboard.writeText('${escapeHtml(ticket.id)}').then(() => { const svg = this.querySelector('svg'); const originalPath = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = originalPath; this.classList.remove('text-green-600'); }, 1500); })">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -550,11 +550,11 @@ export function renderNewTicketModal(): string {
 
         <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
           <button type="button" onclick="hideModal()"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors cursor-pointer">
             Cancel
           </button>
           <button type="submit"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors cursor-pointer">
             Create Ticket
           </button>
         </div>
@@ -619,11 +619,11 @@ export function renderEditTicketModal(ticket: {
 
         <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
           <button type="button" onclick="hideModal()"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors cursor-pointer">
             Cancel
           </button>
           <button type="submit"
-                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
+                  class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors cursor-pointer">
             Save Changes
           </button>
         </div>
