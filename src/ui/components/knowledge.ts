@@ -92,7 +92,8 @@ export function renderKnowledgeView(): string {
       </aside>
 
       <main class="flex-1">
-        <div id="knowledge-list" hx-get="/partials/knowledge-list" hx-trigger="load, refresh" hx-swap="innerHTML">
+        <div id="knowledge-list" hx-get="/partials/knowledge-list" hx-trigger="load, refresh" hx-swap="innerHTML"
+             hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch']">
         </div>
       </main>
     </div>

@@ -36,6 +36,7 @@ import {
 } from '../ui/components/index.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
+import { emitSSE, createSSEStream, closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
 import type { Comment } from '../types.js';
 
 export const uiCommand = new Command('ui')
@@ -74,6 +75,18 @@ export const uiCommand = new Command('ui')
       });
       return result.rows.map(row => parseCommentRow(row as Record<string, unknown>));
     }
+
+    // ============ SSE ENDPOINT ============
+    app.get('/api/events', (c) => {
+      const stream = createSSEStream();
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    });
 
     // ============ MAIN HTML ============
     app.get('/', (c) => c.html(getHtml(namespace, version)));
@@ -148,6 +161,7 @@ export const uiCommand = new Command('ui')
                 args: [newStatus, JSON.stringify(plan), id],
               });
 
+              emitSSE('ticket-updated');
               return c.json({ success: true, data: { id, status: newStatus } });
             }
           }
@@ -158,6 +172,7 @@ export const uiCommand = new Command('ui')
           args: [newStatus, id],
         });
 
+        emitSSE('ticket-updated');
         return c.json({ success: true, data: { id, status: newStatus } });
       } catch (error) {
         return c.json({ success: false, error: (error as Error).message }, 500);
@@ -189,6 +204,7 @@ export const uiCommand = new Command('ui')
             sql: `UPDATE tickets SET plan = ?, updated_at = datetime('now') WHERE id = ?`,
             args: [JSON.stringify(plan), id],
           });
+          emitSSE('ticket-updated');
         }
 
         return c.json({ success: true });
@@ -222,6 +238,7 @@ export const uiCommand = new Command('ui')
             sql: `UPDATE tickets SET plan = ?, updated_at = datetime('now') WHERE id = ?`,
             args: [JSON.stringify(plan), id],
           });
+          emitSSE('ticket-updated');
         }
 
         return c.json({ success: true });
@@ -285,6 +302,7 @@ export const uiCommand = new Command('ui')
         const archiveTickets = archiveResult.rows.slice(0, limit).map((row) => parseTicketRow(row as Record<string, unknown>));
         columnData.push({ status: 'Archived', tickets: archiveTickets, hasMore: archiveHasMore });
 
+        emitSSE('ticket-updated');
         return c.html(renderKanbanColumns(columnData));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-2">Error: ${(error as Error).message}</div>`, 500);
@@ -313,6 +331,7 @@ export const uiCommand = new Command('ui')
           return c.json({ success: false, error: 'Ticket not found' }, 404);
         }
 
+        emitSSE('ticket-updated');
         return c.json({ success: true });
       } catch (error) {
         return c.json({ success: false, error: (error as Error).message }, 500);
@@ -357,6 +376,7 @@ export const uiCommand = new Command('ui')
         const ticketComments = await fetchComments('ticket', id);
         // Trigger kanban refresh in the background
         c.header('HX-Trigger', 'refresh');
+        emitSSE('ticket-updated');
         return c.html(renderTicketModal(ticket, ticketComments));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-2">Error: ${(error as Error).message}</div>`, 500);
@@ -392,6 +412,7 @@ export const uiCommand = new Command('ui')
 
         const knowledge = parseKnowledgeRow(result.rows[0] as Record<string, unknown>);
         const activeToggleComments = await fetchComments('knowledge', id);
+        emitSSE('knowledge-updated');
         return c.html(renderKnowledgeModal(knowledge, activeToggleComments));
       } catch (error) {
         return c.html(`<div class="p-6 text-red-500">Error: ${(error as Error).message}</div>`, 500);
@@ -909,6 +930,7 @@ export const uiCommand = new Command('ui')
 
         const editSpecComments = await fetchComments('spec', id);
         c.header('HX-Trigger', 'refresh');
+        emitSSE('spec-updated');
         return c.html(renderSpecModal(spec, relatedTickets, editSpecComments));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-2">Error: ${(error as Error).message}</div>`, 500);
@@ -960,6 +982,7 @@ export const uiCommand = new Command('ui')
           ticketCounts[row.origin_spec_id as string] = Number(row.cnt);
         }
 
+        emitSSE('spec-updated');
         return c.html(renderSpecList(specs, ticketCounts, specHasMore));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-2">Error: ${(error as Error).message}</div>`, 500);
@@ -994,6 +1017,7 @@ export const uiCommand = new Command('ui')
           ticketCounts[row.origin_spec_id as string] = Number(row.cnt);
         }
 
+        emitSSE('spec-updated');
         return c.html(renderSpecList(specs, ticketCounts, specHasMore));
       } catch (error) {
         return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
@@ -1023,6 +1047,7 @@ export const uiCommand = new Command('ui')
         });
 
         const comments = await fetchComments(parentType, parentId);
+        emitSSE(`${parentType}-updated` as 'ticket-updated' | 'knowledge-updated' | 'spec-updated');
         return c.html(renderCommentsSection(comments, parentType as Comment['parent_type'], parentId));
       } catch (error) {
         return c.html(`<p class="text-red-500 text-sm">Error: ${(error as Error).message}</p>`, 500);
@@ -1057,6 +1082,7 @@ export const uiCommand = new Command('ui')
         const comment = parseCommentRow(result.rows[0] as Record<string, unknown>);
         // Re-render the full comments section to keep state consistent
         const comments = await fetchComments(comment.parent_type, comment.parent_id);
+        emitSSE(`${comment.parent_type}-updated` as 'ticket-updated' | 'knowledge-updated' | 'spec-updated');
         return c.html(renderCommentsSection(comments, comment.parent_type, comment.parent_id));
       } catch (error) {
         return c.html(`<p class="text-red-500 text-sm">Error: ${(error as Error).message}</p>`, 500);
@@ -1069,10 +1095,21 @@ export const uiCommand = new Command('ui')
         const id = c.req.param('id');
         const client = await getClient();
 
+        // Fetch parent info before deleting for SSE notification
+        const commentResult = await client.execute({
+          sql: 'SELECT parent_type FROM comments WHERE id = ?',
+          args: [id],
+        });
+
         await client.execute({
           sql: 'DELETE FROM comments WHERE id = ?',
           args: [id],
         });
+
+        if (commentResult.rows.length > 0) {
+          const parentType = commentResult.rows[0].parent_type as string;
+          emitSSE(`${parentType}-updated` as 'ticket-updated' | 'knowledge-updated' | 'spec-updated');
+        }
 
         // Return empty string to remove the comment card
         return c.html('');
@@ -1163,6 +1200,9 @@ export const uiCommand = new Command('ui')
       hostname: '127.0.0.1',
     });
 
+    // Start DB change watcher for external mutations (CLI, other clients)
+    getClient().then(client => startChangeWatcher(client));
+
     if (options.open) {
       setTimeout(() => {
         open(`http://localhost:${port}`);
@@ -1176,6 +1216,7 @@ export const uiCommand = new Command('ui')
     // Instead, close all JS-side handles and let Node.js exit on its own.
     const shutdown = () => {
       console.log('\n\x1b[90m  See ya!\x1b[0m\n');
+      closeAllSSEClients();
       server.close(async () => {
         await disposeEmbedder();
         closeClient();

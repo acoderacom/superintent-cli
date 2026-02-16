@@ -691,6 +691,40 @@ export function getHtml(namespace: string, version: string): string {
       processMarkdownElements();
     });
 
+    // ============ SSE: Real-time updates ============
+    (function() {
+      var evtSource = null;
+
+      function connectSSE() {
+        evtSource = new EventSource('/api/events');
+
+        evtSource.addEventListener('ticket-updated', function() {
+          var el = document.getElementById('kanban-columns');
+          if (el) htmx.trigger(el, 'refresh');
+        });
+
+        evtSource.addEventListener('knowledge-updated', function() {
+          var el = document.getElementById('knowledge-list');
+          if (el) htmx.trigger(el, 'refresh');
+        });
+
+        evtSource.addEventListener('spec-updated', function() {
+          var el = document.getElementById('spec-list');
+          if (el) htmx.trigger(el, 'refresh');
+        });
+
+        evtSource.onerror = function() {
+          // Browser auto-reconnects; no custom logic needed
+        };
+      }
+
+      connectSSE();
+
+      window.addEventListener('beforeunload', function() {
+        if (evtSource) evtSource.close();
+      });
+    })();
+
   </script>
 </body>
 </html>`;
