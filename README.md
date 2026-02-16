@@ -5,10 +5,13 @@ The data layer for [Superintent](https://github.com/acoderacom/superintent). Man
 ## Requirements
 
 - Node.js >= 18.0.0
+- [Claude Code](https://claude.com/claude-code) with the [Superintent plugin](https://github.com/acoderacom/superintent)
+
+This CLI is designed to work with the Superintent Claude Code plugin. The plugin provides skills (`/ticket`, `/spec`, `/task`, etc.) that drive the CLI commands and manage the knowledge loop.
 
 ## Quick Start
 
-Install the [Superintent plugin](https://github.com/acoderacom/superintent), then run in Claude Code:
+Install the Superintent plugin in Claude Code, then run:
 
 ```
 /superintent:setup
@@ -28,8 +31,8 @@ Install the [Superintent plugin](https://github.com/acoderacom/superintent), the
 │  │               search, extract, init,     │
 │  │               status, ui                 │
 │  ├── db/         libSQL client, schema,     │
-│  │               parsers, usage tracking    │
-│  ├── embed/      all-MiniLM-L6-v2 (384d)    │
+│  │               parsers, search, usage     │
+│  ├── embed/      bge-small-en-v1.5 (384d)   │
 │  └── ui/         Hono + HTMX web dashboard  │
 └──────────────┬──────────────────────────────┘
                │
@@ -37,7 +40,8 @@ Install the [Superintent plugin](https://github.com/acoderacom/superintent), the
 │  Turso/libSQL                               │
 │  ├── tickets     work items + plans         │
 │  ├── knowledge   RAG entries + F32_BLOB     │
-│  └── specs       feature specifications     │
+│  ├── specs       feature specifications     │
+│  └── comments    polymorphic comments       │
 └─────────────────────────────────────────────┘
 ```
 
@@ -48,72 +52,61 @@ All commands output structured JSON: `{ success: boolean, data?: T, error?: stri
 ### Tickets
 
 ```bash
-# Create (stdin markdown)
+# Create (JSON stdin)
 superintent ticket create --stdin <<'TICKET'
-# Add user authentication
-
-**Type:** feature
-**Intent:** Add JWT-based auth to the API
-**Context:** All endpoints currently public
-**Constraints:**
-- Use: jsonwebtoken, bcrypt
-- Avoid: session cookies
-**Change Class:** B - Adds middleware to all routes
-
-## Plan
-
-**Files:** src/middleware/auth.ts, src/routes/auth.ts
-
-**Tasks → Steps:**
-1. Create auth middleware
-   - JWT verification
-   - Error handling
-2. Add login/register routes
-   - Password hashing
-   - Token generation
-
-**DoD → Verification:**
-- All protected routes require valid JWT → curl returns 401 without token
-- Passwords hashed with bcrypt → DB inspection shows no plaintext
+{
+  "title": "Add user authentication",
+  "type": "feature",
+  "intent": "Add JWT-based auth to the API",
+  "context": "All endpoints currently public",
+  "constraintsUse": ["jsonwebtoken", "bcrypt"],
+  "constraintsAvoid": ["session cookies"],
+  "changeClass": "B",
+  "changeClassReason": "Adds middleware to all routes",
+  "plan": {
+    "files": ["src/middleware/auth.ts", "src/routes/auth.ts"],
+    "tasks": [
+      { "description": "Create auth middleware", "steps": ["JWT verification", "Error handling"] },
+      { "description": "Add login/register routes", "steps": ["Password hashing", "Token generation"] }
+    ],
+    "dod": [
+      { "criterion": "All protected routes require valid JWT", "verification": "curl returns 401 without token" },
+      { "criterion": "Passwords hashed with bcrypt", "verification": "DB inspection shows no plaintext" }
+    ]
+  }
+}
 TICKET
 
 # Manage
 superintent ticket get <id>
+superintent ticket preview <id>
 superintent ticket list [--status <status>] [--limit N]
-superintent ticket update <id> [--status] [--context] [--comment <text>] [--author] [--complete-task 0,1] [--complete-dod 0,1] [--complete-all] [--plan-stdin] [--spec <spec-id>]
+superintent ticket update <id> [--stdin] [--status] [--context] [--comment <text>] [--author] [--complete-task 0,1] [--complete-dod 0,1] [--complete-all] [--spec <spec-id>]
 superintent ticket delete <id>
 ```
 
 ### Knowledge
 
 ```bash
-# Create (stdin markdown)
+# Create (JSON stdin)
 superintent knowledge create --stdin <<'KNOWLEDGE'
-# API Error Handling Pattern
-
-**Namespace:** my-project
-**Category:** pattern
-**Source:** discovery
-**Confidence:** 0.85
-**Scope:** new-only
-**Tags:** api, error-handling
-
-## Content
-
-Why:
-Consistent error responses across all endpoints.
-
-When:
-All new API routes.
-
-Pattern:
-Wrap handlers in try/catch, return { success, error }.
+{
+  "title": "API Error Handling Pattern",
+  "namespace": "my-project",
+  "category": "pattern",
+  "source": "discovery",
+  "confidence": 0.85,
+  "scope": "new-only",
+  "tags": ["api", "error-handling"],
+  "content": "Why:\nConsistent error responses across all endpoints.\n\nWhen:\nAll new API routes.\n\nPattern:\nWrap handlers in try/catch, return { success, error }."
+}
 KNOWLEDGE
 
 # Manage
 superintent knowledge get <id>
+superintent knowledge preview <id>
 superintent knowledge list [--namespace] [--category] [--scope] [--source] [--author] [--branch] [--status active|inactive|all] [--limit N]
-superintent knowledge update <id> [--title] [--content-stdin] [--namespace] [--category] [--tags] [--scope] [--origin <ticketId>] [--confidence <n>] [--comment] [--author]
+superintent knowledge update <id> [--stdin] [--title] [--namespace] [--category] [--tags] [--scope] [--origin <ticketId>] [--confidence <n>] [--comment] [--author]
 superintent knowledge activate <id>
 superintent knowledge deactivate <id>
 superintent knowledge promote <id>
@@ -128,30 +121,25 @@ Semantic search using cosine similarity against 384-dimensional embeddings.
 superintent search "error handling" [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score 0.45] [--limit 5]
 ```
 
-Score interpretation: ≥0.45 relevant, ≥0.55 strong match. Falls back to non-indexed search if vector index unavailable.
+Score interpretation: >=0.45 relevant, >=0.55 strong match. Falls back to non-indexed search if vector index unavailable.
 
 ### Specs
 
 ```bash
+# Create (JSON stdin)
 superintent spec create --stdin <<'SPEC'
-# User Authentication System
-
-## Summary
-Full auth: registration, login, JWT, middleware.
-
-## Scope
-**In Scope:** JWT auth, password hashing, protected routes
-**Out of Scope:** OAuth, 2FA, password reset
-
-## Work Areas
-1. User model and registration
-2. Login and token generation
-3. Auth middleware
+{
+  "title": "User Authentication System",
+  "content": "## Summary\nFull auth: registration, login, JWT, middleware.\n\n## Scope\n**In Scope:** JWT auth, password hashing, protected routes\n**Out of Scope:** OAuth, 2FA, password reset\n\n## Work Areas\n1. User model and registration\n2. Login and token generation\n3. Auth middleware",
+  "author": "your-name"
+}
 SPEC
 
+# Manage
 superintent spec get <id>
+superintent spec preview <id>
 superintent spec list [--limit N]
-superintent spec update <id> [--title] [--content-stdin] [--comment] [--author]
+superintent spec update <id> [--stdin] [--title] [--comment] [--author]
 superintent spec delete <id>
 ```
 
@@ -210,7 +198,7 @@ Project namespace is read from `CLAUDE.md` (`- Namespace: <n>`), falling back to
 
 ## Embedding Model
 
-Uses [all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2) via `@huggingface/transformers`. The model (~23MB) downloads on first use and caches locally. Runs entirely on-device — no API calls for embeddings.
+Uses [bge-small-en-v1.5](https://huggingface.co/Xenova/bge-small-en-v1.5) via `@huggingface/transformers`. The model (~32MB quantized ONNX) downloads on first use and caches locally. Runs entirely on-device — no API calls for embeddings. Uses CLS pooling with query prefixing for optimal retrieval.
 
 ## License
 
