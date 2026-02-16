@@ -83,6 +83,12 @@ export function getHtml(namespace: string, version: string): string {
   <!-- ========== END HEADER ========== -->
 
   <!-- ========== SIDEBAR ========== -->
+  <script>
+    // Apply collapsed state immediately to prevent flash
+    if (window.innerWidth >= 1024 && localStorage.getItem('sidebar-collapsed') === 'true') {
+      document.write('<style id="sidebar-collapsed-style">@media(min-width:1024px){#sidebar{transform:translateX(-100%)!important}#main-content{padding-inline-start:0!important}}</style>');
+    }
+  </script>
   <aside id="sidebar" class="fixed inset-y-0 start-0 z-40 w-60 bg-gray-100 pt-13 -translate-x-full lg:translate-x-0">
     <div class="relative flex flex-col h-full max-h-full">
       <nav class="p-3 flex-1 flex flex-col overflow-y-auto">
@@ -187,7 +193,7 @@ export function getHtml(namespace: string, version: string): string {
 
   <!-- Modal (knowledge detail, tickets, specs — layers on top of search modal) -->
   <div id="modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-60" onclick="if(event.target===this)hideModal()">
-    <div id="modal-content" class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4">
+    <div id="modal-content" class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4 max-h-[90vh]">
       <!-- Modal content loaded via HTMX -->
     </div>
   </div>
@@ -215,13 +221,18 @@ export function getHtml(namespace: string, version: string): string {
 
       if (window.innerWidth >= 1024) {
         // Desktop: collapse/expand sidebar + shift main content
-        const isCollapsed = sidebar.style.transform === 'translateX(-100%)';
+        const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+        // Remove the injected <style> from initial load if present
+        var injected = document.getElementById('sidebar-collapsed-style');
+        if (injected) injected.remove();
         if (isCollapsed) {
           sidebar.style.transform = '';
           main.classList.add('lg:ps-60');
+          localStorage.setItem('sidebar-collapsed', 'false');
         } else {
           sidebar.style.transform = 'translateX(-100%)';
           main.classList.remove('lg:ps-60');
+          localStorage.setItem('sidebar-collapsed', 'true');
         }
       } else {
         // Mobile: overlay with backdrop

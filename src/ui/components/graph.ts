@@ -8,7 +8,7 @@ export function renderGraphView(): string {
         <div id="graph-canvas" style="height: calc(100dvh - 160px); width: 100%;"></div>
 
         <!-- Legend -->
-        <div class="absolute bottom-3 left-3 bg-white/90 border border-gray-200 rounded-lg px-3 py-2 text-xs">
+        <div class="absolute bottom-3 left-3 right-3 md:right-auto md:max-w-fit bg-white/90 border border-gray-200 rounded-lg px-3 py-2 text-xs">
           <div class="font-medium text-gray-700 mb-1.5">Categories</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1">
             <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#3B82F6"></span> architecture</span>
