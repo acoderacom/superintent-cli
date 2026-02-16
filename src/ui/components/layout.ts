@@ -58,7 +58,7 @@ export function getHtml(namespace: string, version: string): string {
                     <div class="flex flex-col gap-y-1">
                       <!-- Active Namespace -->
                       <label class="py-2.5 px-3 group flex justify-start items-center gap-x-3 rounded-lg cursor-pointer text-xs text-gray-800 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100">
-                        <input type="radio" class="hidden" checked>
+                        <input type="radio" class="hidden" name="active-namespace" checked>
                         <svg class="shrink-0 size-4 opacity-0 group-has-checked:opacity-100" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                         <span class="grow">
                           <span class="block text-sm font-medium text-gray-800">
