@@ -33,6 +33,7 @@ import {
   renderEditSpecModal,
   renderCommentsSection,
   renderEditCommentForm,
+  renderGraphView,
 } from '../ui/components/index.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
@@ -489,6 +490,53 @@ export const uiCommand = new Command('ui')
       }
     });
 
+    // Graph data for Knowledge Graph visualization
+    app.get('/api/graph-data', async (c) => {
+      try {
+        const client = await getClient();
+        const result = await client.execute({
+          sql: `SELECT id, title, category, confidence, tags
+                FROM knowledge WHERE active = 1`,
+          args: [],
+        });
+
+        const entries = result.rows.map((row) => ({
+          id: row.id as string,
+          title: row.title as string,
+          category: (row.category as string) || 'architecture',
+          confidence: (row.confidence as number) || 0.5,
+          tags: (() => { try { return JSON.parse((row.tags as string) || '[]'); } catch { return []; } })() as string[],
+        }));
+
+        const nodes = entries.map((e) => ({
+          id: e.id,
+          label: e.title.length > 30 ? e.title.slice(0, 30) + '...' : e.title,
+          category: e.category,
+          confidence: e.confidence,
+          tags: e.tags,
+        }));
+
+        const edges: { from: string; to: string; sharedCount: number; sharedTags: string[] }[] = [];
+        for (let i = 0; i < entries.length; i++) {
+          for (let j = i + 1; j < entries.length; j++) {
+            const shared = entries[i].tags.filter((t) => entries[j].tags.includes(t));
+            if (shared.length > 0) {
+              edges.push({
+                from: entries[i].id,
+                to: entries[j].id,
+                sharedCount: shared.length,
+                sharedTags: shared,
+              });
+            }
+          }
+        }
+
+        return c.json({ nodes, edges });
+      } catch (error) {
+        return c.json({ nodes: [], edges: [], error: (error as Error).message }, 500);
+      }
+    });
+
     // ============ HTMX PARTIAL ROUTES (HTML) ============
 
     // Kanban view
@@ -766,6 +814,11 @@ export const uiCommand = new Command('ui')
     // Spec view
     app.get('/partials/spec-view', (c) => {
       return c.html(renderSpecView());
+    });
+
+    // Graph view
+    app.get('/partials/graph-view', (c) => {
+      return c.html(renderGraphView());
     });
 
     // New spec modal

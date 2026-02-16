@@ -37,6 +37,12 @@ export {
   renderEditCommentForm,
 } from './comments.js';
 
+// Graph components
+export {
+  renderGraphView,
+  getGraphScript,
+} from './graph.js';
+
 // Spec components
 export {
   renderSpecView,

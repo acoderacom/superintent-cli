@@ -1,5 +1,6 @@
 // Main layout component for Superintent Web UI
 import { escapeHtml } from './utils.js';
+import { getGraphScript } from './graph.js';
 
 // Main HTML shell with sidebar navigation, header, and JavaScript
 export function getHtml(namespace: string, version: string): string {
@@ -135,6 +136,15 @@ export function getHtml(namespace: string, version: string): string {
                 Specs
               </button>
             </li>
+            <li>
+              <button id="nav-graph" onclick="switchTab('graph')"
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none">
+                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="5" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M6.5 7.5 11 16"/><path d="m17.5 7.5-5.5 8.5"/><path d="M7 6h10"/>
+                </svg>
+                Knowledge Graph
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -160,6 +170,8 @@ export function getHtml(namespace: string, version: string): string {
         <div id="view-knowledge" class="hidden mx-auto" hx-get="/partials/knowledge-view" hx-trigger="revealed"></div>
         <!-- Spec View -->
         <div id="view-spec" class="hidden mx-auto" hx-get="/partials/spec-view" hx-trigger="revealed"></div>
+        <!-- Knowledge Graph View -->
+        <div id="view-graph" class="hidden" hx-get="/partials/graph-view" hx-trigger="revealed"></div>
       </div>
     </div>
   </main>
@@ -265,7 +277,7 @@ export function getHtml(namespace: string, version: string): string {
 
     // Tab/view switching with URL hash persistence
     function switchTab(tab, updateHash = true) {
-      ['ticket', 'knowledge', 'spec'].forEach(t => {
+      ['ticket', 'knowledge', 'spec', 'graph'].forEach(t => {
         document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
         document.getElementById('nav-' + t).classList.toggle('nav-active', t === tab);
       });
@@ -273,8 +285,6 @@ export function getHtml(namespace: string, version: string): string {
       if (updateHash) {
         history.replaceState(null, '', '#' + tab);
       }
-      // Trigger HTMX load for lazy-loaded views
-      htmx.trigger('#view-' + tab, 'revealed');
       // Close sidebar on mobile after selection
       closeSidebarOnMobile();
     }
@@ -282,10 +292,11 @@ export function getHtml(namespace: string, version: string): string {
     // Restore tab from URL hash on page load
     (function() {
       const hash = window.location.hash.slice(1);
-      if (['ticket', 'knowledge', 'spec'].includes(hash)) {
+      if (['ticket', 'knowledge', 'spec', 'graph'].includes(hash)) {
         switchTab(hash, false);
       }
     })();
+
 
     // Markdown rendering with sanitization
     function renderMarkdown(content) {
@@ -691,6 +702,16 @@ export function getHtml(namespace: string, version: string): string {
       processMarkdownElements();
     });
 
+    // Init graph after HTMX swaps in graph partial
+    document.body.addEventListener('htmx:afterSettle', function() {
+      if (document.getElementById('graph-canvas') && typeof window._initGraph === 'function') {
+        window._initGraph();
+      }
+    });
+
+    // ============ Knowledge Graph ============
+    ${getGraphScript()}
+
     // ============ SSE: Real-time updates ============
     (function() {
       var evtSource = null;
@@ -706,6 +727,7 @@ export function getHtml(namespace: string, version: string): string {
         evtSource.addEventListener('knowledge-updated', function() {
           var el = document.getElementById('knowledge-list');
           if (el) htmx.trigger(el, 'refresh');
+          if (typeof window._refreshGraph === 'function') window._refreshGraph();
         });
 
         evtSource.addEventListener('spec-updated', function() {
