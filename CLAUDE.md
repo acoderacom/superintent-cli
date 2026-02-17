@@ -3,7 +3,7 @@
 - Namespace: superintent-cli
 - Database: Local SQLite (`.superintent/local.db`)
 
-Before exploring the codebase, always run `npx superintent search` first — stored knowledge is the primary source of truth. Specs describe features only; never include tickets inside a spec. All `--stdin` flags expect JSON input.
+Before exploring the codebase, always run `npx superintent search --branch main` first — stored knowledge is the primary source of truth. Specs describe features only; never include tickets inside a spec. All `--stdin` flags expect JSON input.
 
 <!-- superintent:knowledge:start -->
 
@@ -42,9 +42,9 @@ Before exploring the codebase, always run `npx superintent search` first — sto
 
 | Command                   | Description            |
 | ------------------------- | ---------------------- |
-| `npx superintent init`   | Create database tables |
+| `npx superintent init [--url <url>]`   | Create database tables |
 | `npx superintent status` | Check Turso connection |
-| `npx superintent ui`     | Start web UI           |
+| `npx superintent ui [-p <port>] [-o]`     | Start web UI (default port 3456, -o to auto-open browser)           |
 
 ### Ticket Operations
 
@@ -73,7 +73,7 @@ Before exploring the codebase, always run `npx superintent search` first — sto
 | Action | Command |
 | --- | --- |
 | Search | `npx superintent search "<query>" [--limit N] [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score]` |
-| Extract | `npx superintent extract <ticket-id>` |
+| Extract | `npx superintent extract <ticket-id> [--namespace <namespace>]` |
 | Create | `npx superintent knowledge create --stdin` (JSON: `{"title","namespace","content","category","source","confidence","scope","tags",[...]}`) |
 | Get | `npx superintent knowledge get <id>` |
 | Preview | `npx superintent knowledge preview <id>` |
