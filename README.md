@@ -59,19 +59,18 @@ superintent ticket create --stdin <<'TICKET'
   "type": "feature",
   "intent": "Add JWT-based auth to the API",
   "context": "All endpoints currently public",
-  "constraintsUse": ["jsonwebtoken", "bcrypt"],
-  "constraintsAvoid": ["session cookies"],
+  "constraints": { "use": ["jsonwebtoken", "bcrypt"], "avoid": ["session cookies"] },
   "changeClass": "B",
   "changeClassReason": "Adds middleware to all routes",
   "plan": {
     "files": ["src/middleware/auth.ts", "src/routes/auth.ts"],
-    "tasks": [
-      { "description": "Create auth middleware", "steps": ["JWT verification", "Error handling"] },
-      { "description": "Add login/register routes", "steps": ["Password hashing", "Token generation"] }
+    "taskSteps": [
+      { "task": "Create auth middleware", "steps": ["JWT verification", "Error handling"] },
+      { "task": "Add login/register routes", "steps": ["Password hashing", "Token generation"] }
     ],
-    "dod": [
-      { "criterion": "All protected routes require valid JWT", "verification": "curl returns 401 without token" },
-      { "criterion": "Passwords hashed with bcrypt", "verification": "DB inspection shows no plaintext" }
+    "dodVerification": [
+      { "dod": "All protected routes require valid JWT", "verify": "curl returns 401 without token" },
+      { "dod": "Passwords hashed with bcrypt", "verify": "DB inspection shows no plaintext" }
     ]
   }
 }
@@ -148,7 +147,7 @@ superintent spec delete <id>
 Generates structured knowledge proposals from completed tickets.
 
 ```bash
-superintent extract <ticket-id>
+superintent extract <ticket-id> [--namespace <namespace>]
 ```
 
 Proposes entries across categories based on ticket intent, assumptions, constraints, decisions, and trade-offs. Designed for human or AI review before saving.
@@ -159,7 +158,7 @@ Proposes entries across categories based on ticket intent, assumptions, constrai
 superintent ui [--port 3456] [--open]
 ```
 
-Four views: Kanban board (tickets by status), Semantic search, Knowledge browser (filterable), Spec viewer (with linked tickets).
+Four tabs: Tickets (kanban board by status), Knowledge (browser with semantic search, filterable), Specs (viewer with linked tickets), Graph (knowledge graph visualization by shared tags).
 
 ### Setup
 
