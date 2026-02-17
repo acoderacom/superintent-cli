@@ -3,8 +3,6 @@
 - Namespace: superintent-cli
 - Database: Local SQLite (`.superintent/local.db`)
 
-Before exploring the codebase, always run `npx superintent search --branch-auto` first — stored knowledge is the primary source of truth. Specs describe features only; never include tickets inside a spec. All `--stdin` flags expect JSON input.
-
 <!-- superintent:knowledge:start -->
 
 ### Key Facts
