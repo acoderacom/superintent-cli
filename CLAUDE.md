@@ -3,7 +3,7 @@
 - Namespace: superintent-cli
 - Database: Local SQLite (`.superintent/local.db`)
 
-Before exploring the codebase, always run `npx superintent search --branch main` first — stored knowledge is the primary source of truth. Specs describe features only; never include tickets inside a spec. All `--stdin` flags expect JSON input.
+Before exploring the codebase, always run `npx superintent search --branch-auto` first — stored knowledge is the primary source of truth. Specs describe features only; never include tickets inside a spec. All `--stdin` flags expect JSON input.
 
 <!-- superintent:knowledge:start -->
 
@@ -72,12 +72,12 @@ Before exploring the codebase, always run `npx superintent search --branch main`
 
 | Action | Command |
 | --- | --- |
-| Search | `npx superintent search "<query>" [--limit N] [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score]` |
+| Search | `npx superintent search "<query>" [--limit N] [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--branch-auto] [--min-score]` |
 | Extract | `npx superintent extract <ticket-id> [--namespace <namespace>]` |
 | Create | `npx superintent knowledge create --stdin` (JSON: `{"title","namespace","content","category","source","confidence","scope","tags",[...]}`) |
 | Get | `npx superintent knowledge get <id>` |
 | Preview | `npx superintent knowledge preview <id>` |
-| List | `npx superintent knowledge list [--namespace] [--category] [--scope] [--source] [--author] [--branch] [--status active\|inactive\|all] [--limit N]` |
+| List | `npx superintent knowledge list [--namespace] [--category] [--scope] [--source] [--author] [--branch] [--branch-auto] [--status active\|inactive\|all] [--limit N]` |
 | Update | `npx superintent knowledge update <id> [--stdin] [--title] [--namespace] [--category] [--tags] [--scope] [--origin] [--confidence] [--comment <text>] [--author <name>]` |
 | Activate | `npx superintent knowledge activate <id>` |
 | Deactivate | `npx superintent knowledge deactivate <id>` |

@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { getClient, closeClient } from '../db/client.js';
 import { performVectorSearch } from '../db/search.js';
 import { embed } from '../embed/model.js';
+import { getGitBranch } from '../utils/git.js';
 import type { SearchResult, CliResponse } from '../types.js';
 
 export const searchCommand = new Command('search')
@@ -13,6 +14,7 @@ export const searchCommand = new Command('search')
   .option('--tags <tags...>', 'Filter by tags (OR logic)')
   .option('--author <author>', 'Filter by author')
   .option('--branch <branch>', 'Filter by branch')
+  .option('--branch-auto', 'Search main + current git branch together')
   .option('--min-score <n>', 'Minimum similarity score 0-1', '0')
   .option('--limit <n>', 'Max results', '5')
   .action(async (query, options) => {
@@ -21,13 +23,20 @@ export const searchCommand = new Command('search')
       try {
         const queryEmbedding = await embed(query, true);
 
+        let branches: string[] | undefined;
+        if (options.branchAuto) {
+          const current = getGitBranch();
+          branches = current === 'main' ? ['main'] : ['main', current];
+        }
+
         const results = await performVectorSearch(client, queryEmbedding, {
           namespace: options.namespace,
           category: options.category,
           ticketType: options.ticketType,
           tags: options.tags,
           author: options.author,
-          branch: options.branch,
+          branch: options.branchAuto ? undefined : options.branch,
+          branches,
           minScore: parseFloat(options.minScore),
           limit: parseInt(options.limit, 10),
         });

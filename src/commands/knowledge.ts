@@ -392,6 +392,7 @@ knowledgeCommand
   .option('--source <source>', 'Filter by source (ticket|discovery|manual)')
   .option('--author <author>', 'Filter by author')
   .option('--branch <branch>', 'Filter by branch')
+  .option('--branch-auto', 'Filter by main + current git branch together')
   .option('--status <status>', 'Filter by status (active|inactive|all)', 'active')
   .option('--limit <n>', 'Limit results', '20')
   .action(async (options) => {
@@ -433,7 +434,16 @@ knowledgeCommand
           args.push(options.author);
         }
 
-        if (options.branch) {
+        if (options.branchAuto) {
+          const current = getGitBranch();
+          if (current === 'main') {
+            conditions.push('branch = ?');
+            args.push('main');
+          } else {
+            conditions.push('branch IN (?, ?)');
+            args.push('main', current);
+          }
+        } else if (options.branch) {
           conditions.push('branch = ?');
           args.push(options.branch);
         }
@@ -755,7 +765,7 @@ knowledgeCommand
       try {
         // Fetch all active knowledge with usage data
         const result = await client.execute({
-          sql: `SELECT id, title, confidence, usage_count, last_used_at, created_at
+          sql: `SELECT id, title, category, confidence, usage_count, last_used_at, created_at
                 FROM knowledge WHERE active = 1`,
           args: [],
         });
@@ -775,6 +785,7 @@ knowledgeCommand
           const currentConfidence = row.confidence as number;
           const usageCount = (row.usage_count as number) || 0;
           const lastUsedAt = row.last_used_at as string | null;
+          const category = row.category as string;
           const createdAt = row.created_at as string;
 
           let adjustment = 0;
@@ -789,7 +800,8 @@ knowledgeCommand
             reasons.push(`good usage (${usageCount}): +0.05`);
           }
 
-          // Staleness-based decay
+          // Staleness-based decay — reduced for stable categories
+          const slowDecay = category === 'truth' || category === 'architecture';
           const referenceDate = lastUsedAt || createdAt;
           if (referenceDate) {
             const daysSince = Math.floor(
@@ -797,11 +809,13 @@ knowledgeCommand
             );
 
             if (daysSince > 180) {
-              adjustment -= 0.20;
-              reasons.push(`very stale (${daysSince}d): -0.20`);
+              const penalty = slowDecay ? 0.05 : 0.20;
+              adjustment -= penalty;
+              reasons.push(`very stale (${daysSince}d): -${penalty.toFixed(2)}`);
             } else if (daysSince > 90) {
-              adjustment -= 0.10;
-              reasons.push(`stale (${daysSince}d): -0.10`);
+              const penalty = slowDecay ? 0.02 : 0.10;
+              adjustment -= penalty;
+              reasons.push(`stale (${daysSince}d): -${penalty.toFixed(2)}`);
             }
           }
 

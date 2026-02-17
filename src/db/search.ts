@@ -10,6 +10,7 @@ export interface VectorSearchOptions {
   tags?: string[];
   author?: string;
   branch?: string;
+  branches?: string[];
   minScore?: number;
   limit: number;
 }
@@ -45,7 +46,11 @@ export async function performVectorSearch(
     conditions.push('k.author = ?');
     filterArgs.push(options.author);
   }
-  if (options.branch) {
+  if (options.branches && options.branches.length > 0) {
+    const placeholders = options.branches.map(() => '?').join(', ');
+    conditions.push(`k.branch IN (${placeholders})`);
+    filterArgs.push(...options.branches);
+  } else if (options.branch) {
     conditions.push('k.branch = ?');
     filterArgs.push(options.branch);
   }
