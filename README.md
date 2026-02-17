@@ -117,7 +117,7 @@ superintent knowledge recalculate [--dry-run]
 Semantic search using cosine similarity against 384-dimensional embeddings.
 
 ```bash
-superintent search "error handling" [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score 0.45] [--limit 5]
+superintent knowledge search "error handling" [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score 0.45] [--limit 5]
 ```
 
 Score interpretation: >=0.45 relevant, >=0.55 strong match. Falls back to non-indexed search if vector index unavailable.
@@ -147,7 +147,7 @@ superintent spec delete <id>
 Generates structured knowledge proposals from completed tickets.
 
 ```bash
-superintent extract <ticket-id> [--namespace <namespace>]
+superintent knowledge extract <ticket-id> [--namespace <namespace>]
 ```
 
 Proposes entries across categories based on ticket intent, assumptions, constraints, decisions, and trade-offs. Designed for human or AI review before saving.

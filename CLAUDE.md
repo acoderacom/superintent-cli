@@ -3,10 +3,12 @@
 - Namespace: superintent-cli
 - Database: Local SQLite (`.superintent/local.db`)
 
+Always search knowledge before exploring the codebase — it is the primary source of truth. All `--stdin` flags expect JSON input.
+
 <!-- superintent:knowledge:start -->
 
 ### Key Facts
-- **CLI Commands Reference** — 8 commands: init, status, ticket, knowledge, search, extract, spec, ui; all output JSON via `CliResponse<T>` (`KNOWLEDGE-20260215-113719412`)
+- **CLI Commands Reference** — 6 top-level commands: init, status, ticket, knowledge, spec, ui; search and extract are subcommands of knowledge; all output JSON via `CliResponse<T>` (`KNOWLEDGE-20260215-113719412`)
 - **Database Schema and Configuration** — 4 tables (tickets, knowledge w/ F32_BLOB vectors, specs, comments); config via .superintent/.env with TURSO_URL/TURSO_AUTH_TOKEN (`KNOWLEDGE-20260215-113629621`)
 - **All CLI Commands Use JSON Stdin** — All create/update via `--stdin` accepting JSON; replaced markdown parsers (`KNOWLEDGE-20260215-165720482`)
 
@@ -70,8 +72,8 @@
 
 | Action | Command |
 | --- | --- |
-| Search | `npx superintent search "<query>" [--limit N] [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--branch-auto] [--min-score]` |
-| Extract | `npx superintent extract <ticket-id> [--namespace <namespace>]` |
+| Search | `npx superintent knowledge search "<query>" [--limit N] [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--branch-auto] [--min-score]` |
+| Extract | `npx superintent knowledge extract <ticket-id> [--namespace <namespace>]` |
 | Create | `npx superintent knowledge create --stdin` (JSON: `{"title","namespace","content","category","source","confidence","scope","tags",[...]}`) |
 | Get | `npx superintent knowledge get <id>` |
 | Preview | `npx superintent knowledge preview <id>` |

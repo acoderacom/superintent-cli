@@ -1,11 +1,14 @@
 import { Command } from 'commander';
 import { getClient, closeClient } from '../db/client.js';
-import { parseKnowledgeRow } from '../db/parsers.js';
+import { parseKnowledgeRow, parseTicketRow } from '../db/parsers.js';
+import { performVectorSearch } from '../db/search.js';
 import { embed } from '../embed/model.js';
 import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
+import { getProjectNamespace } from '../utils/config.js';
 import { getGitUsername, getGitBranch } from '../utils/git.js';
-import type { Knowledge, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType } from '../types.js';
+import { generateExtractProposals } from './ticket.js';
+import type { Knowledge, SearchResult, KnowledgeInput, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType, TicketPlan } from '../types.js';
 
 function clampConfidence(value: number): number {
   if (isNaN(value)) return 0.8;
@@ -867,6 +870,149 @@ knowledgeCommand
       const response: CliResponse = {
         success: false,
         error: `Failed to recalculate confidence: ${(error as Error).message}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(1);
+    }
+  });
+
+// Search subcommand
+knowledgeCommand
+  .command('search')
+  .description('Semantic search knowledge base')
+  .argument('<query>', 'Search query')
+  .option('--namespace <namespace>', 'Filter by namespace (project)')
+  .option('--category <category>', 'Filter by category')
+  .option('--ticket-type <type>', 'Filter by origin ticket type (feature|bugfix|refactor|docs|chore|test)')
+  .option('--tags <tags...>', 'Filter by tags (OR logic)')
+  .option('--author <author>', 'Filter by author')
+  .option('--branch <branch>', 'Filter by branch')
+  .option('--branch-auto', 'Search main + current git branch together')
+  .option('--min-score <n>', 'Minimum similarity score 0-1', '0')
+  .option('--limit <n>', 'Max results', '5')
+  .action(async (query: string, options: Record<string, string | string[]>) => {
+    try {
+      const client = await getClient();
+      try {
+        const queryEmbedding = await embed(query, true);
+
+        let branches: string[] | undefined;
+        if (options.branchAuto) {
+          const current = getGitBranch();
+          branches = current === 'main' ? ['main'] : ['main', current];
+        }
+
+        const results = await performVectorSearch(client, queryEmbedding, {
+          namespace: options.namespace as string | undefined,
+          category: options.category as string | undefined,
+          ticketType: options.ticketType as string | undefined,
+          tags: options.tags as string[] | undefined,
+          author: options.author as string | undefined,
+          branch: options.branchAuto ? undefined : options.branch as string | undefined,
+          branches,
+          minScore: parseFloat(options.minScore as string),
+          limit: parseInt(options.limit as string, 10),
+        });
+
+        const response: CliResponse<{ query: string; results: SearchResult[] }> = {
+          success: true,
+          data: { query, results },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
+    } catch (error) {
+      const response: CliResponse = {
+        success: false,
+        error: `Search failed: ${(error as Error).message}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(1);
+    }
+  });
+
+// Extract subcommand
+interface ExtractProposal {
+  action: 'propose';
+  ticketId: string;
+  namespace: string;
+  ticket: {
+    intent: string;
+    context: string | null;
+    assumptions: string[] | null;
+    constraints_use: string[] | null;
+    constraints_avoid: string[] | null;
+    plan: TicketPlan | null;
+  };
+  suggestedKnowledge: KnowledgeInput[];
+}
+
+knowledgeCommand
+  .command('extract')
+  .description('Extract knowledge from a completed ticket')
+  .argument('<ticket-id>', 'Ticket ID to extract knowledge from')
+  .option('--namespace <namespace>', 'Override namespace (default: derived from ticket)')
+  .action(async (ticketId: string, options: Record<string, string>) => {
+    try {
+      const client = await getClient();
+      let result;
+      try {
+        result = await client.execute({
+          sql: 'SELECT * FROM tickets WHERE id = ?',
+          args: [ticketId],
+        });
+      } finally {
+        closeClient();
+      }
+
+      if (result.rows.length === 0) {
+        const response: CliResponse = {
+          success: false,
+          error: `Ticket ${ticketId} not found`,
+        };
+        console.log(JSON.stringify(response));
+        process.exit(1);
+      }
+
+      const ticket = parseTicketRow(result.rows[0] as Record<string, unknown>);
+
+      if (ticket.status !== 'Done') {
+        const response: CliResponse = {
+          success: false,
+          error: `Ticket ${ticketId} is not Done (status: ${ticket.status}). Only completed tickets can have knowledge extracted.`,
+        };
+        console.log(JSON.stringify(response));
+        process.exit(1);
+      }
+
+      const namespace = options.namespace || getProjectNamespace();
+      const suggestions: KnowledgeInput[] = generateExtractProposals(ticket, namespace);
+
+      const proposal: ExtractProposal = {
+        action: 'propose',
+        ticketId,
+        namespace,
+        ticket: {
+          intent: ticket.intent,
+          context: ticket.context || null,
+          assumptions: ticket.assumptions || null,
+          constraints_use: ticket.constraints_use || null,
+          constraints_avoid: ticket.constraints_avoid || null,
+          plan: ticket.plan || null,
+        },
+        suggestedKnowledge: suggestions,
+      };
+
+      const response: CliResponse<ExtractProposal> = {
+        success: true,
+        data: proposal,
+      };
+      console.log(JSON.stringify(response));
+    } catch (error) {
+      const response: CliResponse = {
+        success: false,
+        error: `Failed to extract knowledge: ${(error as Error).message}`,
       };
       console.log(JSON.stringify(response));
       process.exit(1);

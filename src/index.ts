@@ -6,8 +6,6 @@ import { dirname, join } from 'path';
 import { initCommand } from './commands/init.js';
 import { statusCommand } from './commands/status.js';
 import { ticketCommand } from './commands/ticket.js';
-import { extractCommand } from './commands/extract.js';
-import { searchCommand } from './commands/search.js';
 import { knowledgeCommand } from './commands/knowledge.js';
 import { uiCommand } from './commands/ui.js';
 import { specCommand } from './commands/spec.js';
@@ -27,8 +25,6 @@ program
 program.addCommand(initCommand);
 program.addCommand(statusCommand);
 program.addCommand(ticketCommand);
-program.addCommand(extractCommand);
-program.addCommand(searchCommand);
 program.addCommand(knowledgeCommand);
 program.addCommand(uiCommand);
 program.addCommand(specCommand);
