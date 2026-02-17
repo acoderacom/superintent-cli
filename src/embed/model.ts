@@ -86,8 +86,8 @@ export async function embed(text: string, isQuery = false): Promise<number[]> {
   const cached = embeddingCache.get(input);
   if (cached) {
     // Move to end for LRU freshness
-    embeddingCache.delete(text);
-    embeddingCache.set(text, cached);
+    embeddingCache.delete(input);
+    embeddingCache.set(input, cached);
     return cached;
   }
 
