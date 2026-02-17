@@ -8,26 +8,33 @@ Before exploring the codebase, always run `npx superintent search` first — sto
 <!-- superintent:knowledge:start -->
 
 ### Key Facts
-- **CLI Commands Reference** — 8 commands: init, status, ticket, knowledge, search, extract, spec, ui; all output JSON (`KNOWLEDGE-20260210-120039`)
-- **Database Schema and Configuration** — 3 tables (tickets, knowledge w/ F32_BLOB vectors, specs); config via .superintent/.env with TURSO_URL/TURSO_AUTH_TOKEN (`KNOWLEDGE-20260210-120031`)
+- **CLI Commands Reference** — 8 commands: init, status, ticket, knowledge, search, extract, spec, ui; all output JSON via `CliResponse<T>` (`KNOWLEDGE-20260215-113719412`)
+- **Database Schema and Configuration** — 4 tables (tickets, knowledge w/ F32_BLOB vectors, specs, comments); config via .superintent/.env with TURSO_URL/TURSO_AUTH_TOKEN (`KNOWLEDGE-20260215-113629621`)
+- **All CLI Commands Use JSON Stdin** — All create/update via `--stdin` accepting JSON; replaced markdown parsers (`KNOWLEDGE-20260215-165720482`)
 
 ### Architecture
-- **Project Overview** — libSQL-backed CLI plugin for ticket management, knowledge with vector search, and feature specs; Hono+HTMX web UI on port 3456 (`KNOWLEDGE-20260210-115927`)
-- **Source Code Architecture** — Modular TypeScript under src/: commands/, db/, embed/, ui/components/, utils/; lazy DB singleton, timestamp IDs, markdown parsing (`KNOWLEDGE-20260210-115938`)
-- **Ticket System Design** — Structured tickets with status lifecycle (Backlog→Done), auto type inference, plan/tasks/DoD, knowledge extraction on completion (`KNOWLEDGE-20260210-115951`)
-- **Knowledge Base and Semantic Search** — RAG store with 384-dim embeddings (all-MiniLM-L6-v2), vector_top_k with cosine distance, confidence recalculation, usage tracking (`KNOWLEDGE-20260210-120004`)
-- **Web UI Architecture** — Hono server-rendered HTML + HTMX partials; Tailwind v4 local build; 4 tabs: Kanban, Search, Knowledge, Specs; auto-refresh polling (`KNOWLEDGE-20260210-120021`)
-- **superintent:maintain Skill** — Distills active knowledge into CLAUDE.md between markers; scores by confidence/usage/category/recency (`KNOWLEDGE-20260210-122405`)
-- **Vector Search Consolidated in search.ts** — Single `performVectorSearch()` entry point for CLI and UI; indexed search with non-indexed fallback (`KNOWLEDGE-20260213-194537`)
-- **embed() LRU Cache** — In-memory Map cache (max 100 entries ~150KB) for query embeddings; LRU eviction, no TTL needed (deterministic) (`KNOWLEDGE-20260213-203646`)
+- **Project Overview** — libSQL-backed CLI plugin for ticket management, knowledge with vector search, and feature specs; Hono+HTMX web UI on port 3456 (`KNOWLEDGE-20260215-113610232`)
+- **Source Code Architecture** — Modular TypeScript under src/: commands/, db/, embed/, ui/components/, utils/; lazy DB singleton, timestamp IDs, JSON stdin input (`KNOWLEDGE-20260215-113619989`)
+- **Ticket System Design** — Structured tickets with status lifecycle (Backlog→Done), auto type inference, plan/tasks/DoD, knowledge extraction on completion (`KNOWLEDGE-20260215-113645961`)
+- **Knowledge Base and Semantic Search** — RAG store with 384-dim embeddings (bge-small-en-v1.5), vector_top_k with cosine distance, CLS pooling, query prefix required (`KNOWLEDGE-20260215-113657488`)
+- **Web UI Architecture** — Hono server-rendered HTML + HTMX partials; Tailwind v4; 4 tabs: Tickets, Knowledge, Specs, Graph; SSE real-time updates (`KNOWLEDGE-20260215-113709412`)
+- **Knowledge Graph Tab Architecture** — vis-network graph of knowledge entries connected by shared tags; 4th tab with lazy loading via IntersectionObserver (`KNOWLEDGE-20260216-153549336`)
+- **SSE Real-Time Update Architecture** — EventSource at /api/events with 3 event types; DB change watcher polls every 2s for external changes (`KNOWLEDGE-20260216-143020427`)
+- **Polymorphic Comments Table** — Dedicated comments table supporting tickets, specs, and knowledge; polymorphic parent_type FK (`KNOWLEDGE-20260215-122855570`)
+- **Ticket to Knowledge Extraction Pipeline** — Completed tickets → extract proposals → AI review → knowledge entries with back-reference (`KNOWLEDGE-20260215-114409912`)
+- **superintent:maintain Skill** — Distills active knowledge into CLAUDE.md between markers; scores by confidence/usage/category/recency (`KNOWLEDGE-20260215-122823869`)
+- **Vector Search Consolidated in search.ts** — Single `performVectorSearch()` entry point for CLI and UI; indexed search with non-indexed fallback (`KNOWLEDGE-20260215-122836772`)
+- **embed() LRU Cache** — In-memory Map cache (max 100 entries ~150KB) for query embeddings; LRU eviction, no TTL needed (deterministic) (`KNOWLEDGE-20260215-122841968`)
 
 ### Patterns
-- **HTMX Modal Edit-Save Pattern** — Form targets `#modal-content` to stay open after save; API returns detail view HTML + `HX-Trigger: refresh` for background updates (`KNOWLEDGE-20260211-224412`)
+- **HTMX Modal Edit-Save Pattern** — Form targets `#modal-content` to stay open after save; API returns detail view HTML + `HX-Trigger: refresh` for background updates (`KNOWLEDGE-20260215-122833218`)
 
 ### Gotchas
-- **Mutex Crash on CLI Shutdown** — Never call `process.exit()` directly with active native modules; close HTTP server → DB client → exit in sequence (`KNOWLEDGE-20260210-181221`)
-- **Always Alias Knowledge Table as k** — Use `FROM knowledge k` in both indexed and fallback search paths so filter conditions share `k.` prefix (`KNOWLEDGE-20260213-194542`)
-- **libSQL vector_top_k No ? Binding for topK** — The topK argument is parsed at query planning time; validate/clamp before string interpolation, parameterize everything else (`KNOWLEDGE-20260213-202009`)
+- **Mutex Crash on CLI Shutdown** — Never call `process.exit()` directly with active native modules; close HTTP server → DB client → exit in sequence (`KNOWLEDGE-20260215-122735114`)
+- **Always wrap getClient/closeClient in try/finally** — Prevents silent resource leak if operations between getClient and closeClient throw (`KNOWLEDGE-20260215-122757494`)
+- **Always Alias Knowledge Table as k** — Use `FROM knowledge k` in both indexed and fallback search paths so filter conditions share `k.` prefix (`KNOWLEDGE-20260215-122741768`)
+- **libSQL vector_top_k No ? Binding for topK** — The topK argument is parsed at query planning time; validate/clamp before string interpolation, parameterize everything else (`KNOWLEDGE-20260215-122747782`)
+- **bge-small-en-v1.5 requires query prefix and CLS pooling** — Query embeddings must be prefixed; documents must NOT; use model_quantized for 32MB variant (`KNOWLEDGE-20260216-084012714`)
 
 <!-- superintent:knowledge:end -->
 
