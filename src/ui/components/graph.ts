@@ -3,18 +3,18 @@
 export function renderGraphView(): string {
   return `
     <div>
-      <h1 class="text-xl font-bold text-gray-800 mb-4">Knowledge Graph</h1>
-      <div id="graph-container" class="relative bg-white border border-gray-200 shadow-2xs rounded-md">
+      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Knowledge Graph</h1>
+      <div id="graph-container" class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md">
         <div id="graph-loading" class="flex flex-col justify-center items-center gap-3" style="height: calc(100dvh - 160px);">
           <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          <p class="text-sm text-gray-500">Stabilizing graph…</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Stabilizing graph…</p>
         </div>
         <div id="graph-canvas" style="height: calc(100dvh - 160px); width: 100%; opacity: 0;"></div>
 
         <!-- Legend -->
-        <div class="absolute bottom-3 left-3 right-3 md:right-auto md:max-w-fit bg-white/90 border border-gray-200 rounded-lg px-3 py-2 text-xs">
-          <div class="font-medium text-gray-700 mb-1.5">Categories</div>
-          <div class="flex flex-wrap gap-x-3 gap-y-1">
+        <div class="absolute bottom-3 left-3 right-3 md:right-auto md:max-w-fit bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs">
+          <div class="font-medium text-gray-700 dark:text-gray-200 mb-1.5">Categories</div>
+          <div class="flex flex-wrap gap-x-3 gap-y-1 text-gray-600 dark:text-gray-300">
             <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#3B82F6"></span> architecture</span>
             <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#22C55E"></span> pattern</span>
             <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#F59E0B"></span> truth</span>
@@ -32,7 +32,18 @@ export function getGraphScript(): string {
   return `
     (function() {
       var graphNetwork = null;
+      var graphNodes = null;
+      var graphEdges = null;
       var visLoaded = false;
+
+      function isDark() {
+        return document.documentElement.classList.contains('dark');
+      }
+
+      var lightFontColor = '#374151';
+      var darkFontColor = '#E5E7EB';
+      var lightEdgeColors = { color: '#CBD5E1', highlight: '#64748B', hover: '#94A3B8' };
+      var darkEdgeColors = { color: '#475569', highlight: '#94A3B8', hover: '#64748B' };
 
       function loadVisNetwork(cb) {
         if (visLoaded) { cb(); return; }
@@ -41,7 +52,7 @@ export function getGraphScript(): string {
         script.onload = function() { visLoaded = true; cb(); };
         script.onerror = function() {
           var c = document.getElementById('graph-canvas');
-          if (c) c.innerHTML = '<p class="text-red-500 text-center py-16">Failed to load graph visualization library.</p>';
+          if (c) c.innerHTML = '<p class="text-red-500 dark:text-red-400 text-center py-16">Failed to load graph visualization library.</p>';
         };
         document.head.appendChild(script);
       }
@@ -55,7 +66,7 @@ export function getGraphScript(): string {
           .then(function(data) {
             if (!data.nodes || data.nodes.length === 0) {
               var loader = document.getElementById('graph-loading');
-              if (loader) loader.innerHTML = '<p class="text-gray-500 text-center py-16">No knowledge entries yet. Create some knowledge to see the graph.</p>';
+              if (loader) loader.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-16">No knowledge entries yet. Create some knowledge to see the graph.</p>';
               return;
             }
 
@@ -67,7 +78,7 @@ export function getGraphScript(): string {
               gotcha:       { background: '#EF4444', border: '#DC2626', highlight: { background: '#F87171', border: '#B91C1C' } }
             };
 
-            var nodes = new vis.DataSet(data.nodes.map(function(n) {
+            graphNodes = new vis.DataSet(data.nodes.map(function(n) {
               var colors = categoryColors[n.category] || categoryColors.architecture;
               var confidence = n.confidence || 0.5;
               var size = 10 + confidence * 30;
@@ -77,18 +88,18 @@ export function getGraphScript(): string {
                 color: colors,
                 size: size,
                 title: Math.round(confidence * 100) + '%',
-                font: { color: '#374151', size: 11, face: 'system-ui' },
+                font: { color: isDark() ? darkFontColor : lightFontColor, size: 11, face: 'system-ui' },
                 shape: 'dot'
               };
             }));
 
-            var edges = new vis.DataSet(data.edges.map(function(e, i) {
+            graphEdges = new vis.DataSet(data.edges.map(function(e, i) {
               return {
                 id: i,
                 from: e.from,
                 to: e.to,
                 width: Math.min(e.sharedCount, 4),
-                color: { color: '#CBD5E1', highlight: '#64748B', hover: '#94A3B8' },
+                color: isDark() ? darkEdgeColors : lightEdgeColors,
                 title: 'Shared: ' + e.sharedTags.join(', '),
                 smooth: { type: 'continuous' }
               };
@@ -111,7 +122,7 @@ export function getGraphScript(): string {
               edges: { selectionWidth: 2 }
             };
 
-            graphNetwork = new vis.Network(container, { nodes: nodes, edges: edges }, options);
+            graphNetwork = new vis.Network(container, { nodes: graphNodes, edges: graphEdges }, options);
 
             graphNetwork.once('stabilizationIterationsDone', function() {
               graphNetwork.setOptions({ physics: { stabilization: false } });
@@ -133,7 +144,7 @@ export function getGraphScript(): string {
           })
           .catch(function() {
             var loader = document.getElementById('graph-loading');
-            if (loader) loader.innerHTML = '<p class="text-red-500 text-center py-16">Failed to load graph data.</p>';
+            if (loader) loader.innerHTML = '<p class="text-red-500 dark:text-red-400 text-center py-16">Failed to load graph data.</p>';
           });
       }
 
@@ -158,11 +169,28 @@ export function getGraphScript(): string {
           graphNetwork = null;
           canvas.style.opacity = '0';
           var loader = document.getElementById('graph-loading');
-          if (loader) { loader.style.display = ''; loader.innerHTML = '<div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div><p class="text-sm text-gray-500">Stabilizing graph…</p>'; }
+          if (loader) { loader.style.display = ''; loader.innerHTML = '<div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div><p class="text-sm text-gray-500 dark:text-gray-400">Stabilizing graph…</p>'; }
           loadGraphData();
         }
       };
       window._initGraph = initGraph;
+
+      // Watch for dark mode toggle and update vis-network colors in-place
+      var lastDark = isDark();
+      new MutationObserver(function() {
+        var nowDark = isDark();
+        if (nowDark === lastDark) return;
+        lastDark = nowDark;
+        if (!graphNetwork || !graphNodes || !graphEdges) return;
+        var fontColor = nowDark ? darkFontColor : lightFontColor;
+        var edgeColors = nowDark ? darkEdgeColors : lightEdgeColors;
+        graphNodes.forEach(function(node) {
+          graphNodes.update({ id: node.id, font: { color: fontColor, size: 11, face: 'system-ui' } });
+        });
+        graphEdges.forEach(function(edge) {
+          graphEdges.update({ id: edge.id, color: edgeColors });
+        });
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     })();
   `;
 }

@@ -97,13 +97,13 @@ export function renderKanbanView(): string {
 export function renderKanbanColumns(columns: ColumnData[]): string {
   const columnStyles: Record<string, { color: string; bg: string; badgeBg?: string; badgeText?: string; headingText?: string }> = {
     'Backlog': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', badgeBg: 'bg-gray-200 dark:bg-gray-600', badgeText: 'text-gray-600 dark:text-gray-300', headingText: 'text-gray-700 dark:text-gray-200' },
-    'In Progress': { color: 'yellow', bg: 'bg-yellow-50 dark:bg-yellow-900/20', headingText: 'text-yellow-700 dark:text-yellow-300' },
-    'In Review': { color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/20', headingText: 'text-blue-700 dark:text-blue-300' },
-    'Done': { color: 'green', bg: 'bg-green-50 dark:bg-green-900/20', headingText: 'text-green-700 dark:text-green-300' },
-    'Blocked': { color: 'red', bg: 'bg-red-50 dark:bg-red-900/20' },
-    'Paused': { color: 'orange', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+    'In Progress': { color: 'yellow', bg: 'bg-yellow-50 dark:bg-yellow-900/20', badgeBg: 'bg-yellow-100 dark:bg-yellow-900/30', badgeText: 'text-yellow-600 dark:text-yellow-300', headingText: 'text-yellow-700 dark:text-yellow-300' },
+    'In Review': { color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/20', badgeBg: 'bg-blue-100 dark:bg-blue-900/30', badgeText: 'text-blue-600 dark:text-blue-300', headingText: 'text-blue-700 dark:text-blue-300' },
+    'Done': { color: 'green', bg: 'bg-green-50 dark:bg-green-900/20', badgeBg: 'bg-green-100 dark:bg-green-900/30', badgeText: 'text-green-600 dark:text-green-300', headingText: 'text-green-700 dark:text-green-300' },
+    'Blocked': { color: 'red', bg: 'bg-red-50 dark:bg-red-900/20', badgeBg: 'bg-red-100 dark:bg-red-900/30', badgeText: 'text-red-600 dark:text-red-300' },
+    'Paused': { color: 'orange', bg: 'bg-orange-50 dark:bg-orange-900/20', badgeBg: 'bg-orange-100 dark:bg-orange-900/30', badgeText: 'text-orange-600 dark:text-orange-300' },
     'Abandoned': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', headingText: 'text-gray-700 dark:text-gray-200' },
-    'Superseded': { color: 'purple', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+    'Superseded': { color: 'purple', bg: 'bg-purple-50 dark:bg-purple-900/20', badgeBg: 'bg-purple-100 dark:bg-purple-900/30', badgeText: 'text-purple-600 dark:text-purple-300' },
     'Archived': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', badgeBg: 'bg-gray-200 dark:bg-gray-600', badgeText: 'text-gray-600 dark:text-gray-300', headingText: 'text-gray-700 dark:text-gray-200' },
   };
 
