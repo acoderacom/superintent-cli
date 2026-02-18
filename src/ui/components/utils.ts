@@ -22,21 +22,21 @@ export function renderMarkdownEditor(opts: {
 }): string {
   const { name, id, placeholder = '', rows = 12, required = false, value = '' } = opts;
   return `
-    <div id="${id}" class="border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-      <div class="flex border-b bg-gray-50">
+    <div id="${id}" class="border dark:border-gray-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+      <div class="flex border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <button type="button" data-md-tab="write"
-                class="px-3 py-1.5 text-xs font-medium border-b-2 border-blue-700 text-blue-700 transition-colors">
+                class="px-3 py-1.5 text-xs font-medium border-b-2 border-blue-700 dark:border-blue-400 text-blue-700 dark:text-blue-400 transition-colors">
           Write
         </button>
         <button type="button" data-md-tab="preview"
-                class="px-3 py-1.5 text-xs font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                class="px-3 py-1.5 text-xs font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
           Preview
         </button>
       </div>
       <textarea name="${name}" ${required ? 'required' : ''} rows="${rows}"
                 placeholder="${placeholder}"
-                class="w-full px-3 py-2 text-sm outline-none resize-y font-mono">${value}</textarea>
-      <div data-md-preview class="hidden w-full px-3 py-2 text-sm markdown-content min-h-[${rows * 1.5}rem] bg-white"></div>
+                class="w-full px-3 py-2 text-sm outline-none resize-y font-mono bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500">${value}</textarea>
+      <div data-md-preview class="hidden w-full px-3 py-2 text-sm markdown-content min-h-[${rows * 1.5}rem] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200"></div>
     </div>
     <script>initMarkdownEditor('${id}')</script>
   `;

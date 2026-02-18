@@ -8,9 +8,9 @@ export function renderSpecView(): string {
   return `
     <div>
       <div class="flex items-center justify-between mb-4">
-        <h1 class="text-xl font-bold text-gray-800">Specs</h1>
+        <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Specs</h1>
         <button type="button"
-                class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors cursor-pointer"
+                class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors cursor-pointer"
                 hx-get="/partials/new-spec-modal"
                 hx-target="#modal-content"
                 hx-trigger="click"
@@ -27,7 +27,7 @@ export function renderSpecView(): string {
 // Helper to render spec list with optional load-more
 export function renderSpecList(specs: Spec[], ticketCounts?: Record<string, number>, hasMore?: boolean): string {
   if (specs.length === 0) {
-    return '<p class="text-gray-500 text-center py-8">No specs found.</p>';
+    return '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No specs found.</p>';
   }
 
   return `
@@ -63,15 +63,15 @@ export function renderSpecMore(specs: Spec[], ticketCounts: Record<string, numbe
 // Helper to render spec card
 export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
   return `
-    <div class="bg-white border border-gray-200 shadow-2xs rounded-md hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col group"
+    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col group"
          hx-get="/partials/spec-modal/${encodeURIComponent(spec.id)}"
          hx-target="#modal-content"
          hx-trigger="click"
          onclick="showModal()">
       <div class="p-4 flex flex-col flex-1">
         <div class="flex items-start justify-between mb-1">
-          <div class="text-xs font-mono text-gray-400">${escapeHtml(spec.id)}</div>
-          <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all cursor-pointer"
+          <div class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(spec.id)}</div>
+          <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-all cursor-pointer"
                   title="Edit spec"
                   hx-get="/partials/edit-spec-modal/${encodeURIComponent(spec.id)}"
                   hx-target="#modal-content"
@@ -82,10 +82,10 @@ export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
             </svg>
           </button>
         </div>
-        <div class="text-sm font-medium text-gray-800 line-clamp-2">${escapeHtml(spec.title)}</div>
-        <p class="text-xs text-gray-500 mt-2 line-clamp-3 flex-1">${escapeHtml(spec.content.slice(0, 150))}${spec.content.length > 150 ? '...' : ''}</p>
+        <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-2">${escapeHtml(spec.title)}</div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-3 flex-1">${escapeHtml(spec.content.slice(0, 150))}${spec.content.length > 150 ? '...' : ''}</p>
         ${ticketCount > 0 ? `
-          <div class="mt-2 text-xs text-gray-400 inline-flex items-center gap-1">
+          <div class="mt-2 text-xs text-gray-400 dark:text-gray-500 inline-flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
             </svg>
@@ -104,9 +104,9 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
       <div class="flex items-start justify-between mb-4">
         <div>
           <div class="flex items-center gap-2 mb-1">
-            <span class="text-xs font-mono text-gray-400">${escapeHtml(spec.id)}</span>
+            <span class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(spec.id)}</span>
             <button type="button"
-                    class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer"
+                    class="p-0.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded transition-colors cursor-pointer"
                     title="Copy spec ID"
                     onclick="navigator.clipboard.writeText('${escapeHtml(spec.id)}').then(() => { const svg = this.querySelector('svg'); const originalPath = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = originalPath; this.classList.remove('text-green-600'); }, 1500); })">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,9 +114,9 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
               </svg>
             </button>
           </div>
-          <h2 class="text-xl font-bold text-gray-800">${escapeHtml(spec.title)}</h2>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">${escapeHtml(spec.title)}</h2>
         </div>
-        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-600 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
           <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
@@ -124,16 +124,16 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
 
       <!-- Content -->
       <div class="mb-4">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Content</h3>
-        <div class="text-sm text-gray-700 bg-gray-100 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(spec.content)}</div>
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Content</h3>
+        <div class="text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/50 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(spec.content)}</div>
       </div>
 
       <!-- Metadata -->
       ${spec.author ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Metadata</h3>
-          <div class="text-sm text-gray-700 space-y-1">
-            <div><span class="text-gray-400">Author:</span> ${escapeHtml(spec.author)}</div>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Metadata</h3>
+          <div class="text-sm text-gray-700 dark:text-gray-200 space-y-1">
+            <div><span class="text-gray-400 dark:text-gray-500">Author:</span> ${escapeHtml(spec.author)}</div>
           </div>
         </div>
       ` : ''}
@@ -141,20 +141,20 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
       ${relatedTickets?.length ? `
         <!-- Derived Tickets -->
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Derived Tickets</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Derived Tickets</h3>
           <div class="flex flex-wrap gap-2">
             ${relatedTickets.map(t => {
               const statusColors: Record<string, { bg: string; text: string }> = {
-                'Backlog': { bg: 'bg-gray-50', text: 'text-gray-700' },
-                'In Progress': { bg: 'bg-yellow-50', text: 'text-yellow-700' },
-                'In Review': { bg: 'bg-blue-50', text: 'text-blue-700' },
-                'Done': { bg: 'bg-green-50', text: 'text-green-700' },
-                'Blocked': { bg: 'bg-red-50', text: 'text-red-700' },
-                'Paused': { bg: 'bg-orange-50', text: 'text-orange-700' },
-                'Abandoned': { bg: 'bg-gray-100', text: 'text-gray-500' },
-                'Superseded': { bg: 'bg-purple-50', text: 'text-purple-700' },
+                'Backlog': { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' },
+                'In Progress': { bg: 'bg-yellow-50 dark:bg-yellow-900/20', text: 'text-yellow-700 dark:text-yellow-300' },
+                'In Review': { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300' },
+                'Done': { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300' },
+                'Blocked': { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-300' },
+                'Paused': { bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-300' },
+                'Abandoned': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400' },
+                'Superseded': { bg: 'bg-purple-50 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300' },
               };
-              const style = statusColors[t.status] || { bg: 'bg-gray-50', text: 'text-gray-700' };
+              const style = statusColors[t.status] || { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' };
               return `
                 <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg ${style.bg} ${style.text} hover:opacity-80 cursor-pointer font-mono font-medium"
                       hx-get="/partials/ticket-modal/${encodeURIComponent(t.id)}"
@@ -174,21 +174,21 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
       ${renderCommentsSection(comments || [], 'spec', spec.id)}
 
       <!-- Actions & Metadata Footer -->
-      <div class="mt-6 pt-4 border-t flex items-center justify-between">
-        <div class="text-xs text-gray-400">
+      <div class="mt-6 pt-4 border-t dark:border-gray-700 flex items-center justify-between">
+        <div class="text-xs text-gray-400 dark:text-gray-500">
           <span>Created: ${spec.created_at || 'N/A'}</span>
           <span class="ml-4">Updated: ${spec.updated_at || 'N/A'}</span>
         </div>
         <div class="flex gap-2">
           <button type="button"
-                  class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                  class="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                   hx-get="/partials/edit-spec-modal/${encodeURIComponent(spec.id)}"
                   hx-target="#modal-content"
                   hx-trigger="click">
             Edit
           </button>
           <button type="button"
-                class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                 hx-delete="/api/specs/${encodeURIComponent(spec.id)}"
                 hx-target="#spec-list"
                 hx-swap="innerHTML"
@@ -207,8 +207,8 @@ export function renderNewSpecModal(): string {
   return `
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-bold text-gray-800">New Spec</h2>
-        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+        <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">New Spec</h2>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-600 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
           <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
@@ -219,21 +219,21 @@ export function renderNewSpecModal(): string {
             hx-on::after-request="hideModal()">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title <span class="text-red-500">*</span></label>
             <input type="text" name="title" required
                    placeholder="Feature or spec name"
-                   class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Content <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Content <span class="text-red-500">*</span></label>
             ${renderMarkdownEditor({ name: 'content', id: 'spec-content-editor', placeholder: 'Describe the feature spec, goals, requirements, and any relevant details. Supports **markdown**.', rows: 8, required: true })}
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
           <button type="button" onclick="hideModal()"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors cursor-pointer">
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel
           </button>
           <button type="submit"
@@ -252,10 +252,10 @@ export function renderEditSpecModal(spec: Spec): string {
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h2 class="text-xl font-bold text-gray-800">Edit Spec</h2>
-          <span class="text-xs font-mono text-gray-400">${escapeHtml(spec.id)}</span>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">Edit Spec</h2>
+          <span class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(spec.id)}</span>
         </div>
-        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-600 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
           <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
@@ -265,22 +265,22 @@ export function renderEditSpecModal(spec: Spec): string {
             hx-target="#modal-content">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title <span class="text-red-500">*</span></label>
             <input type="text" name="title" required
                    value="${escapeHtml(spec.title)}"
                    placeholder="Feature or spec name"
-                   class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Content <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Content <span class="text-red-500">*</span></label>
             ${renderMarkdownEditor({ name: 'content', id: 'spec-edit-content-editor', placeholder: 'Describe the feature spec, goals, requirements, and any relevant details. Supports **markdown**.', rows: 12, required: true, value: escapeHtml(spec.content) })}
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
           <button type="button" onclick="hideModal()"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors cursor-pointer">
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel
           </button>
           <button type="submit"

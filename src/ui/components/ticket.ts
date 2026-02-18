@@ -22,27 +22,27 @@ export function renderTicketCard(ticket: {
   const isComplete = taskCount > 0 && progress === 100;
 
   const classColors: Record<string, { bg: string; text: string }> = {
-    'A': { bg: 'bg-green-100', text: 'text-green-700' },
-    'B': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-    'C': { bg: 'bg-red-100', text: 'text-red-700' },
+    'A': { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
+    'B': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300' },
+    'C': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
   };
-  const classStyle = ticket.change_class ? classColors[ticket.change_class] || { bg: 'bg-gray-100', text: 'text-gray-600' } : null;
+  const classStyle = ticket.change_class ? classColors[ticket.change_class] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
 
   const typeColors: Record<string, { bg: string; text: string }> = {
-    'feature': { bg: 'bg-purple-100', text: 'text-purple-700' },
-    'bugfix': { bg: 'bg-red-100', text: 'text-red-700' },
-    'refactor': { bg: 'bg-blue-100', text: 'text-blue-700' },
-    'docs': { bg: 'bg-cyan-100', text: 'text-cyan-700' },
-    'chore': { bg: 'bg-gray-100', text: 'text-gray-700' },
-    'test': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    'feature': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
+    'bugfix': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
+    'refactor': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+    'docs': { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-300' },
+    'chore': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-200' },
+    'test': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
   };
-  const typeStyle = ticket.type ? typeColors[ticket.type] || { bg: 'bg-gray-100', text: 'text-gray-600' } : null;
+  const typeStyle = ticket.type ? typeColors[ticket.type] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
 
   // Use title if available, otherwise use intent for display
   const displayTitle = ticket.title || ticket.intent;
 
   return `
-    <div class="bg-white border border-gray-200 shadow-2xs rounded-md p-3 cursor-pointer hover:shadow-md transition group"
+    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md p-3 cursor-pointer hover:shadow-md transition group"
          draggable="true"
          ondragstart="onDragStart(event, '${ticket.id}')"
          ondragend="onDragEnd(event)"
@@ -51,9 +51,9 @@ export function renderTicketCard(ticket: {
          hx-trigger="click"
          onclick="showModal()">
       <div class="flex items-start justify-between mb-1">
-        <div class="text-xs font-mono text-gray-400">${escapeHtml(ticket.id)}</div>
+        <div class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(ticket.id)}</div>
         ${isBacklog ? `
-          <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all cursor-pointer"
+          <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-all cursor-pointer"
                   title="Edit ticket"
                   hx-get="/partials/edit-ticket-modal/${encodeURIComponent(ticket.id)}"
                   hx-target="#modal-content"
@@ -65,14 +65,14 @@ export function renderTicketCard(ticket: {
           </button>
         ` : ''}
       </div>
-      <div class="text-sm font-medium text-gray-800 line-clamp-2">${escapeHtml(displayTitle)}</div>
+      <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-2">${escapeHtml(displayTitle)}</div>
       ${taskCount > 0 ? `
         <div class="mt-2">
           <div class="flex items-center justify-between text-xs mb-1">
-            <span class="${isComplete ? 'text-green-600 font-medium' : 'text-gray-500'}">${isComplete ? 'Complete' : `${remaining} remaining`}</span>
-            <span class="${isComplete ? 'text-green-600' : 'text-gray-400'}">${doneCount}/${taskCount}</span>
+            <span class="${isComplete ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}">${isComplete ? 'Complete' : `${remaining} remaining`}</span>
+            <span class="${isComplete ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}">${doneCount}/${taskCount}</span>
           </div>
-          <div class="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div class="h-full bg-${isComplete ? 'green' : 'blue'}-500 rounded-full transition-all" style="width: ${progress}%"></div>
           </div>
         </div>
@@ -95,16 +95,16 @@ export function renderKanbanView(): string {
 
 // Helper to render kanban columns with pagination
 export function renderKanbanColumns(columns: ColumnData[]): string {
-  const columnStyles: Record<string, { color: string; bg: string; badgeBg?: string; badgeText?: string }> = {
-    'Backlog': { color: 'gray', bg: 'bg-gray-100', badgeBg: 'bg-gray-200', badgeText: 'text-gray-600' },
-    'In Progress': { color: 'yellow', bg: 'bg-yellow-50' },
-    'In Review': { color: 'blue', bg: 'bg-blue-50' },
-    'Done': { color: 'green', bg: 'bg-green-50' },
-    'Blocked': { color: 'red', bg: 'bg-red-50' },
-    'Paused': { color: 'orange', bg: 'bg-orange-50' },
-    'Abandoned': { color: 'gray', bg: 'bg-gray-100' },
-    'Superseded': { color: 'purple', bg: 'bg-purple-50' },
-    'Archived': { color: 'gray', bg: 'bg-gray-100', badgeBg: 'bg-gray-200', badgeText: 'text-gray-600' },
+  const columnStyles: Record<string, { color: string; bg: string; badgeBg?: string; badgeText?: string; headingText?: string }> = {
+    'Backlog': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', badgeBg: 'bg-gray-200 dark:bg-gray-600', badgeText: 'text-gray-600 dark:text-gray-300', headingText: 'text-gray-700 dark:text-gray-200' },
+    'In Progress': { color: 'yellow', bg: 'bg-yellow-50 dark:bg-yellow-900/20', headingText: 'text-yellow-700 dark:text-yellow-300' },
+    'In Review': { color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/20', headingText: 'text-blue-700 dark:text-blue-300' },
+    'Done': { color: 'green', bg: 'bg-green-50 dark:bg-green-900/20', headingText: 'text-green-700 dark:text-green-300' },
+    'Blocked': { color: 'red', bg: 'bg-red-50 dark:bg-red-900/20' },
+    'Paused': { color: 'orange', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+    'Abandoned': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', headingText: 'text-gray-700 dark:text-gray-200' },
+    'Superseded': { color: 'purple', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+    'Archived': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', badgeBg: 'bg-gray-200 dark:bg-gray-600', badgeText: 'text-gray-600 dark:text-gray-300', headingText: 'text-gray-700 dark:text-gray-200' },
   };
 
   return `
@@ -120,10 +120,10 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
           <div class="rounded-lg ${style.bg} p-4 flex flex-col max-h-[calc(100vh-105px)]"
                ${dragHandlers}>
             <div class="flex items-center justify-between mb-3 shrink-0">
-              <h2 class="font-semibold text-${style.color}-700">${col.status}</h2>
+              <h2 class="font-semibold ${style.headingText || `text-${style.color}-700`}">${col.status}</h2>
               <div class="flex items-center gap-2">
                 ${isBacklog ? `
-                  <button class="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors cursor-pointer"
+                  <button class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors cursor-pointer"
                           hx-get="/partials/new-ticket-modal"
                           hx-target="#modal-content"
                           hx-trigger="click"
@@ -225,14 +225,21 @@ export function renderTicketModal(ticket: {
   const color = statusColors[ticket.status] || 'gray';
 
   const typeColors: Record<string, { bg: string; text: string }> = {
-    'feature': { bg: 'bg-purple-100', text: 'text-purple-700' },
-    'bugfix': { bg: 'bg-red-100', text: 'text-red-700' },
-    'refactor': { bg: 'bg-blue-100', text: 'text-blue-700' },
-    'docs': { bg: 'bg-cyan-100', text: 'text-cyan-700' },
-    'chore': { bg: 'bg-gray-100', text: 'text-gray-700' },
-    'test': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    'feature': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
+    'bugfix': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
+    'refactor': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+    'docs': { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-300' },
+    'chore': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-200' },
+    'test': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
   };
-  const typeStyle = ticket.type ? typeColors[ticket.type] || { bg: 'bg-gray-100', text: 'text-gray-600' } : null;
+  const typeStyle = ticket.type ? typeColors[ticket.type] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
+
+  const modalClassColors: Record<string, { bg: string; text: string }> = {
+    'A': { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
+    'B': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300' },
+    'C': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
+  };
+  const classStyle = ticket.change_class ? modalClassColors[ticket.change_class] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
 
   return `
     <div class="p-6">
@@ -249,11 +256,12 @@ export function renderTicketModal(ticket: {
               </svg>
             </button>
             ${ticket.type && typeStyle ? `<span class="px-2 py-0.5 text-xs font-medium rounded ${typeStyle.bg} ${typeStyle.text}">${ticket.type}</span>` : ''}
+            ${ticket.change_class && classStyle ? `<span class="px-2 py-0.5 text-xs font-medium rounded ${classStyle.bg} ${classStyle.text}">Class ${ticket.change_class}</span>` : ''}
           </div>
-          ${ticket.title ? `<h2 class="text-xl font-bold text-gray-800 mb-2">${escapeHtml(ticket.title)}</h2>` : ''}
-          <div class="text-sm text-gray-700 markdown-content" data-markdown>${escapeHtml(ticket.intent)}</div>
+          ${ticket.title ? `<h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">${escapeHtml(ticket.title)}</h2>` : ''}
+          <div class="text-sm text-gray-700 dark:text-gray-200 markdown-content" data-markdown>${escapeHtml(ticket.intent)}</div>
         </div>
-        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-600 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
           <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
@@ -261,25 +269,25 @@ export function renderTicketModal(ticket: {
 
       ${ticket.context ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Context</h3>
-          <div class="text-sm text-gray-700 bg-gray-100 rounded-lg p-3 whitespace-pre-wrap">${escapeHtml(ticket.context)}</div>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Context</h3>
+          <div class="text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 whitespace-pre-wrap">${escapeHtml(ticket.context)}</div>
         </div>
       ` : ''}
 
       ${ticket.constraints_use?.length || ticket.constraints_avoid?.length ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Constraints</h3>
-          <div class="text-sm space-y-1">
-            ${ticket.constraints_use?.length ? `<p><span class="text-green-600 font-medium">Use:</span> ${ticket.constraints_use.map(c => escapeHtml(c)).join(', ')}</p>` : ''}
-            ${ticket.constraints_avoid?.length ? `<p><span class="text-red-600 font-medium">Avoid:</span> ${ticket.constraints_avoid.map(c => escapeHtml(c)).join(', ')}</p>` : ''}
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Constraints</h3>
+          <div class="text-sm text-gray-700 dark:text-gray-200 space-y-1">
+            ${ticket.constraints_use?.length ? `<p><span class="text-green-600 dark:text-green-400 font-medium">Use:</span> ${ticket.constraints_use.map(c => escapeHtml(c)).join(', ')}</p>` : ''}
+            ${ticket.constraints_avoid?.length ? `<p><span class="text-red-600 dark:text-red-400 font-medium">Avoid:</span> ${ticket.constraints_avoid.map(c => escapeHtml(c)).join(', ')}</p>` : ''}
           </div>
         </div>
       ` : ''}
 
       ${ticket.assumptions?.length ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Assumptions</h3>
-          <ul class="text-sm text-gray-700 list-disc list-inside">
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Assumptions</h3>
+          <ul class="text-sm text-gray-700 dark:text-gray-200 list-disc list-inside">
             ${ticket.assumptions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
           </ul>
         </div>
@@ -287,15 +295,15 @@ export function renderTicketModal(ticket: {
 
       ${ticket.change_class ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Change Class</h3>
-          <div class="text-sm text-gray-700">Class ${ticket.change_class}${ticket.change_class_reason ? ` - ${escapeHtml(ticket.change_class_reason)}` : ''}</div>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Change Class</h3>
+          <div class="text-sm text-gray-700 dark:text-gray-200">Class ${ticket.change_class}${ticket.change_class_reason ? ` - ${escapeHtml(ticket.change_class_reason)}` : ''}</div>
         </div>
       ` : ''}
 
       ${ticket.origin_spec_id ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Origin Spec</h3>
-          <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 cursor-pointer font-mono font-medium"
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Origin Spec</h3>
+          <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 cursor-pointer font-mono font-medium"
                 hx-get="/partials/spec-modal/${encodeURIComponent(ticket.origin_spec_id)}"
                 hx-target="#modal-content"
                 hx-trigger="click">
@@ -309,17 +317,17 @@ export function renderTicketModal(ticket: {
 
       ${ticket.plan ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Plan</h3>
-          <div class="text-sm space-y-3 bg-blue-50 rounded-lg p-3">
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Plan</h3>
+          <div class="text-sm space-y-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
             ${ticket.plan.files?.length ? `
               <div>
-                <span class="font-medium text-blue-700">Files to Edit:</span>
-                <span class="text-gray-700">${ticket.plan.files.map(f => escapeHtml(f)).join(', ')}</span>
+                <span class="font-medium text-blue-700 dark:text-blue-300">Files to Edit:</span>
+                <span class="text-gray-700 dark:text-gray-200">${ticket.plan.files.map(f => escapeHtml(f)).join(', ')}</span>
               </div>
             ` : ''}
             ${ticket.plan.taskSteps?.length ? `
               <div>
-                <span class="font-medium text-blue-700">Tasks → Steps:</span>
+                <span class="font-medium text-blue-700 dark:text-blue-300">Tasks → Steps:</span>
                 <div class="mt-1 space-y-2">
                   ${ticket.plan.taskSteps.map((ts, i) => {
                     const isDone = ts.done ?? false;
@@ -328,13 +336,13 @@ export function renderTicketModal(ticket: {
                       <div class="flex items-center gap-2">
                         <input type="checkbox" ${isDone ? 'checked' : ''}
                                name="task-${i}"
-                               class="rounded border-gray-300 shrink-0"
+                               class="rounded border-gray-300 dark:border-gray-600 shrink-0"
                                hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/task/${i}"
                                hx-swap="none">
-                        <span class="${isDone ? 'line-through text-gray-400' : 'text-gray-700'}">${escapeHtml(ts.task)}</span>
+                        <span class="${isDone ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'}">${escapeHtml(ts.task)}</span>
                       </div>
                       ${ts.steps?.length ? `
-                        <ol class="ml-8 mt-1 list-decimal text-gray-500 text-xs">
+                        <ol class="ml-8 mt-1 list-decimal text-gray-500 dark:text-gray-400 text-xs">
                           ${ts.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
                         </ol>
                       ` : ''}
@@ -345,7 +353,7 @@ export function renderTicketModal(ticket: {
             ` : ''}
             ${ticket.plan.dodVerification?.length ? `
               <div>
-                <span class="font-medium text-blue-700">Definition of Done → Verification:</span>
+                <span class="font-medium text-blue-700 dark:text-blue-300">Definition of Done → Verification:</span>
                 <div class="mt-1 space-y-1">
                   ${ticket.plan.dodVerification.map((dv, i) => {
                     const isDone = dv.done ?? false;
@@ -353,10 +361,10 @@ export function renderTicketModal(ticket: {
                     <div class="flex items-start gap-2 ml-1">
                       <input type="checkbox" ${isDone ? 'checked' : ''}
                              name="dod-${i}"
-                             class="rounded border-gray-300 shrink-0 mt-0.5"
+                             class="rounded border-gray-300 dark:border-gray-600 shrink-0 mt-0.5"
                              hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/dod/${i}"
                              hx-swap="none">
-                      <span class="${isDone ? 'line-through text-gray-400' : 'text-gray-700'}">${escapeHtml(dv.dod)} → ${escapeHtml(dv.verify)}</span>
+                      <span class="${isDone ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'}">${escapeHtml(dv.dod)} → ${escapeHtml(dv.verify)}</span>
                     </div>
                   `;}).join('')}
                 </div>
@@ -364,24 +372,24 @@ export function renderTicketModal(ticket: {
             ` : ''}
             ${ticket.plan.decisions?.length ? `
               <div>
-                <span class="font-medium text-blue-700">Decisions:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-700">
+                <span class="font-medium text-blue-700 dark:text-blue-300">Decisions:</span>
+                <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
                   ${ticket.plan.decisions.map(d => `<li>${escapeHtml(d.choice)}${d.reason ? ` — ${escapeHtml(d.reason)}` : ''}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
             ${ticket.plan.tradeOffs?.length ? `
               <div>
-                <span class="font-medium text-blue-700">Trade-offs:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-700">
+                <span class="font-medium text-blue-700 dark:text-blue-300">Trade-offs:</span>
+                <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
                   ${ticket.plan.tradeOffs.map(t => `<li>${escapeHtml(t.considered)}${t.rejected ? ` — ${escapeHtml(t.rejected)}` : ''}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
             ${ticket.plan.rollback ? `
               <div>
-                <span class="font-medium text-blue-700">Rollback:</span>
-                <div class="mt-1 ml-4 text-gray-700">
+                <span class="font-medium text-blue-700 dark:text-blue-300">Rollback:</span>
+                <div class="mt-1 ml-4 text-gray-700 dark:text-gray-200">
                   <div class="text-xs mb-1">
                     <span class="font-medium">Reversibility:</span>
                     <span class="${ticket.plan.rollback.reversibility === 'full' ? 'text-green-600' : ticket.plan.rollback.reversibility === 'partial' ? 'text-yellow-600' : 'text-red-600'}">${ticket.plan.rollback.reversibility}</span>
@@ -396,16 +404,16 @@ export function renderTicketModal(ticket: {
             ` : ''}
             ${ticket.plan.irreversibleActions?.length ? `
               <div>
-                <span class="font-medium text-blue-700">Irreversible Actions:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-700">
+                <span class="font-medium text-blue-700 dark:text-blue-300">Irreversible Actions:</span>
+                <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
                   ${ticket.plan.irreversibleActions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
             ${ticket.plan.edgeCases?.length ? `
               <div>
-                <span class="font-medium text-blue-700">Edge Cases:</span>
-                <ul class="mt-1 ml-4 list-disc text-gray-700">
+                <span class="font-medium text-blue-700 dark:text-blue-300">Edge Cases:</span>
+                <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
                   ${ticket.plan.edgeCases.map(e => `<li>${escapeHtml(e)}</li>`).join('')}
                 </ul>
               </div>
@@ -416,10 +424,10 @@ export function renderTicketModal(ticket: {
 
       ${ticket.derived_knowledge?.length ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Derived Knowledge</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Derived Knowledge</h3>
           <div class="flex flex-wrap gap-2">
             ${ticket.derived_knowledge.map(kid => `
-              <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 cursor-pointer"
+              <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 cursor-pointer"
                     hx-get="/partials/knowledge-modal/${encodeURIComponent(kid)}"
                     hx-target="#modal-content"
                     hx-trigger="click">
@@ -434,7 +442,7 @@ export function renderTicketModal(ticket: {
       ` : ''}
 
       <div class="mb-4">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Status</h3>
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Status</h3>
         <select id="status-select"
                 class="px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer bg-${color}-50 text-${color}-700 border-${color}-200"
                 hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/status"
@@ -471,22 +479,22 @@ export function renderTicketModal(ticket: {
 
       ${ticket.author ? `
       <div class="mb-4">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Author</h3>
-        <div class="text-sm text-gray-700">${escapeHtml(ticket.author)}</div>
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Author</h3>
+        <div class="text-sm text-gray-700 dark:text-gray-200">${escapeHtml(ticket.author)}</div>
       </div>
       ` : ''}
 
       ${renderCommentsSection(comments || [], 'ticket', ticket.id)}
 
-      <div class="mt-6 pt-4 border-t flex items-center justify-between">
-        <div class="text-xs text-gray-400">
+      <div class="mt-6 pt-4 border-t dark:border-gray-700 flex items-center justify-between">
+        <div class="text-xs text-gray-400 dark:text-gray-500">
           <span>Created: ${ticket.created_at || 'N/A'}</span>
           <span class="ml-4">Updated: ${ticket.updated_at || 'N/A'}</span>
         </div>
         <div class="flex gap-2">
           ${ticket.status === 'Backlog' ? `
             <button type="button"
-                    class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                    class="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                     hx-get="/partials/edit-ticket-modal/${encodeURIComponent(ticket.id)}"
                     hx-target="#modal-content"
                     hx-trigger="click">
@@ -494,7 +502,7 @@ export function renderTicketModal(ticket: {
             </button>
           ` : ''}
           <button type="button"
-                  class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                  class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                   onclick="if(confirm('Delete this ticket?${ticket.derived_knowledge?.length ? ' Derived knowledge will be orphaned but preserved.' : ''}')) { fetch('/api/tickets/${encodeURIComponent(ticket.id)}', {method:'DELETE'}).then(r=>r.json()).then(d=>{if(d.success){hideModal();htmx.trigger('#kanban-columns','refresh');}else{alert(d.error||'Delete failed');}}).catch(e=>alert('Error: '+e)); }">
             Delete
           </button>
@@ -518,8 +526,8 @@ export function renderNewTicketModal(): string {
   return `
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-bold text-gray-800">New Ticket</h2>
-        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+        <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">New Ticket</h2>
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-600 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
           <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
@@ -530,29 +538,29 @@ export function renderNewTicketModal(): string {
             hx-on::after-request="hideModal()">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title <span class="text-red-500">*</span></label>
             <input type="text" name="title" required
                    placeholder="Brief summary of what needs to be done"
-                   class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Type <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Type <span class="text-red-500">*</span></label>
             <select name="type" required
-                    class="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
               ${ticketTypes.map(t => `<option value="${t.value}">${t.label} - ${t.desc}</option>`).join('')}
             </select>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Intent <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Intent <span class="text-red-500">*</span></label>
             ${renderMarkdownEditor({ name: 'intent', id: 'ticket-intent-editor', placeholder: 'What do you want to achieve? Be specific about the desired outcome. Supports **markdown**.', rows: 4, required: true })}
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
           <button type="button" onclick="hideModal()"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors cursor-pointer">
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel
           </button>
           <button type="submit"
@@ -585,10 +593,10 @@ export function renderEditTicketModal(ticket: {
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h2 class="text-xl font-bold text-gray-800">Edit Ticket</h2>
-          <span class="text-xs font-mono text-gray-400">${escapeHtml(ticket.id)}</span>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">Edit Ticket</h2>
+          <span class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(ticket.id)}</span>
         </div>
-        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-600 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
           <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
@@ -598,30 +606,30 @@ export function renderEditTicketModal(ticket: {
             hx-target="#modal-content">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title <span class="text-red-500">*</span></label>
             <input type="text" name="title" required
                    value="${escapeHtml(ticket.title || '')}"
                    placeholder="Brief summary of what needs to be done"
-                   class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Type <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Type <span class="text-red-500">*</span></label>
             <select name="type" required
-                    class="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
               ${ticketTypes.map(t => `<option value="${t.value}"${ticket.type === t.value ? ' selected' : ''}>${t.label} - ${t.desc}</option>`).join('')}
             </select>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Intent <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Intent <span class="text-red-500">*</span></label>
             ${renderMarkdownEditor({ name: 'intent', id: 'ticket-edit-intent-editor', placeholder: 'What do you want to achieve? Be specific about the desired outcome. Supports **markdown**.', rows: 12, required: true, value: escapeHtml(ticket.intent) })}
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
           <button type="button" onclick="hideModal()"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors cursor-pointer">
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel
           </button>
           <button type="submit"

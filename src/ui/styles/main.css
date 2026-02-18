@@ -4,6 +4,9 @@
 /* Scan UI component templates for Tailwind class usage */
 @source "../components/*.ts";
 
+/* Dark mode: class-based toggle via .dark on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Safelist: dynamically-constructed classes in templates.
  * Templates build class names via template literals like `bg-${color}-50`
@@ -15,8 +18,14 @@
 @source inline("text-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{500,600,700}");
 @source inline("border-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{200}");
 
+/* Dark mode safelist for dynamically-constructed badge classes */
+@source inline("dark:bg-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-900/{20,30}");
+@source inline("dark:text-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{300,400}");
+@source inline("dark:border-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{700}");
+
 /* Drag & drop */
 .drag-over { outline: 2px dashed var(--color-blue-500); background: var(--color-blue-50); }
+.dark .drag-over { background: var(--color-blue-950); }
 .dragging { opacity: 0.5; }
 
 /* HTMX loading indicators */
@@ -26,6 +35,7 @@
 
 /* Sidebar navigation */
 .nav-active { background: var(--color-gray-200); font-weight: 500; }
+.dark .nav-active { background: var(--color-gray-700); }
 .score-bar { height: 4px; border-radius: 2px; }
 
 /* Modal animations */
@@ -56,11 +66,18 @@
 .markdown-content ol { list-style-type: decimal; }
 .markdown-content li { margin-bottom: 0.25em; }
 .markdown-content code { background: var(--color-gray-200); padding: 0.125em 0.25em; border-radius: 0.25em; font-size: 0.9em; }
+.dark .markdown-content { color: var(--color-gray-200); }
+.dark .markdown-content h1, .dark .markdown-content h2, .dark .markdown-content h3 { color: var(--color-gray-100); }
+.dark .markdown-content strong { color: var(--color-gray-100); }
+.dark .markdown-content code { background: var(--color-gray-700); color: var(--color-gray-200); }
 .markdown-content pre { background: var(--color-gray-800); color: var(--color-gray-100); padding: 0.75em; border-radius: 0.375em; overflow-x: auto; margin-bottom: 0.75em; }
+.dark .markdown-content pre { background: var(--color-gray-900); }
 .markdown-content pre code { background: none; padding: 0; color: inherit; }
 .markdown-content strong { font-weight: 600; }
 .markdown-content a { color: var(--color-blue-600); text-decoration: underline; }
+.dark .markdown-content a { color: var(--color-blue-400); }
 .markdown-content blockquote { border-left: 3px solid var(--color-gray-300); padding-left: 1em; color: var(--color-gray-500); margin-bottom: 0.75em; }
+.dark .markdown-content blockquote { border-color: var(--color-gray-600); color: var(--color-gray-400); }
 .markdown-content li:has(> input[type="checkbox"]) { list-style: none; display: flex; align-items: baseline; gap: 0.4em; margin-left: -1.5em; }
 .markdown-content li > input[type="checkbox"] { margin: 0; pointer-events: none; }
 
@@ -73,7 +90,13 @@
     --tw-ring-offset-shadow: 0 0 #0000;
     --tw-inset-shadow: 0 0 #0000;
   }
+  .dark *, .dark ::after, .dark ::before, .dark ::backdrop, .dark ::file-selector-button {
+    border-color: var(--color-gray-700, currentColor);
+  }
   input, select, textarea {
     background-color: var(--color-white);
+  }
+  .dark input, .dark select, .dark textarea {
+    background-color: var(--color-gray-800);
   }
 }

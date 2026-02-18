@@ -7,13 +7,13 @@ import type { Comment } from '../../types.js';
 export function renderKnowledgeView(): string {
   return `
     <div>
-      <h1 class="text-xl font-bold text-gray-800 mb-4">Knowledge Base</h1>
+      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Knowledge Base</h1>
       <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
       <aside class="w-full lg:w-64 shrink-0 lg:sticky lg:top-4 lg:self-start">
-        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white border border-gray-200 shadow-2xs rounded-md p-3 lg:p-4">
+        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md p-3 lg:p-4">
           <div>
-            <label for="k-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select id="k-status" name="k-status" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-status" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Status</label>
+            <select id="k-status" name="k-status" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -25,8 +25,8 @@ export function renderKnowledgeView(): string {
           </div>
 
           <div>
-            <label for="k-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select id="k-category" name="k-category" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-category" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Category</label>
+            <select id="k-category" name="k-category" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -41,8 +41,8 @@ export function renderKnowledgeView(): string {
           </div>
 
           <div>
-            <label for="k-scope" class="block text-sm font-medium text-gray-700 mb-1">Scope</label>
-            <select id="k-scope" name="k-scope" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-scope" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Scope</label>
+            <select id="k-scope" name="k-scope" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -56,8 +56,8 @@ export function renderKnowledgeView(): string {
           </div>
 
           <div>
-            <label for="k-origin" class="block text-sm font-medium text-gray-700 mb-1">Source</label>
-            <select id="k-origin" name="k-origin" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            <label for="k-origin" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Source</label>
+            <select id="k-origin" name="k-origin" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -70,9 +70,9 @@ export function renderKnowledgeView(): string {
           </div>
 
           <div>
-            <label for="k-author" class="block text-sm font-medium text-gray-700 mb-1">Author</label>
+            <label for="k-author" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Author</label>
             <input id="k-author" name="k-author" type="text" placeholder="Filter by author..."
-                   class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                   class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
                    hx-get="/partials/knowledge-list"
                    hx-trigger="keyup changed delay:400ms"
                    hx-target="#knowledge-list"
@@ -80,9 +80,9 @@ export function renderKnowledgeView(): string {
           </div>
 
           <div>
-            <label for="k-branch" class="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+            <label for="k-branch" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Branch</label>
             <input id="k-branch" name="k-branch" type="text" placeholder="Filter by branch..."
-                   class="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                   class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
                    hx-get="/partials/knowledge-list"
                    hx-trigger="keyup changed delay:400ms"
                    hx-target="#knowledge-list"
@@ -131,29 +131,29 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
   const color = categoryColors[k.category || ''] || 'gray';
   const inactiveClass = !k.active ? 'opacity-60 border-dashed' : '';
   return `
-    <div class="bg-white border border-gray-200 shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
+    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
          hx-get="/partials/knowledge-modal/${encodeURIComponent(k.id)}"
          hx-target="#modal-content"
          hx-trigger="click"
          onclick="showModal()">
-      <div class="text-xs font-mono text-gray-400 mb-1">${escapeHtml(k.id)}</div>
+      <div class="text-xs font-mono text-gray-400 dark:text-gray-500 mb-1">${escapeHtml(k.id)}</div>
       <div class="flex items-start justify-between">
         <div class="flex-1">
           <div class="flex items-center gap-2">
-            <div class="text-sm font-medium text-gray-800">${escapeHtml(k.title)}</div>
-            ${!k.active ? '<span class="px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-600">Inactive</span>' : ''}
+            <div class="text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(k.title)}</div>
+            ${!k.active ? '<span class="px-2 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Inactive</span>' : ''}
           </div>
-          <p class="text-sm text-gray-600 mt-1 line-clamp-2">${escapeHtml(k.content.slice(0, 200))}${k.content.length > 200 ? '...' : ''}</p>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">${escapeHtml(k.content.slice(0, 200))}${k.content.length > 200 ? '...' : ''}</p>
         </div>
         <div class="text-right shrink-0 ml-4">
-          <div class="text-sm font-medium text-gray-600">${Math.round(k.confidence * 100)}%</div>
-          <div class="text-xs text-gray-400">confidence</div>
+          <div class="text-sm font-medium text-gray-600 dark:text-gray-300">${Math.round(k.confidence * 100)}%</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500">confidence</div>
         </div>
       </div>
       <div class="flex items-center mt-3 text-xs text-gray-500 gap-3">
         <span><span class="text-gray-400">Namespace:</span> ${escapeHtml(k.namespace)}</span>
         <span><span class="text-gray-400">Source:</span> ${k.source || 'manual'}${k.source === 'ticket' && k.origin_ticket_type ? ` (${k.origin_ticket_type})` : ''}</span>
-        ${k.category ? `<span><span class="text-gray-400">Category:</span> <span class="text-${color}-600 font-medium">${k.category}</span></span>` : ''}
+        ${k.category ? `<span><span class="text-gray-400 dark:text-gray-500">Category:</span> <span class="text-${color}-600 dark:text-${color}-400 font-medium">${k.category}</span></span>` : ''}
         <span><span class="text-gray-400">Scope:</span> ${k.decision_scope}</span>
         ${k.author ? `<span><span class="text-gray-400">Author:</span> ${escapeHtml(k.author)}</span>` : ''}
         ${k.branch ? `<span><span class="text-gray-400">Branch:</span> ${k.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${escapeHtml(k.branch)}</span>` : 'main'}</span>` : ''}
@@ -180,7 +180,7 @@ function buildKnowledgeFilterParams(filters?: { status?: string; category?: stri
 // Helper to render knowledge list with optional load-more
 export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string }): string {
   if (items.length === 0) {
-    return '<p class="text-gray-500 text-center py-8">No knowledge entries found</p>';
+    return '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No knowledge entries found</p>';
   }
 
   const filterParams = buildKnowledgeFilterParams(filters);
@@ -263,12 +263,12 @@ export function renderKnowledgeModal(knowledge: {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
               </svg>
             </button>
-            <span class="px-2 py-0.5 text-xs font-medium rounded ${knowledge.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">${knowledge.active ? 'Active' : 'Inactive'}</span>
-            ${knowledge.category ? `<span class="px-2 py-0.5 text-xs font-medium rounded bg-${color}-100 text-${color}-700">${knowledge.category}</span>` : ''}
+            <span class="px-2 py-0.5 text-xs font-medium rounded ${knowledge.active ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}">${knowledge.active ? 'Active' : 'Inactive'}</span>
+            ${knowledge.category ? `<span class="px-2 py-0.5 text-xs font-medium rounded bg-${color}-100 dark:bg-${color}-900/30 text-${color}-700 dark:text-${color}-300">${knowledge.category}</span>` : ''}
           </div>
-          <h2 class="text-xl font-bold text-gray-800">${escapeHtml(knowledge.title)}</h2>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">${escapeHtml(knowledge.title)}</h2>
         </div>
-        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-800 hover:bg-gray-200 focus:outline-hidden focus:bg-gray-200 cursor-pointer" aria-label="Close">
+        <button onclick="hideModal()" class="shrink-0 size-8 inline-flex justify-center items-center rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-600 cursor-pointer" aria-label="Close">
           <span class="sr-only">Close</span>
           <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
@@ -276,42 +276,42 @@ export function renderKnowledgeModal(knowledge: {
 
       <!-- Confidence & Usage Stats -->
       <div class="mb-4 grid grid-cols-2 gap-4">
-        <div class="bg-gray-100 rounded-lg p-3">
-          <div class="text-xs text-gray-500 mb-1">Confidence</div>
-          <div class="text-xl font-semibold text-${color}-600 mb-2">${Math.round(knowledge.confidence * 100)}%</div>
-          <div class="w-full bg-gray-200 rounded-full h-1.5">
+        <div class="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3">
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Confidence</div>
+          <div class="text-xl font-semibold text-${color}-600 dark:text-${color}-400 mb-2">${Math.round(knowledge.confidence * 100)}%</div>
+          <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
             <div class="bg-${color}-500 h-1.5 rounded-full transition-all" style="width: ${Math.round(knowledge.confidence * 100)}%"></div>
           </div>
         </div>
-        <div class="bg-gray-100 rounded-lg p-3">
-          <div class="text-xs text-gray-500 mb-1">Usage</div>
-          <div class="text-xl font-semibold text-gray-700">${knowledge.usage_count || 0} <span class="text-sm font-normal text-gray-500">times</span></div>
-          <div class="text-xs text-gray-400 mt-1">${knowledge.last_used_at ? 'Last used ' + knowledge.last_used_at.split('T')[0] : 'Never used'}</div>
+        <div class="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3">
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Usage</div>
+          <div class="text-xl font-semibold text-gray-700 dark:text-gray-200">${knowledge.usage_count || 0} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">times</span></div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">${knowledge.last_used_at ? 'Last used ' + knowledge.last_used_at.split('T')[0] : 'Never used'}</div>
         </div>
       </div>
 
       <!-- Content -->
       <div class="mb-4">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Content</h3>
-        <div class="text-sm text-gray-700 bg-gray-100 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(knowledge.content)}</div>
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Content</h3>
+        <div class="text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/50 rounded-lg p-4 leading-relaxed markdown-content" data-markdown>${escapeHtml(knowledge.content)}</div>
       </div>
 
       <!-- Metadata -->
       <div class="mb-4">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Metadata</h3>
-        <div class="text-sm text-gray-700 space-y-1">
-          <div><span class="text-gray-400">Namespace:</span> ${escapeHtml(knowledge.namespace)}</div>
-          <div><span class="text-gray-400">Source:</span> ${knowledge.source}${knowledge.source === 'ticket' && knowledge.origin_ticket_type ? ` (${knowledge.origin_ticket_type})` : ''}</div>
-          <div><span class="text-gray-400">Scope:</span> ${knowledge.decision_scope}</div>
-          ${knowledge.author ? `<div><span class="text-gray-400">Author:</span> ${escapeHtml(knowledge.author)}</div>` : ''}
-          ${knowledge.branch ? `<div><span class="text-gray-400">Branch:</span> ${knowledge.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium text-xs">${escapeHtml(knowledge.branch)}</span>` : 'main'}</div>` : ''}
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Metadata</h3>
+        <div class="text-sm text-gray-700 dark:text-gray-200 space-y-1">
+          <div><span class="text-gray-400 dark:text-gray-500">Namespace:</span> ${escapeHtml(knowledge.namespace)}</div>
+          <div><span class="text-gray-400 dark:text-gray-500">Source:</span> ${knowledge.source}${knowledge.source === 'ticket' && knowledge.origin_ticket_type ? ` (${knowledge.origin_ticket_type})` : ''}</div>
+          <div><span class="text-gray-400 dark:text-gray-500">Scope:</span> ${knowledge.decision_scope}</div>
+          ${knowledge.author ? `<div><span class="text-gray-400 dark:text-gray-500">Author:</span> ${escapeHtml(knowledge.author)}</div>` : ''}
+          ${knowledge.branch ? `<div><span class="text-gray-400 dark:text-gray-500">Branch:</span> ${knowledge.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium text-xs">${escapeHtml(knowledge.branch)}</span>` : 'main'}</div>` : ''}
         </div>
       </div>
 
       ${knowledge.origin_ticket_id ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Origin Ticket</h3>
-          <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 cursor-pointer font-mono font-medium"
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Origin Ticket</h3>
+          <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 cursor-pointer font-mono font-medium"
                 hx-get="/partials/ticket-modal/${encodeURIComponent(knowledge.origin_ticket_id)}"
                 hx-target="#modal-content"
                 hx-trigger="click">
@@ -326,9 +326,9 @@ export function renderKnowledgeModal(knowledge: {
       <!-- Tags -->
       ${knowledge.tags?.length ? `
         <div class="mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 mb-2">Tags</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Tags</h3>
           <div class="flex flex-wrap gap-2">
-            ${knowledge.tags.map(t => `<span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-700">${escapeHtml(t)}</span>`).join('')}
+            ${knowledge.tags.map(t => `<span class="px-3 py-1 text-sm rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">${escapeHtml(t)}</span>`).join('')}
           </div>
         </div>
       ` : ''}
@@ -357,25 +357,25 @@ export function renderKnowledgeModal(knowledge: {
 
       <!-- Actions & Metadata Footer -->
       <div class="mt-6 pt-4 border-t flex items-center justify-between">
-        <div class="text-xs text-gray-400">
+        <div class="text-xs text-gray-400 dark:text-gray-500">
           <span>Created: ${knowledge.created_at || 'N/A'}</span>
           <span class="ml-4">Updated: ${knowledge.updated_at || 'N/A'}</span>
         </div>
         <div class="flex items-center gap-2">
           <button type="button"
-                  class="p-1.5 text-gray-500 bg-gray-100 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                  class="p-1.5 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors cursor-pointer"
                   onclick="exportKnowledgeAsMarkdown('${escapeHtml(knowledge.id)}')"
                   title="Export as Markdown">
             <svg class="size-4" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M212.24,83.76l-56-56A6,6,0,0,0,152,26H56A14,14,0,0,0,42,40v72a6,6,0,0,0,12,0V40a2,2,0,0,1,2-2h90V88a6,6,0,0,0,6,6h50V224a6,6,0,0,0,12,0V88A6,6,0,0,0,212.24,83.76ZM158,46.48,193.52,82H158ZM144,146H128a6,6,0,0,0-6,6v56a6,6,0,0,0,6,6h16a34,34,0,0,0,0-68Zm0,56H134V158h10a22,22,0,0,1,0,44Zm-42-50v56a6,6,0,0,1-12,0V171L72.92,195.44a6,6,0,0,1-9.84,0L46,171v37a6,6,0,0,1-12,0V152a6,6,0,0,1,10.92-3.44l23.08,33,23.08-33A6,6,0,0,1,102,152Z"></path></svg>
           </button>
           <button type="button"
-                  class="p-1.5 text-gray-500 bg-gray-100 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                  class="p-1.5 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors cursor-pointer"
                   onclick="exportKnowledgeAsPDF('${escapeHtml(knowledge.id)}')"
                   title="Export as PDF">
             <svg class="size-4" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M222,152a6,6,0,0,1-6,6H190v20h18a6,6,0,0,1,0,12H190v18a6,6,0,0,1-12,0V152a6,6,0,0,1,6-6h32A6,6,0,0,1,222,152ZM90,172a26,26,0,0,1-26,26H54v10a6,6,0,0,1-12,0V152a6,6,0,0,1,6-6H64A26,26,0,0,1,90,172Zm-12,0a14,14,0,0,0-14-14H54v28H64A14,14,0,0,0,78,172Zm84,8a34,34,0,0,1-34,34H112a6,6,0,0,1-6-6V152a6,6,0,0,1,6-6h16A34,34,0,0,1,162,180Zm-12,0a22,22,0,0,0-22-22H118v44h10A22,22,0,0,0,150,180ZM42,112V40A14,14,0,0,1,56,26h96a6,6,0,0,1,4.25,1.76l56,56A6,6,0,0,1,214,88v24a6,6,0,0,1-12,0V94H152a6,6,0,0,1-6-6V38H56a2,2,0,0,0-2,2v72a6,6,0,0,1-12,0ZM158,82h35.52L158,46.48Z"></path></svg>
           </button>
           <button type="button"
-                  class="px-3 py-1.5 text-xs font-medium ${knowledge.active ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-green-700 bg-green-50 hover:bg-green-100'} rounded transition-colors cursor-pointer"
+                  class="px-3 py-1.5 text-xs font-medium ${knowledge.active ? 'text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600' : 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30'} rounded transition-colors cursor-pointer"
                   hx-patch="/api/knowledge/${knowledge.id}/active"
                   hx-vals='{"active": ${!knowledge.active}}'
                   hx-target="#modal-content"
