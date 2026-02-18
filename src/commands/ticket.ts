@@ -132,7 +132,7 @@ function parseJsonTicket(raw: string): TicketJsonInput {
     return result;
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error(`Invalid JSON: ${error.message}`);
+      throw new Error(`Invalid JSON: ${error.message}`, { cause: error });
     }
     throw error;
   }

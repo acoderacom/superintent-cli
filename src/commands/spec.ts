@@ -38,7 +38,7 @@ function parseJsonSpec(raw: string): SpecInput {
     return result;
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error(`Invalid JSON: ${error.message}`);
+      throw new Error(`Invalid JSON: ${error.message}`, { cause: error });
     }
     throw error;
   }

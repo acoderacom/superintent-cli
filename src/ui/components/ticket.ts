@@ -327,10 +327,11 @@ export function renderTicketModal(ticket: {
                     <div class="ml-1">
                       <div class="flex items-center gap-2">
                         <input type="checkbox" ${isDone ? 'checked' : ''}
+                               name="task-${i}"
                                class="rounded border-gray-300 shrink-0"
                                hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/task/${i}"
                                hx-swap="none">
-                        <span class="${isDone ? 'line-through text-gray-400' : 'font-medium text-gray-700'}">${escapeHtml(ts.task)}</span>
+                        <span class="${isDone ? 'line-through text-gray-400' : 'text-gray-700'}">${escapeHtml(ts.task)}</span>
                       </div>
                       ${ts.steps?.length ? `
                         <ol class="ml-8 mt-1 list-decimal text-gray-500 text-xs">
@@ -351,10 +352,11 @@ export function renderTicketModal(ticket: {
                     return `
                     <div class="flex items-start gap-2 ml-1">
                       <input type="checkbox" ${isDone ? 'checked' : ''}
+                             name="dod-${i}"
                              class="rounded border-gray-300 shrink-0 mt-0.5"
                              hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/dod/${i}"
                              hx-swap="none">
-                      <span class="${isDone ? 'line-through text-gray-400' : 'text-gray-700'}"><strong>${escapeHtml(dv.dod)}</strong> → ${escapeHtml(dv.verify)}</span>
+                      <span class="${isDone ? 'line-through text-gray-400' : 'text-gray-700'}">${escapeHtml(dv.dod)} → ${escapeHtml(dv.verify)}</span>
                     </div>
                   `;}).join('')}
                 </div>
@@ -364,7 +366,7 @@ export function renderTicketModal(ticket: {
               <div>
                 <span class="font-medium text-blue-700">Decisions:</span>
                 <ul class="mt-1 ml-4 list-disc text-gray-700">
-                  ${ticket.plan.decisions.map(d => `<li><strong>${escapeHtml(d.choice)}</strong>${d.reason ? ` — ${escapeHtml(d.reason)}` : ''}</li>`).join('')}
+                  ${ticket.plan.decisions.map(d => `<li>${escapeHtml(d.choice)}${d.reason ? ` — ${escapeHtml(d.reason)}` : ''}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
