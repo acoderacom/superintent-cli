@@ -28,8 +28,7 @@ Install the Superintent plugin in Claude Code, then run:
 ┌──────────────▼──────────────────────────────┐
 │  CLI (commander.js)                         │
 │  ├── commands/   ticket, knowledge, spec,   │
-│  │               search, extract, init,     │
-│  │               status, ui                 │
+│  │               init, status, ui           │
 │  ├── db/         libSQL client, schema,     │
 │  │               parsers, search, usage     │
 │  ├── embed/      bge-small-en-v1.5 (384d)   │
@@ -110,17 +109,17 @@ superintent knowledge activate <id>
 superintent knowledge deactivate <id>
 superintent knowledge promote <id>
 superintent knowledge recalculate [--dry-run]
-```
 
-### Search
-
-Semantic search using cosine similarity against 384-dimensional embeddings.
-
-```bash
+# Search (semantic, cosine similarity against 384-dim embeddings)
 superintent knowledge search "error handling" [--namespace] [--category] [--ticket-type] [--tags] [--author] [--branch] [--min-score 0.45] [--limit 5]
+
+# Extract knowledge from completed tickets
+superintent knowledge extract <ticket-id> [--namespace <namespace>]
 ```
 
 Score interpretation: >=0.45 relevant, >=0.55 strong match. Falls back to non-indexed search if vector index unavailable.
+
+Extraction proposes entries across categories based on ticket intent, assumptions, constraints, decisions, and trade-offs. Designed for human or AI review before saving.
 
 ### Specs
 
@@ -141,16 +140,6 @@ superintent spec list [--limit N]
 superintent spec update <id> [--stdin] [--title] [--comment] [--author]
 superintent spec delete <id>
 ```
-
-### Knowledge Extraction
-
-Generates structured knowledge proposals from completed tickets.
-
-```bash
-superintent knowledge extract <ticket-id> [--namespace <namespace>]
-```
-
-Proposes entries across categories based on ticket intent, assumptions, constraints, decisions, and trade-offs. Designed for human or AI review before saving.
 
 ### Web Dashboard
 
