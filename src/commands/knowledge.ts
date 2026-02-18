@@ -101,7 +101,7 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
     return result;
   } catch (error) {
     if (error instanceof SyntaxError) {
-      throw new Error(`Invalid JSON: ${error.message}`);
+      throw new Error(`Invalid JSON: ${error.message}`, { cause: error });
     }
     throw error;
   }
@@ -551,8 +551,17 @@ knowledgeCommand
           args.push(conf);
         }
         if (options.scope || stdinParsed?.scope) {
+          const scopeValue = options.scope || stdinParsed!.scope!;
+          if (!VALID_SCOPES.includes(scopeValue as DecisionScope)) {
+            const response: CliResponse = {
+              success: false,
+              error: `Invalid scope '${scopeValue}'. Must be one of: ${VALID_SCOPES.join(', ')}`,
+            };
+            console.log(JSON.stringify(response));
+            process.exit(1);
+          }
           updates.push('decision_scope = ?');
-          args.push(options.scope || stdinParsed!.scope!);
+          args.push(scopeValue);
         }
 
         // Add comment if provided

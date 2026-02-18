@@ -116,8 +116,17 @@ export function getHtml(namespace: string, version: string): string {
           </span>
           <ul class="flex flex-col gap-y-0.5">
             <li>
-              <button id="nav-ticket" onclick="switchTab('ticket')"
+              <button id="nav-spec" onclick="switchTab('spec')"
                       class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none nav-active">
+                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                </svg>
+                Specs
+              </button>
+            </li>
+            <li>
+              <button id="nav-ticket" onclick="switchTab('ticket')"
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none">
                 <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
                 </svg>
@@ -131,15 +140,6 @@ export function getHtml(namespace: string, version: string): string {
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
                 Knowledge
-              </button>
-            </li>
-            <li>
-              <button id="nav-spec" onclick="switchTab('spec')"
-                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-200 focus:outline-none">
-                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
-                </svg>
-                Specs
               </button>
             </li>
             <li>
@@ -170,12 +170,12 @@ export function getHtml(namespace: string, version: string): string {
   <main id="main-content" class="lg:ps-60 pt-13 px-3 pb-3 transition-all duration-300">
     <div class="h-[calc(100dvh-62px)] overflow-hidden flex flex-col bg-white border border-gray-200 shadow-xs rounded-lg">
       <div class="flex-1 overflow-y-auto p-3 sm:p-5">
-        <!-- Ticket View (default) - full width -->
-        <div id="view-ticket" hx-get="/partials/kanban-view" hx-trigger="load"></div>
+        <!-- Spec View (default) -->
+        <div id="view-spec" hx-get="/partials/spec-view" hx-trigger="load"></div>
+        <!-- Ticket View - full width -->
+        <div id="view-ticket" class="hidden" hx-get="/partials/kanban-view" hx-trigger="revealed"></div>
         <!-- Knowledge View -->
         <div id="view-knowledge" class="hidden mx-auto" hx-get="/partials/knowledge-view" hx-trigger="revealed"></div>
-        <!-- Spec View -->
-        <div id="view-spec" class="hidden mx-auto" hx-get="/partials/spec-view" hx-trigger="revealed"></div>
         <!-- Knowledge Graph View -->
         <div id="view-graph" class="hidden" hx-get="/partials/graph-view" hx-trigger="intersect once"></div>
       </div>
