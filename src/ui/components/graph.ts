@@ -4,7 +4,7 @@ export function renderGraphView(): string {
   return `
     <div>
       <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Knowledge Graph</h1>
-      <div id="graph-container" class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md">
+      <div id="graph-container" class="relative bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-2xs rounded-md">
         <div id="graph-loading" class="flex flex-col justify-center items-center gap-3" style="height: calc(100dvh - 160px);">
           <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
           <p class="text-sm text-gray-500 dark:text-gray-400">Stabilizing graph…</p>
@@ -12,7 +12,7 @@ export function renderGraphView(): string {
         <div id="graph-canvas" style="height: calc(100dvh - 160px); width: 100%; opacity: 0;"></div>
 
         <!-- Legend -->
-        <div class="absolute bottom-3 left-3 right-3 md:right-auto md:max-w-fit bg-white/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs">
+        <div class="absolute bottom-3 left-3 right-3 md:right-auto md:max-w-fit bg-white/90 dark:bg-dark-surface/90 border border-gray-200 dark:border-dark-border rounded-lg px-3 py-2 text-xs">
           <div class="font-medium text-gray-700 dark:text-gray-200 mb-1.5">Categories</div>
           <div class="flex flex-wrap gap-x-3 gap-y-1 text-gray-600 dark:text-gray-300">
             <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:#3B82F6"></span> architecture</span>

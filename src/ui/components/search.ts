@@ -11,7 +11,7 @@ export function renderSearchView(): string {
                name="query"
                placeholder="Search knowledge base..."
                autocomplete="off"
-               class="w-full px-4 py-3 pr-16 text-lg border dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+               class="w-full px-4 py-3 pr-16 text-lg border dark:border-dark-border rounded-lg shadow-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                hx-get="/partials/search-results"
                hx-trigger="input changed delay:300ms, keyup[key=='Enter']"
                hx-target="#search-results"
@@ -24,7 +24,7 @@ export function renderSearchView(): string {
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </div>
-        <button type="button" id="search-clear" class="hidden absolute right-3 top-3 p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+        <button type="button" id="search-clear" class="hidden absolute right-3 top-3 p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover"
                 onclick="var inp = document.getElementById('search-input'); inp.value = ''; inp.focus(); this.classList.add('hidden'); document.getElementById('search-results').innerHTML = '<p class=&quot;text-gray-500 text-center py-8&quot;>Enter a search query to find relevant knowledge</p>';">
           <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -33,7 +33,7 @@ export function renderSearchView(): string {
       </div>
 
       <div class="flex gap-3 mt-4">
-        <select name="category" class="border dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+        <select name="category" class="border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                 hx-get="/partials/search-results"
                 hx-trigger="change"
                 hx-target="#search-results"
@@ -46,7 +46,7 @@ export function renderSearchView(): string {
           <option value="gotcha">Gotcha</option>
         </select>
 
-        <select name="limit" class="border dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+        <select name="limit" class="border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                 hx-get="/partials/search-results"
                 hx-trigger="change"
                 hx-target="#search-results"
@@ -100,7 +100,7 @@ export function renderSearchResults(results: {
         const scorePercent = Math.round(r.score * 100);
         const inactiveClass = !r.active ? 'opacity-60 border-dashed' : '';
         return `
-          <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
+          <div class="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
                hx-get="/partials/knowledge-modal/${encodeURIComponent(r.id)}"
                hx-target="#modal-content"
                hx-trigger="click"

@@ -42,7 +42,7 @@ export function renderTicketCard(ticket: {
   const displayTitle = ticket.title || ticket.intent;
 
   return `
-    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md p-3 cursor-pointer hover:shadow-md transition group"
+    <div class="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-2xs rounded-md p-3 cursor-pointer hover:shadow-md transition group"
          draggable="true"
          ondragstart="onDragStart(event, '${ticket.id}')"
          ondragend="onDragEnd(event)"
@@ -336,7 +336,7 @@ export function renderTicketModal(ticket: {
                       <div class="flex items-center gap-2">
                         <input type="checkbox" ${isDone ? 'checked' : ''}
                                name="task-${i}"
-                               class="rounded border-gray-300 dark:border-gray-600 shrink-0"
+                               class="rounded border-gray-300 dark:border-dark-border shrink-0"
                                hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/task/${i}"
                                hx-swap="none">
                         <span class="${isDone ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'}">${escapeHtml(ts.task)}</span>
@@ -361,7 +361,7 @@ export function renderTicketModal(ticket: {
                     <div class="flex items-start gap-2 ml-1">
                       <input type="checkbox" ${isDone ? 'checked' : ''}
                              name="dod-${i}"
-                             class="rounded border-gray-300 dark:border-gray-600 shrink-0 mt-0.5"
+                             class="rounded border-gray-300 dark:border-dark-border shrink-0 mt-0.5"
                              hx-patch="/api/tickets/${encodeURIComponent(ticket.id)}/dod/${i}"
                              hx-swap="none">
                       <span class="${isDone ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'}">${escapeHtml(dv.dod)} → ${escapeHtml(dv.verify)}</span>
@@ -486,7 +486,7 @@ export function renderTicketModal(ticket: {
 
       ${renderCommentsSection(comments || [], 'ticket', ticket.id)}
 
-      <div class="mt-6 pt-4 border-t dark:border-gray-700 flex items-center justify-between">
+      <div class="mt-6 pt-4 border-t dark:border-dark-border flex items-center justify-between">
         <div class="text-xs text-gray-400 dark:text-gray-500">
           <span>Created: ${ticket.created_at || 'N/A'}</span>
           <span class="ml-4">Updated: ${ticket.updated_at || 'N/A'}</span>
@@ -541,13 +541,13 @@ export function renderNewTicketModal(): string {
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title <span class="text-red-500">*</span></label>
             <input type="text" name="title" required
                    placeholder="Brief summary of what needs to be done"
-                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Type <span class="text-red-500">*</span></label>
             <select name="type" required
-                    class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
               ${ticketTypes.map(t => `<option value="${t.value}">${t.label} - ${t.desc}</option>`).join('')}
             </select>
           </div>
@@ -558,7 +558,7 @@ export function renderNewTicketModal(): string {
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-dark-border">
           <button type="button" onclick="hideModal()"
                   class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel
@@ -610,13 +610,13 @@ export function renderEditTicketModal(ticket: {
             <input type="text" name="title" required
                    value="${escapeHtml(ticket.title || '')}"
                    placeholder="Brief summary of what needs to be done"
-                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Type <span class="text-red-500">*</span></label>
             <select name="type" required
-                    class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
               ${ticketTypes.map(t => `<option value="${t.value}"${ticket.type === t.value ? ' selected' : ''}>${t.label} - ${t.desc}</option>`).join('')}
             </select>
           </div>
@@ -627,7 +627,7 @@ export function renderEditTicketModal(ticket: {
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-dark-border">
           <button type="button" onclick="hideModal()"
                   class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel

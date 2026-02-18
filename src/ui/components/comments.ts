@@ -74,7 +74,7 @@ export function renderEditCommentForm(comment: Comment): string {
             hx-target="#comments-section"
             hx-swap="outerHTML">
         <textarea name="text" rows="2"
-                  class="w-full px-2 py-1.5 text-sm border dark:border-gray-600 rounded-lg resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">${escapeHtml(comment.text)}</textarea>
+                  class="w-full px-2 py-1.5 text-sm border dark:border-dark-border rounded-lg resize-none bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">${escapeHtml(comment.text)}</textarea>
         <div class="flex justify-end gap-2 mt-2">
           <button type="button"
                   class="px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 cursor-pointer"
@@ -106,7 +106,7 @@ function renderInlineCommentForm(parentType: CommentParentType, parentId: string
       <input type="hidden" name="parent_id" value="${escapeHtml(parentId)}">
       <input type="text" name="text" placeholder="Add a comment..."
              required
-             class="flex-1 px-3 py-1.5 text-sm border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+             class="flex-1 px-3 py-1.5 text-sm border dark:border-dark-border rounded-lg bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
       <button type="submit"
               class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 shrink-0 cursor-pointer">
         Comment

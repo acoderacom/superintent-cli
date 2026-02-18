@@ -63,7 +63,7 @@ export function renderSpecMore(specs: Spec[], ticketCounts: Record<string, numbe
 // Helper to render spec card
 export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
   return `
-    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col group"
+    <div class="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-2xs rounded-md hover:shadow-md transition cursor-pointer overflow-hidden flex flex-col group"
          hx-get="/partials/spec-modal/${encodeURIComponent(spec.id)}"
          hx-target="#modal-content"
          hx-trigger="click"
@@ -174,7 +174,7 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
       ${renderCommentsSection(comments || [], 'spec', spec.id)}
 
       <!-- Actions & Metadata Footer -->
-      <div class="mt-6 pt-4 border-t dark:border-gray-700 flex items-center justify-between">
+      <div class="mt-6 pt-4 border-t dark:border-dark-border flex items-center justify-between">
         <div class="text-xs text-gray-400 dark:text-gray-500">
           <span>Created: ${spec.created_at || 'N/A'}</span>
           <span class="ml-4">Updated: ${spec.updated_at || 'N/A'}</span>
@@ -222,7 +222,7 @@ export function renderNewSpecModal(): string {
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Title <span class="text-red-500">*</span></label>
             <input type="text" name="title" required
                    placeholder="Feature or spec name"
-                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
@@ -231,7 +231,7 @@ export function renderNewSpecModal(): string {
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-dark-border">
           <button type="button" onclick="hideModal()"
                   class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel
@@ -269,7 +269,7 @@ export function renderEditSpecModal(spec: Spec): string {
             <input type="text" name="title" required
                    value="${escapeHtml(spec.title)}"
                    placeholder="Feature or spec name"
-                   class="w-full px-3 py-2 border dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                   class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
           </div>
 
           <div>
@@ -278,7 +278,7 @@ export function renderEditSpecModal(spec: Spec): string {
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-gray-700">
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-dark-border">
           <button type="button" onclick="hideModal()"
                   class="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer">
             Cancel

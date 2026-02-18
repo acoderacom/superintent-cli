@@ -26,10 +26,10 @@ export function getHtml(namespace: string, version: string): string {
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.1/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@4.1.0/dist/jspdf.umd.min.js"></script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+<body class="bg-gray-100 dark:bg-dark-base min-h-screen">
 
   <!-- ========== HEADER ========== -->
-  <header class="fixed top-0 inset-x-0 z-50 w-full bg-gray-100 dark:bg-gray-900 text-sm py-2.5">
+  <header class="fixed top-0 inset-x-0 z-50 w-full bg-gray-100 dark:bg-dark-base text-sm py-2.5">
     <nav class="px-4 sm:px-6 flex basis-full items-center w-full mx-auto">
       <div class="w-full flex items-center gap-x-2">
         <ul class="flex items-center gap-2.5">
@@ -42,7 +42,7 @@ export function getHtml(namespace: string, version: string): string {
             </a>
 
             <!-- Sidebar Toggle -->
-            <button type="button" onclick="toggleSidebar()" class="p-1 size-7 inline-flex items-center justify-center rounded-md border border-transparent text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-700">
+            <button type="button" onclick="toggleSidebar()" class="p-1 size-7 inline-flex items-center justify-center rounded-md border border-transparent text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-dark-hover cursor-pointer focus:outline-hidden focus-visible:bg-gray-200 dark:focus-visible:bg-dark-hover">
               <svg class="shrink-0 size-3.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path></svg>
               <span class="sr-only">Sidebar Toggle</span>
             </button>
@@ -53,14 +53,14 @@ export function getHtml(namespace: string, version: string): string {
             <div class="inline-flex justify-center w-full">
               <div class="relative inline-flex">
                 <!-- Namespace Button -->
-                <button id="namespace-btn" type="button" onclick="toggleNamespaceDropdown()" class="py-1.5 px-2.5 min-h-8 flex items-center gap-x-1.5 font-medium text-sm text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer focus:outline-hidden focus:bg-gray-200 dark:focus:bg-gray-700">
+                <button id="namespace-btn" type="button" onclick="toggleNamespaceDropdown()" class="py-1.5 px-2.5 min-h-8 flex items-center gap-x-1.5 font-medium text-sm text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover cursor-pointer focus:outline-hidden focus:bg-gray-200 dark:focus:bg-dark-hover">
                   <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
                   ${escapeHtml(namespace)}
                   <svg class="shrink-0 size-3.5 ms-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                 </button>
 
                 <!-- Dropdown -->
-                <div id="namespace-dropdown" class="hidden absolute top-full start-0 mt-2 w-65 z-20 bg-white dark:bg-gray-800 border border-transparent rounded-xl shadow-xl">
+                <div id="namespace-dropdown" class="hidden absolute top-full start-0 mt-2 w-65 z-20 bg-white dark:bg-dark-surface border border-transparent rounded-xl shadow-xl">
                   <div class="p-1.5">
                     <span class="block pt-2 pb-2 ps-2.5 text-sm text-gray-500 dark:text-gray-400">
                       Namespace
@@ -68,7 +68,7 @@ export function getHtml(namespace: string, version: string): string {
 
                     <div class="flex flex-col gap-y-1">
                       <!-- Active Namespace -->
-                      <label class="py-2.5 px-3 group flex justify-start items-center gap-x-3 rounded-lg cursor-pointer text-xs text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-hidden focus:bg-gray-100 dark:focus:bg-gray-700">
+                      <label class="py-2.5 px-3 group flex justify-start items-center gap-x-3 rounded-lg cursor-pointer text-xs text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover focus:outline-hidden focus:bg-gray-100 dark:focus:bg-dark-hover">
                         <input type="radio" class="hidden" name="active-namespace" checked>
                         <svg class="shrink-0 size-4 opacity-0 group-has-checked:opacity-100" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                         <span class="grow">
@@ -99,35 +99,35 @@ export function getHtml(namespace: string, version: string): string {
       document.write('<style id="sidebar-collapsed-style">@media(min-width:1024px){#sidebar{transform:translateX(-100%)!important}#main-content{padding-inline-start:0!important}}</style>');
     }
   </script>
-  <aside id="sidebar" class="fixed inset-y-0 start-0 z-40 w-60 bg-gray-100 dark:bg-gray-900 pt-13 -translate-x-full lg:translate-x-0">
+  <aside id="sidebar" class="fixed inset-y-0 start-0 z-40 w-60 bg-gray-100 dark:bg-dark-base pt-13 -translate-x-full lg:translate-x-0">
     <div class="relative flex flex-col h-full max-h-full">
       <nav class="p-3 flex-1 flex flex-col overflow-y-auto">
 
         <!-- Close button (mobile only) -->
         <div class="lg:hidden mb-2 flex items-center justify-end">
-          <button type="button" onclick="toggleSidebar()" class="p-1.5 inline-flex items-center text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none">
+          <button type="button" onclick="toggleSidebar()" class="p-1.5 inline-flex items-center text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none">
             <svg class="size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
 
         <!-- Search Button -->
-        <button type="button" onclick="showSearchModal()" class="p-1.5 ps-2.5 w-full inline-flex items-center gap-x-2 text-sm rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 shadow-xs cursor-pointer focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none">
+        <button type="button" onclick="showSearchModal()" class="p-1.5 ps-2.5 w-full inline-flex items-center gap-x-2 text-sm rounded-lg bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border text-gray-600 dark:text-gray-300 shadow-xs cursor-pointer focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none">
           Search
-          <span class="ms-auto flex items-center gap-x-1 py-px px-1.5 border border-gray-200 dark:border-gray-600 rounded-md">
+          <span class="ms-auto flex items-center gap-x-1 py-px px-1.5 border border-gray-200 dark:border-dark-border rounded-md">
             <svg class="shrink-0 size-2.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"></path></svg>
             <span class="text-xs uppercase">k</span>
           </span>
         </button>
 
         <!-- Navigation Section -->
-        <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 dark:border-gray-700">
+        <div class="pt-3 mt-3 flex flex-col border-t border-gray-200 dark:border-dark-border">
           <span class="block ps-2.5 mb-2 font-medium text-xs uppercase text-gray-500 dark:text-gray-400">
             Navigation
           </span>
           <ul class="flex flex-col gap-y-0.5">
             <li>
               <button id="nav-spec" onclick="switchTab('spec')"
-                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none nav-active">
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none nav-active">
                 <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
                 </svg>
@@ -136,7 +136,7 @@ export function getHtml(namespace: string, version: string): string {
             </li>
             <li>
               <button id="nav-ticket" onclick="switchTab('ticket')"
-                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none">
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none">
                 <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
                 </svg>
@@ -145,7 +145,7 @@ export function getHtml(namespace: string, version: string): string {
             </li>
             <li>
               <button id="nav-knowledge" onclick="switchTab('knowledge')"
-                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none">
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none">
                 <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
@@ -154,7 +154,7 @@ export function getHtml(namespace: string, version: string): string {
             </li>
             <li>
               <button id="nav-graph" onclick="switchTab('graph')"
-                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none">
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none">
                 <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="5" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M6.5 7.5 11 16"/><path d="m17.5 7.5-5.5 8.5"/><path d="M7 6h10"/>
                 </svg>
@@ -169,7 +169,7 @@ export function getHtml(namespace: string, version: string): string {
       <div class="p-3">
         <div class="flex items-center justify-between ps-2.5">
           <span class="text-xs text-gray-400 dark:text-gray-500">Superintent v${escapeHtml(version)}</span>
-          <button id="theme-toggle" type="button" onclick="cycleTheme()" class="p-1.5 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer focus:outline-none" title="Toggle theme">
+          <button id="theme-toggle" type="button" onclick="cycleTheme()" class="p-1.5 inline-flex items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-dark-hover cursor-pointer focus:outline-none" title="Toggle theme">
             <!-- Sun icon (light) -->
             <svg id="theme-icon-light" class="size-4 hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
             <!-- Moon icon (dark) -->
@@ -185,11 +185,11 @@ export function getHtml(namespace: string, version: string): string {
   <!-- ========== END SIDEBAR ========== -->
 
   <!-- Sidebar Backdrop (mobile) -->
-  <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/50 opacity-0 pointer-events-none lg:hidden" onclick="toggleSidebar()"></div>
+  <div id="sidebar-backdrop" class="fixed inset-0 z-30 bg-black/50 dark:bg-gray-500/50 opacity-0 pointer-events-none lg:hidden" onclick="toggleSidebar()"></div>
 
   <!-- ========== MAIN CONTENT ========== -->
   <main id="main-content" class="lg:ps-60 pt-13 px-3 pb-3 transition-all duration-300">
-    <div class="h-[calc(100dvh-62px)] overflow-hidden flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xs rounded-lg">
+    <div class="h-[calc(100dvh-62px)] overflow-hidden flex flex-col bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-xs rounded-lg">
       <div class="flex-1 overflow-y-auto p-3 sm:p-5">
         <!-- Spec View (default) -->
         <div id="view-spec" hx-get="/partials/spec-view" hx-trigger="load"></div>
@@ -205,16 +205,16 @@ export function getHtml(namespace: string, version: string): string {
   <!-- ========== END MAIN CONTENT ========== -->
 
   <!-- Search Modal -->
-  <div id="search-modal" class="hidden fixed inset-0 bg-black/50 flex items-start justify-center z-50 pt-[10vh]" onclick="if(event.target===this)hideSearchModal()">
-    <div id="search-modal-content" class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4 max-h-[80vh]"
+  <div id="search-modal" class="hidden fixed inset-0 bg-black/50 dark:bg-gray-500/50 flex items-start justify-center z-50 pt-[10vh]" onclick="if(event.target===this)hideSearchModal()">
+    <div id="search-modal-content" class="bg-white dark:bg-dark-surface rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4 max-h-[80vh]"
          hx-get="/partials/search-view" hx-trigger="load">
       <div class="flex justify-center items-center py-16"><div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div></div>
     </div>
   </div>
 
   <!-- Modal (knowledge detail, tickets, specs — layers on top of search modal) -->
-  <div id="modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-60" onclick="if(event.target===this)hideModal()">
-    <div id="modal-content" class="modal-content bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4 max-h-[90vh]">
+  <div id="modal" class="hidden fixed inset-0 bg-black/50 dark:bg-gray-500/50 flex items-center justify-center z-60" onclick="if(event.target===this)hideModal()">
+    <div id="modal-content" class="modal-content bg-white dark:bg-dark-surface rounded-lg shadow-2xl w-full max-w-2xl overflow-auto m-4 max-h-[90vh]">
       <!-- Modal content loaded via HTMX -->
     </div>
   </div>

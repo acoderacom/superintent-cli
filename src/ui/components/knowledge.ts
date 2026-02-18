@@ -10,10 +10,10 @@ export function renderKnowledgeView(): string {
       <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Knowledge Base</h1>
       <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
       <aside class="w-full lg:w-64 shrink-0 lg:sticky lg:top-4 lg:self-start">
-        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md p-3 lg:p-4">
+        <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-4 lg:space-y-0 bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-2xs rounded-md p-3 lg:p-4">
           <div>
             <label for="k-status" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Status</label>
-            <select id="k-status" name="k-status" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+            <select id="k-status" name="k-status" class="w-full border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -26,7 +26,7 @@ export function renderKnowledgeView(): string {
 
           <div>
             <label for="k-category" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Category</label>
-            <select id="k-category" name="k-category" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+            <select id="k-category" name="k-category" class="w-full border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -42,7 +42,7 @@ export function renderKnowledgeView(): string {
 
           <div>
             <label for="k-scope" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Scope</label>
-            <select id="k-scope" name="k-scope" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+            <select id="k-scope" name="k-scope" class="w-full border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -57,7 +57,7 @@ export function renderKnowledgeView(): string {
 
           <div>
             <label for="k-origin" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Source</label>
-            <select id="k-origin" name="k-origin" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+            <select id="k-origin" name="k-origin" class="w-full border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
@@ -72,7 +72,7 @@ export function renderKnowledgeView(): string {
           <div>
             <label for="k-author" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Author</label>
             <input id="k-author" name="k-author" type="text" placeholder="Filter by author..."
-                   class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+                   class="w-full border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                    hx-get="/partials/knowledge-list"
                    hx-trigger="keyup changed delay:400ms"
                    hx-target="#knowledge-list"
@@ -82,7 +82,7 @@ export function renderKnowledgeView(): string {
           <div>
             <label for="k-branch" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Branch</label>
             <input id="k-branch" name="k-branch" type="text" placeholder="Filter by branch..."
-                   class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"
+                   class="w-full border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
                    hx-get="/partials/knowledge-list"
                    hx-trigger="keyup changed delay:400ms"
                    hx-target="#knowledge-list"
@@ -131,7 +131,7 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
   const color = categoryColors[k.category || ''] || 'gray';
   const inactiveClass = !k.active ? 'opacity-60 border-dashed' : '';
   return `
-    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
+    <div class="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
          hx-get="/partials/knowledge-modal/${encodeURIComponent(k.id)}"
          hx-target="#modal-content"
          hx-trigger="click"
