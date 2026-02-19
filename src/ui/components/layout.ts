@@ -841,14 +841,6 @@ export function getHtml(namespace: string, version: string): string {
           if (el) htmx.trigger(el, 'refresh');
         });
 
-        // Dashboard: refresh on any data change
-        ['ticket-updated', 'knowledge-updated', 'spec-updated'].forEach(function(evt) {
-          evtSource.addEventListener(evt, function() {
-            var el = document.getElementById('dashboard-grid');
-            if (el) htmx.trigger(el, 'refresh');
-          });
-        });
-
         evtSource.onerror = function() {
           // Browser auto-reconnects; no custom logic needed
         };

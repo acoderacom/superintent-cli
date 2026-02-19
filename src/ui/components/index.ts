@@ -57,5 +57,4 @@ export {
 // Dashboard components
 export {
   renderDashboardView,
-  renderDashboardGrid,
 } from './dashboard.js';
