@@ -13,6 +13,7 @@ export interface VectorSearchOptions {
   branches?: string[];
   minScore?: number;
   limit: number;
+  trackUsage?: boolean;
 }
 
 export async function performVectorSearch(
@@ -107,7 +108,9 @@ export async function performVectorSearch(
     });
   }
 
-  await trackUsage(results.map((r) => r.id));
+  if (options.trackUsage !== false) {
+    await trackUsage(results.map((r) => r.id));
+  }
 
   return results;
 }
