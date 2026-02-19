@@ -53,3 +53,9 @@ export {
   renderNewSpecModal,
   renderEditSpecModal,
 } from './spec.js';
+
+// Dashboard components
+export {
+  renderDashboardView,
+  renderDashboardGrid,
+} from './dashboard.js';

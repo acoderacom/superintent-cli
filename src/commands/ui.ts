@@ -35,7 +35,10 @@ import {
   renderCommentsSection,
   renderEditCommentForm,
   renderGraphView,
+  renderDashboardView,
+  renderDashboardGrid,
 } from '../ui/components/index.js';
+import type { DashboardData } from '../ui/components/dashboard.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
 import { emitSSE, createSSEStream, closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
@@ -810,7 +813,7 @@ export const uiCommand = new Command('ui')
       }
     });
 
-    // ============ SPEC PARTIALS ============
+    // ============ VIEW PARTIALS (Spec, Graph, Dashboard) ============
 
     // Spec view
     app.get('/partials/spec-view', (c) => {
@@ -820,6 +823,84 @@ export const uiCommand = new Command('ui')
     // Graph view
     app.get('/partials/graph-view', (c) => {
       return c.html(renderGraphView());
+    });
+
+    // Dashboard view (shell with HTMX loader)
+    app.get('/partials/dashboard-view', (c) => {
+      return c.html(renderDashboardView());
+    });
+
+    // Dashboard grid (widgets with live data)
+    app.get('/partials/dashboard-grid', async (c) => {
+      try {
+        const client = await getClient();
+
+        // Ticket counts by status
+        const ticketResult = await client.execute({
+          sql: 'SELECT status, COUNT(*) as count FROM tickets GROUP BY status',
+          args: [],
+        });
+        const byStatus: Record<string, number> = {};
+        let ticketTotal = 0;
+        for (const row of ticketResult.rows) {
+          const count = Number(row.count);
+          byStatus[row.status as string] = count;
+          ticketTotal += count;
+        }
+
+        // Knowledge counts
+        const knowledgeResult = await client.execute({
+          sql: 'SELECT COUNT(*) as count FROM knowledge WHERE active = 1',
+          args: [],
+        });
+        const knowledgeTotal = Number(knowledgeResult.rows[0]?.count || 0);
+
+        const categoryResult = await client.execute({
+          sql: 'SELECT category, COUNT(*) as count FROM knowledge WHERE active = 1 GROUP BY category',
+          args: [],
+        });
+        const byCategory: Record<string, number> = {};
+        for (const row of categoryResult.rows) {
+          byCategory[row.category as string] = Number(row.count);
+        }
+
+        // Spec count
+        const specResult = await client.execute({
+          sql: 'SELECT COUNT(*) as count FROM specs',
+          args: [],
+        });
+        const specTotal = Number(specResult.rows[0]?.count || 0);
+
+        // Recent activity (UNION across all tables)
+        const activityResult = await client.execute({
+          sql: `SELECT 'ticket' as type, id, title, updated_at as timestamp FROM tickets
+                UNION ALL
+                SELECT 'knowledge' as type, id, title, updated_at as timestamp FROM knowledge WHERE active = 1
+                UNION ALL
+                SELECT 'spec' as type, id, title, updated_at as timestamp FROM specs
+                ORDER BY timestamp DESC LIMIT 10`,
+          args: [],
+        });
+        const activity = activityResult.rows.map(row => ({
+          type: row.type as string,
+          id: row.id as string,
+          title: row.title as string,
+          timestamp: row.timestamp as string,
+        }));
+
+        const data: DashboardData = {
+          stats: {
+            tickets: { byStatus, total: ticketTotal },
+            knowledge: { total: knowledgeTotal, byCategory },
+            specs: { total: specTotal },
+          },
+          activity,
+        };
+
+        return c.html(renderDashboardGrid(data));
+      } catch (error) {
+        return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
+      }
     });
 
     // New spec modal

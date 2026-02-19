@@ -126,8 +126,17 @@ export function getHtml(namespace: string, version: string): string {
           </span>
           <ul class="flex flex-col gap-y-0.5">
             <li>
-              <button id="nav-spec" onclick="switchTab('spec')"
+              <button id="nav-dashboard" onclick="switchTab('dashboard')"
                       class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none nav-active">
+                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                </svg>
+                Dashboard
+              </button>
+            </li>
+            <li>
+              <button id="nav-spec" onclick="switchTab('spec')"
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none">
                 <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>
                 </svg>
@@ -191,8 +200,10 @@ export function getHtml(namespace: string, version: string): string {
   <main id="main-content" class="lg:ps-60 pt-13 px-3 pb-3 transition-all duration-300">
     <div class="h-[calc(100dvh-62px)] overflow-hidden flex flex-col bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-xs rounded-lg">
       <div class="flex-1 overflow-y-auto p-3 sm:p-5">
-        <!-- Spec View (default) -->
-        <div id="view-spec" hx-get="/partials/spec-view" hx-trigger="load"></div>
+        <!-- Dashboard View (default) -->
+        <div id="view-dashboard" hx-get="/partials/dashboard-view" hx-trigger="load"></div>
+        <!-- Spec View -->
+        <div id="view-spec" class="hidden" hx-get="/partials/spec-view" hx-trigger="revealed"></div>
         <!-- Ticket View - full width -->
         <div id="view-ticket" class="hidden" hx-get="/partials/kanban-view" hx-trigger="revealed"></div>
         <!-- Knowledge View -->
@@ -366,7 +377,7 @@ export function getHtml(namespace: string, version: string): string {
 
     // Tab/view switching with URL hash persistence
     function switchTab(tab, updateHash = true) {
-      ['ticket', 'knowledge', 'spec', 'graph'].forEach(t => {
+      ['dashboard', 'ticket', 'knowledge', 'spec', 'graph'].forEach(t => {
         document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
         document.getElementById('nav-' + t).classList.toggle('nav-active', t === tab);
       });
@@ -387,7 +398,7 @@ export function getHtml(namespace: string, version: string): string {
     // Restore tab from URL hash on page load
     (function() {
       const hash = window.location.hash.slice(1);
-      if (['ticket', 'knowledge', 'spec', 'graph'].includes(hash)) {
+      if (['dashboard', 'ticket', 'knowledge', 'spec', 'graph'].includes(hash)) {
         switchTab(hash, false);
       }
     })();
@@ -828,6 +839,14 @@ export function getHtml(namespace: string, version: string): string {
         evtSource.addEventListener('spec-updated', function() {
           var el = document.getElementById('spec-list');
           if (el) htmx.trigger(el, 'refresh');
+        });
+
+        // Dashboard: refresh on any data change
+        ['ticket-updated', 'knowledge-updated', 'spec-updated'].forEach(function(evt) {
+          evtSource.addEventListener(evt, function() {
+            var el = document.getElementById('dashboard-grid');
+            if (el) htmx.trigger(el, 'refresh');
+          });
         });
 
         evtSource.onerror = function() {
