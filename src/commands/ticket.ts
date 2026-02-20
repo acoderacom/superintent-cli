@@ -59,6 +59,7 @@ interface TicketJsonInput {
   changeClass?: string;
   changeClassReason?: string;
   plan?: TicketPlan;
+  spec?: string;
   author?: string;
 }
 
@@ -123,6 +124,10 @@ function parseJsonTicket(raw: string): TicketJsonInput {
     }
     if (parsed.plan !== undefined) {
       result.plan = validatePlanJson(parsed.plan);
+    }
+    if (parsed.spec !== undefined) {
+      if (typeof parsed.spec !== 'string') throw new Error('spec must be a string');
+      result.spec = parsed.spec.trim();
     }
     if (parsed.author !== undefined) {
       if (typeof parsed.author !== 'string') throw new Error('author must be a string');
@@ -508,7 +513,7 @@ ticketCommand
         changeClass = parsed.changeClass || null;
         changeClassReason = parsed.changeClassReason || null;
         plan = parsed.plan || null;
-        originSpecId = options.spec || null;
+        originSpecId = parsed.spec || options.spec || null;
       } else {
         // Use CLI options
         if (!options.intent) {
