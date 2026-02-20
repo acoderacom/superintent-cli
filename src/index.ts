@@ -7,7 +7,7 @@ import { initCommand } from './commands/init.js';
 import { statusCommand } from './commands/status.js';
 import { ticketCommand } from './commands/ticket.js';
 import { knowledgeCommand } from './commands/knowledge.js';
-import { uiCommand } from './commands/ui.js';
+import { dashboardCommand } from './commands/dashboard.js';
 import { specCommand } from './commands/spec.js';
 
 // Read version from package.json
@@ -26,7 +26,7 @@ program.addCommand(initCommand);
 program.addCommand(statusCommand);
 program.addCommand(ticketCommand);
 program.addCommand(knowledgeCommand);
-program.addCommand(uiCommand);
+program.addCommand(dashboardCommand);
 program.addCommand(specCommand);
 
 program.parse();

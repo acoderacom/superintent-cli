@@ -42,8 +42,9 @@ import { getGitUsername } from '../utils/git.js';
 import { emitSSE, createSSEStream, closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
 import type { Comment } from '../types.js';
 
-export const uiCommand = new Command('ui')
-  .description('Start web UI for ticket and knowledge management')
+export const dashboardCommand = new Command('dashboard')
+  .aliases(['dash'])
+  .description('Start the Superintent dashboard')
   .option('-p, --port <port>', 'Server port', '3456')
   .option('-o, --open', 'Auto-open browser')
   .action(async (options) => {

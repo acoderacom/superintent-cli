@@ -28,7 +28,7 @@ Install the Superintent plugin in Claude Code, then run:
 ┌──────────────▼──────────────────────────────┐
 │  CLI (commander.js)                         │
 │  ├── commands/   ticket, knowledge, spec,   │
-│  │               init, status, ui           │
+│  │               init, status, dashboard     │
 │  ├── db/         libSQL client, schema,     │
 │  │               parsers, search, usage     │
 │  ├── embed/      bge-small-en-v1.5 (384d)   │
@@ -144,7 +144,7 @@ superintent spec delete <id>
 ### Web Dashboard
 
 ```bash
-superintent ui [--port 3456] [--open]
+superintent dashboard [--port 3456] [--open]
 ```
 
 Four tabs: Tickets (kanban board by status), Knowledge (browser with semantic search, filterable), Specs (viewer with linked tickets), Graph (knowledge graph visualization by shared tags).

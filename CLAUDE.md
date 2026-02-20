@@ -44,7 +44,7 @@ Always search knowledge before exploring the codebase — it is the primary sour
 | ------------------------- | ---------------------- |
 | `npx superintent init [--url <url>]`   | Create database tables |
 | `npx superintent status` | Check Turso connection |
-| `npx superintent ui [-p <port>] [-o]`     | Start web UI (default port 3456, -o to auto-open browser)           |
+| `npx superintent dashboard [-p <port>] [-o]` | Start dashboard (default port 3456, -o to auto-open browser) |
 
 ### Ticket Operations
 
