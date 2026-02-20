@@ -468,6 +468,28 @@ export const uiCommand = new Command('ui')
       }
     });
 
+    // Get single knowledge (JSON)
+    app.get('/api/knowledge/:id', async (c) => {
+      try {
+        const id = c.req.param('id');
+        const client = await getClient();
+        const result = await client.execute({
+          sql: `SELECT id, namespace, chunk_index, title, content,
+                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                usage_count, last_used_at, author, branch, created_at, updated_at
+                FROM knowledge WHERE id = ?`,
+          args: [id],
+        });
+        if (result.rows.length === 0) {
+          return c.json({ success: false, error: 'Knowledge not found' }, 404);
+        }
+        const knowledge = parseKnowledgeRow(result.rows[0] as Record<string, unknown>);
+        return c.json({ success: true, data: knowledge });
+      } catch (error) {
+        return c.json({ success: false, error: (error as Error).message }, 500);
+      }
+    });
+
     // Semantic search
     app.post('/api/search', async (c) => {
       try {
