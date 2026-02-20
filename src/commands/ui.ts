@@ -100,12 +100,27 @@ export const uiCommand = new Command('ui')
     app.get('/api/tickets', async (c) => {
       try {
         const client = await getClient();
+        const limit = parseInt(c.req.query('limit') || '20', 10) || 20;
+        const offset = parseInt(c.req.query('offset') || '0', 10) || 0;
+        const status = c.req.query('status');
+
+        const conditions: string[] = [];
+        const args: InValue[] = [];
+
+        if (status) {
+          conditions.push('status = ?');
+          args.push(status);
+        }
+
+        const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const result = await client.execute({
-          sql: 'SELECT * FROM tickets ORDER BY created_at DESC',
-          args: [],
+          sql: `SELECT id, title, type, status, intent, change_class, origin_spec_id, author, created_at, updated_at
+                FROM tickets ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+          args: [...args, limit, offset],
         });
         const tickets = result.rows.map((row) => parseTicketRow(row as Record<string, unknown>));
-        return c.json({ success: true, data: tickets });
+        const hasMore = tickets.length === limit;
+        return c.json({ success: true, data: tickets, pagination: { limit, offset, hasMore } });
       } catch (error) {
         return c.json({ success: false, error: (error as Error).message }, 500);
       }
@@ -455,14 +470,19 @@ export const uiCommand = new Command('ui')
           args.push(scope);
         }
 
-        const sql = `SELECT id, namespace, chunk_index, title, content,
-                     category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
-                     usage_count, last_used_at, author, branch, created_at, updated_at
-                     FROM knowledge WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 12`;
+        const limit = parseInt(c.req.query('limit') || '20', 10) || 20;
+        const offset = parseInt(c.req.query('offset') || '0', 10) || 0;
+
+        const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+        const sql = `SELECT id, namespace, title, category, tags, source, confidence, active, decision_scope,
+                     usage_count, author, branch, created_at, updated_at
+                     FROM knowledge ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        args.push(limit, offset);
 
         const result = await client.execute({ sql, args });
         const knowledge = result.rows.map((row) => parseKnowledgeRow(row as Record<string, unknown>));
-        return c.json({ success: true, data: knowledge });
+        const hasMore = knowledge.length === limit;
+        return c.json({ success: true, data: knowledge, pagination: { limit, offset, hasMore } });
       } catch (error) {
         return c.json({ success: false, error: (error as Error).message }, 500);
       }
@@ -970,12 +990,17 @@ export const uiCommand = new Command('ui')
     app.get('/api/specs', async (c) => {
       try {
         const client = await getClient();
+        const limit = parseInt(c.req.query('limit') || '20', 10) || 20;
+        const offset = parseInt(c.req.query('offset') || '0', 10) || 0;
+
         const result = await client.execute({
-          sql: 'SELECT * FROM specs ORDER BY created_at DESC',
-          args: [],
+          sql: `SELECT id, title, author, created_at, updated_at
+                FROM specs ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+          args: [limit, offset],
         });
         const specs = result.rows.map((row) => parseSpecRow(row as Record<string, unknown>));
-        return c.json({ success: true, data: specs });
+        const hasMore = specs.length === limit;
+        return c.json({ success: true, data: specs, pagination: { limit, offset, hasMore } });
       } catch (error) {
         return c.json({ success: false, error: (error as Error).message }, 500);
       }
