@@ -8,7 +8,7 @@ Always search knowledge before exploring the codebase — it is the primary sour
 <!-- superintent:knowledge:start -->
 
 ### Key Facts
-- **CLI Commands Reference** — 6 top-level commands: init, status, ticket, knowledge, spec, ui; search and extract are subcommands of knowledge; all output JSON via `CliResponse<T>` (`KNOWLEDGE-20260215-113719412`)
+- **CLI Commands Reference** — 8 commands: init, status, ticket, knowledge, spec, search, extract, dashboard; all output JSON via `CliResponse<T>` (`KNOWLEDGE-20260215-113719412`)
 - **Database Schema and Configuration** — 4 tables (tickets, knowledge w/ F32_BLOB vectors, specs, comments); config via .superintent/.env with TURSO_URL/TURSO_AUTH_TOKEN (`KNOWLEDGE-20260215-113629621`)
 - **All CLI Commands Use JSON Stdin** — All create/update via `--stdin` accepting JSON; replaced markdown parsers (`KNOWLEDGE-20260215-165720482`)
 
@@ -17,8 +17,8 @@ Always search knowledge before exploring the codebase — it is the primary sour
 - **Source Code Architecture** — Modular TypeScript under src/: commands/, db/, embed/, ui/components/, utils/; lazy DB singleton, timestamp IDs, JSON stdin input (`KNOWLEDGE-20260215-113619989`)
 - **Ticket System Design** — Structured tickets with status lifecycle (Backlog→Done), auto type inference, plan/tasks/DoD, knowledge extraction on completion (`KNOWLEDGE-20260215-113645961`)
 - **Knowledge Base and Semantic Search** — RAG store with 384-dim embeddings (bge-small-en-v1.5), vector_top_k with cosine distance, CLS pooling, query prefix required (`KNOWLEDGE-20260215-113657488`)
-- **Web UI Architecture** — Hono server-rendered HTML + HTMX partials; Tailwind v4; 4 tabs: Tickets, Knowledge, Specs, Graph; SSE real-time updates (`KNOWLEDGE-20260215-113709412`)
-- **Knowledge Graph Tab Architecture** — vis-network graph of knowledge entries connected by shared tags; 4th tab with lazy loading via IntersectionObserver (`KNOWLEDGE-20260216-153549336`)
+- **Web UI Architecture** — Hono server-rendered HTML + HTMX partials via `npx superintent dashboard`; Tailwind v4; 5 tabs: Dashboard, Tickets, Knowledge, Specs, Graph; SSE real-time updates (`KNOWLEDGE-20260215-113709412`)
+- **Knowledge Graph Tab Architecture** — vis-network graph of knowledge entries connected by shared tags; 5th tab with lazy loading via IntersectionObserver (`KNOWLEDGE-20260216-153549336`)
 - **SSE Real-Time Update Architecture** — EventSource at /api/events with 3 event types; DB change watcher polls every 2s for external changes (`KNOWLEDGE-20260216-143020427`)
 - **Polymorphic Comments Table** — Dedicated comments table supporting tickets, specs, and knowledge; polymorphic parent_type FK (`KNOWLEDGE-20260215-122855570`)
 - **Ticket to Knowledge Extraction Pipeline** — Completed tickets → extract proposals → AI review → knowledge entries with back-reference (`KNOWLEDGE-20260215-114409912`)
