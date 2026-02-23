@@ -36,7 +36,9 @@ import {
   renderEditCommentForm,
   renderGraphView,
   renderDashboardView,
+  renderDashboardGrid,
 } from '../ui/components/index.js';
+import type { DashboardData, HealthStatus, KnowledgeHealthData } from '../ui/components/dashboard.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
 import { emitSSE, createSSEStream, closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
@@ -869,6 +871,113 @@ export const dashboardCommand = new Command('dashboard')
     // Dashboard view
     app.get('/partials/dashboard-view', (c) => {
       return c.html(renderDashboardView());
+    });
+
+    // Dashboard grid (async data aggregation)
+    app.get('/partials/dashboard-grid', async (c) => {
+      try {
+        const client = await getClient();
+        try {
+          // Aggregate knowledge stats
+          const statsResult = await client.execute(
+            `SELECT
+               COUNT(*) as total,
+               SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as active_count,
+               SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END) as inactive_count,
+               AVG(CASE WHEN active = 1 THEN confidence ELSE NULL END) as avg_confidence
+             FROM knowledge`
+          );
+          const stats = statsResult.rows[0] as Record<string, unknown>;
+          const total = Number(stats.total ?? 0);
+          const activeCount = Number(stats.active_count ?? 0);
+          const inactiveCount = Number(stats.inactive_count ?? 0);
+          const avgConfidence = Number(stats.avg_confidence ?? 0);
+
+          // Category breakdown (active only)
+          const catResult = await client.execute(
+            `SELECT category, COUNT(*) as cnt FROM knowledge WHERE active = 1 GROUP BY category ORDER BY cnt DESC`
+          );
+          const byCategory: Record<string, number> = {};
+          for (const row of catResult.rows) {
+            const r = row as Record<string, unknown>;
+            byCategory[String(r.category ?? 'unknown')] = Number(r.cnt ?? 0);
+          }
+
+          // Health classification for active entries
+          const STALE_AGE_DAYS = 2;
+          const DECAY_QUIET_DAYS = 7;
+          const RISING_VELOCITY = 2.0;
+          const RISING_MIN_USES = 3;
+          const VALIDATION_CONF_LOW = 0.80;
+          const VALIDATION_CONF_HIGH = 0.85;
+          const VALIDATION_MIN_USES = 3;
+          const VALIDATION_MIN_AGE = 5;
+
+          const entriesResult = await client.execute(
+            `SELECT id, title, category, confidence, usage_count,
+                    CAST((julianday('now') - julianday(created_at)) AS REAL) as age_days,
+                    CAST((julianday('now') - julianday(last_used_at)) AS REAL) as quiet_days
+             FROM knowledge WHERE active = 1`
+          );
+
+          const byHealth: Record<HealthStatus, number> = {
+            healthy: 0, stale: 0, decaying: 0, rising: 0, needsValidation: 0,
+          };
+
+          for (const row of entriesResult.rows) {
+            const r = row as Record<string, unknown>;
+            const usageCount = Number(r.usage_count ?? 0);
+            const ageDays = Number(r.age_days ?? 0);
+            const quietDays = Number(r.quiet_days ?? 0);
+            const confidence = Number(r.confidence ?? 0);
+
+            let status: HealthStatus;
+            if (usageCount === 0 && ageDays >= STALE_AGE_DAYS) {
+              status = 'stale';
+            } else if (usageCount > 0 && quietDays > DECAY_QUIET_DAYS) {
+              status = 'decaying';
+            } else if (ageDays > 0 && (usageCount / ageDays) > RISING_VELOCITY && usageCount >= RISING_MIN_USES) {
+              status = 'rising';
+            } else if (
+              confidence >= VALIDATION_CONF_LOW && confidence <= VALIDATION_CONF_HIGH &&
+              (usageCount >= VALIDATION_MIN_USES || ageDays >= VALIDATION_MIN_AGE)
+            ) {
+              status = 'needsValidation';
+            } else {
+              status = 'healthy';
+            }
+            byHealth[status]++;
+          }
+
+          // Recent entries (last 7 days)
+          const recentResult = await client.execute(
+            `SELECT COUNT(*) as cnt FROM knowledge WHERE active = 1 AND created_at >= datetime('now', '-7 days')`
+          );
+          const recentCount = Number((recentResult.rows[0] as Record<string, unknown>).cnt ?? 0);
+
+          const knowledgeHealth: KnowledgeHealthData = {
+            total,
+            active: activeCount,
+            inactive: inactiveCount,
+            avgConfidence,
+            byCategory,
+            byHealth,
+            recentCount,
+          };
+
+          const dashboardData: DashboardData = { knowledgeHealth };
+          return c.html(renderDashboardGrid(dashboardData));
+        } finally {
+          await closeClient();
+        }
+      } catch (err) {
+        console.error('Dashboard grid error:', err);
+        return c.html(`
+          <div class="flex flex-col items-center justify-center py-16 text-red-400">
+            <p class="text-sm">Failed to load dashboard data</p>
+          </div>
+        `);
+      }
     });
 
     // New spec modal

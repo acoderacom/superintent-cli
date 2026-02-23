@@ -48,7 +48,7 @@ export function getGraphScript(): string {
       function loadVisNetwork(cb) {
         if (visLoaded) { cb(); return; }
         var script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/vis-network@9/standalone/umd/vis-network.min.js';
+        script.src = 'https://cdn.jsdelivr.net/npm/vis-network@10.0.2/standalone/umd/vis-network.min.js';
         script.onload = function() { visLoaded = true; cb(); };
         script.onerror = function() {
           var c = document.getElementById('graph-canvas');
