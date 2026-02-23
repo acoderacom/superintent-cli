@@ -96,6 +96,7 @@ superintent knowledge create --stdin <<'KNOWLEDGE'
   "confidence": 0.85,
   "scope": "new-only",
   "tags": ["api", "error-handling"],
+  "citations": [{"path": "src/handlers/errors.ts:12"}, {"path": "src/middleware/catch.ts:5"}],
   "content": "Why:\nConsistent error responses across all endpoints.\n\nWhen:\nAll new API routes.\n\nPattern:\nWrap handlers in try/catch, return { success, error }."
 }
 KNOWLEDGE
@@ -108,6 +109,7 @@ superintent knowledge update <id> [--stdin] [--title] [--namespace] [--category]
 superintent knowledge activate <id>
 superintent knowledge deactivate <id>
 superintent knowledge promote <id>
+superintent knowledge validate <id> [--all]
 superintent knowledge recalculate [--dry-run]
 
 # Search (semantic, cosine similarity against 384-dim embeddings)
@@ -120,6 +122,8 @@ superintent knowledge extract <ticket-id> [--namespace <namespace>]
 Score interpretation: >=0.45 relevant, >=0.55 strong match. Falls back to non-indexed search if vector index unavailable.
 
 Extraction proposes entries across categories based on ticket intent, assumptions, constraints, decisions, and trade-offs. Designed for human or AI review before saving.
+
+**Citations:** Knowledge entries can include `file:line` references. `contentHash` is auto-computed by the CLI from the referenced line — just provide `path`. Validate citations to detect code drift: `validate` returns `valid`, `stale` (hash mismatch), or `missing` (file/line gone). `recalculate` applies a confidence penalty of up to -0.15 for stale citations.
 
 ### Specs
 
@@ -147,7 +151,7 @@ superintent spec delete <id>
 superintent dashboard [--port 3456] [--open]
 ```
 
-Four tabs: Tickets (kanban board by status), Knowledge (browser with semantic search, filterable), Specs (viewer with linked tickets), Graph (knowledge graph visualization by shared tags).
+Five tabs: Dashboard (health overview with widgets), Tickets (kanban board by status), Knowledge (browser with semantic search, filterable), Specs (viewer with linked tickets), Graph (knowledge graph visualization by shared tags).
 
 ### Setup
 
@@ -161,7 +165,7 @@ superintent status                  # Check connection + counts
 | Table | Purpose | Key columns |
 | --- | --- | --- |
 | `tickets` | Work items | status, intent, plan (JSON TicketPlan), change_class, origin_spec_id, author |
-| `knowledge` | RAG entries | embedding F32_BLOB(384), category, confidence, active, decision_scope, usage_count, author, branch |
+| `knowledge` | RAG entries | embedding F32_BLOB(384), category, citations (JSON), confidence, active, decision_scope, usage_count, author, branch |
 | `specs` | Feature specs | title, content (markdown), author |
 | `comments` | Polymorphic comments | parent_type (ticket\|knowledge\|spec), parent_id, author, text |
 
