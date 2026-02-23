@@ -25,9 +25,16 @@ Always search knowledge before exploring the codebase — it is the primary sour
 - **superintent:maintain Skill** — Distills active knowledge into CLAUDE.md between markers; scores by confidence/usage/category/recency (`KNOWLEDGE-20260215-122823869`)
 - **Vector Search Consolidated in search.ts** — Single `performVectorSearch()` entry point for CLI and UI; indexed search with non-indexed fallback (`KNOWLEDGE-20260215-122836772`)
 - **embed() LRU Cache** — In-memory Map cache (max 100 entries ~150KB) for query embeddings; LRU eviction, no TTL needed (deterministic) (`KNOWLEDGE-20260215-122841968`)
+- **Git Identity & Branch Provenance** — author/branch auto-populated on all entities; `--branch-auto` searches main + current branch; `promote` sets branch to 'main' (`KNOWLEDGE-20260215-122901118`)
+- **Web UI Pagination: 12 Per Page with Load More** — LIMIT N+1 to detect hasMore; Load More uses hx-swap="outerHTML"; filter reset resets offset via hx-swap="innerHTML" on container (`KNOWLEDGE-20260215-122848212`)
+- **Dashboard Tab & Widget Architecture** — First tab; modular widget registry (WidgetDefinition); add widget by creating file in widgets/ and registering — no route/layout changes needed (`KNOWLEDGE-20260219-050543841`)
+- **Dark Mode Implementation with Tailwind v4** — Three-way Light/Dark/System toggle; `@custom-variant dark` in main.css; `.dark` on `<html>`; localStorage.theme; anti-FOUC inline script in `<head>` (`KNOWLEDGE-20260218-184030761`)
+- **Complete API Surface Audit — All 52 Routes** — All routes in src/commands/dashboard.ts: 2 page, 22 API (/api/*), 28 partial (/partials/*); covers tickets, knowledge, specs, comments, SSE, graph (`KNOWLEDGE-20260220-172601715`)
 
 ### Patterns
 - **HTMX Modal Edit-Save Pattern** — Form targets `#modal-content` to stay open after save; API returns detail view HTML + `HX-Trigger: refresh` for background updates (`KNOWLEDGE-20260215-122833218`)
+- **Dark Mode Color Palette Mapping Pattern** — bg-white→dark:bg-gray-900 (body), cards→dark:bg-gray-800; colored badges: bg-{color}-100 dark:bg-{color}-900/30; apply consistently across all components (`KNOWLEDGE-20260218-184044403`)
+- **Health Check Endpoint on Web UI Server** — GET /health in src/commands/dashboard.ts; startTime captured at startup; returns {status:'ok', uptimeSeconds, version, timestamp}; no auth, no DB queries (`KNOWLEDGE-20260218-174318272`)
 
 ### Gotchas
 - **Mutex Crash on CLI Shutdown** — Never call `process.exit()` directly with active native modules; close HTTP server → DB client → exit in sequence (`KNOWLEDGE-20260215-122735114`)
@@ -35,6 +42,9 @@ Always search knowledge before exploring the codebase — it is the primary sour
 - **Always Alias Knowledge Table as k** — Use `FROM knowledge k` in both indexed and fallback search paths so filter conditions share `k.` prefix (`KNOWLEDGE-20260215-122741768`)
 - **libSQL vector_top_k No ? Binding for topK** — The topK argument is parsed at query planning time; validate/clamp before string interpolation, parameterize everything else (`KNOWLEDGE-20260215-122747782`)
 - **bge-small-en-v1.5 requires query prefix and CLS pooling** — Query embeddings must be prefixed; documents must NOT; use model_quantized for 32MB variant (`KNOWLEDGE-20260216-084012714`)
+- **Dynamic Tailwind Classes Need Safelist for Dark Variants** — Template-literal classes (dark:bg-${color}-900/20) get purged; add `@source inline(...)` safelist in main.css for every dynamic dark: pattern (`KNOWLEDGE-20260218-184056007`)
+- **Silent DB defaults hide missing data** — DB DEFAULT 'global' for decision_scope made missing scope invisible; validate required fields in parser, not just schema defaults (`KNOWLEDGE-20260215-122804080`)
+- **jsPDF Built-in Fonts Cannot Render Unicode Characters** — WinAnsiEncoding only; use sanitizePdf() to map →, —, ✓ etc. to ASCII equivalents before passing to jsPDF (`KNOWLEDGE-20260216-065351828`)
 
 <!-- superintent:knowledge:end -->
 
