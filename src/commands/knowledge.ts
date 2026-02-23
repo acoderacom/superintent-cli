@@ -7,7 +7,9 @@ import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
 import { getProjectNamespace } from '../utils/config.js';
 import { getGitUsername, getGitBranch } from '../utils/git.js';
-import { validateCitation } from '../utils/hash.js';
+import { validateCitation, computeContentHash } from '../utils/hash.js';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { generateExtractProposals } from './ticket.js';
 import type { Knowledge, SearchResult, KnowledgeInput, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType, TicketPlan, Citation } from '../types.js';
 
@@ -95,6 +97,8 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
       if (!Array.isArray(parsed.citations)) {
         throw new Error('citations must be an array');
       }
+      const fileCache = new Map<string, string[] | null>();
+      const cwd = process.cwd();
       result.citations = parsed.citations.map((c: unknown, i: number) => {
         if (typeof c !== 'object' || c === null) {
           throw new Error(`citations[${i}] must be an object`);
@@ -103,13 +107,39 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
         if (typeof citation.path !== 'string' || !citation.path.trim()) {
           throw new Error(`citations[${i}].path must be a non-empty string`);
         }
-        if (typeof citation.contentHash !== 'string' || !citation.contentHash.trim()) {
-          throw new Error(`citations[${i}].contentHash must be a non-empty string`);
+        const citationPath = (citation.path as string).trim();
+
+        // Auto-compute contentHash from file:line if omitted
+        let contentHash: string;
+        if (typeof citation.contentHash === 'string' && citation.contentHash.trim()) {
+          contentHash = citation.contentHash.trim();
+        } else {
+          const colonIdx = citationPath.lastIndexOf(':');
+          if (colonIdx === -1) {
+            throw new Error(`citations[${i}].path must be file:line format to auto-compute hash`);
+          }
+          const filePath = citationPath.slice(0, colonIdx);
+          const lineNum = parseInt(citationPath.slice(colonIdx + 1), 10);
+          if (isNaN(lineNum) || lineNum < 1) {
+            throw new Error(`citations[${i}].path has invalid line number`);
+          }
+          let lines = fileCache.get(filePath);
+          if (lines === undefined) {
+            try {
+              const absPath = resolve(cwd, filePath);
+              lines = readFileSync(absPath, 'utf-8').split('\n');
+              fileCache.set(filePath, lines);
+            } catch {
+              throw new Error(`citations[${i}]: file not found: ${filePath}`);
+            }
+          }
+          if (!lines || lineNum > lines.length) {
+            throw new Error(`citations[${i}]: line ${lineNum} out of range in ${filePath}`);
+          }
+          contentHash = computeContentHash(lines[lineNum - 1]);
         }
-        return {
-          path: (citation.path as string).trim(),
-          contentHash: (citation.contentHash as string).trim(),
-        };
+
+        return { path: citationPath, contentHash };
       });
     }
     if (parsed.author !== undefined) {
