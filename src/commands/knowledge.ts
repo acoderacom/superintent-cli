@@ -97,7 +97,7 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
       if (!Array.isArray(parsed.citations)) {
         throw new Error('citations must be an array');
       }
-      const fileCache = new Map<string, string[] | null>();
+      const fileHashCache = new Map<string, string>();
       const cwd = process.cwd();
       result.citations = parsed.citations.map((c: unknown, i: number) => {
         if (typeof c !== 'object' || c === null) {
@@ -109,37 +109,38 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
         }
         const citationPath = (citation.path as string).trim();
 
-        // Auto-compute contentHash from file:line if omitted
-        let contentHash: string;
-        if (typeof citation.contentHash === 'string' && citation.contentHash.trim()) {
-          contentHash = citation.contentHash.trim();
+        // Auto-compute fileHash from file path if omitted
+        let fileHash: string;
+        if (typeof citation.fileHash === 'string' && citation.fileHash.trim()) {
+          fileHash = citation.fileHash.trim();
         } else {
+          // Validate line number as navigation hint
           const colonIdx = citationPath.lastIndexOf(':');
           if (colonIdx === -1) {
-            throw new Error(`citations[${i}].path must be file:line format to auto-compute hash`);
+            throw new Error(`citations[${i}].path must be file:line format`);
           }
           const filePath = citationPath.slice(0, colonIdx);
           const lineNum = parseInt(citationPath.slice(colonIdx + 1), 10);
           if (isNaN(lineNum) || lineNum < 1) {
             throw new Error(`citations[${i}].path has invalid line number`);
           }
-          let lines = fileCache.get(filePath);
-          if (lines === undefined) {
+
+          // Hash entire file (cached per file path)
+          let cached = fileHashCache.get(filePath);
+          if (cached === undefined) {
             try {
               const absPath = resolve(cwd, filePath);
-              lines = readFileSync(absPath, 'utf-8').split('\n');
-              fileCache.set(filePath, lines);
+              const content = readFileSync(absPath, 'utf-8');
+              cached = computeContentHash(content);
+              fileHashCache.set(filePath, cached);
             } catch {
               throw new Error(`citations[${i}]: file not found: ${filePath}`);
             }
           }
-          if (!lines || lineNum > lines.length) {
-            throw new Error(`citations[${i}]: line ${lineNum} out of range in ${filePath}`);
-          }
-          contentHash = computeContentHash(lines[lineNum - 1]);
+          fileHash = cached;
         }
 
-        return { path: citationPath, contentHash };
+        return { path: citationPath, fileHash };
       });
     }
     if (parsed.author !== undefined) {
@@ -871,15 +872,15 @@ knowledgeCommand
         }
 
         const cwd = process.cwd();
-        const fileCache = new Map<string, string[] | null>();
+        const fileHashCache = new Map<string, string | null>();
         const entries: {
           id: string;
           title: string;
           total: number;
           valid: number;
-          stale: number;
+          changed: number;
           missing: number;
-          details: { path: string; status: string; currentHash?: string }[];
+          details: { path: string; status: string; currentFileHash?: string }[];
         }[] = [];
         let uncited = 0;
 
@@ -899,9 +900,9 @@ knowledgeCommand
             continue;
           }
 
-          const details = citations.map((c) => validateCitation(c, cwd, fileCache));
+          const details = citations.map((c) => validateCitation(c, cwd, fileHashCache));
           const valid = details.filter((d) => d.status === 'valid').length;
-          const stale = details.filter((d) => d.status === 'stale').length;
+          const changed = details.filter((d) => d.status === 'changed').length;
           const missing = details.filter((d) => d.status === 'missing').length;
 
           entries.push({
@@ -909,7 +910,7 @@ knowledgeCommand
             title: title.slice(0, 60),
             total: citations.length,
             valid,
-            stale,
+            changed,
             missing,
             details,
           });
@@ -958,7 +959,7 @@ knowledgeCommand
         });
 
         const cwd = process.cwd();
-        const fileCache = new Map<string, string[] | null>();
+        const fileHashCache = new Map<string, string | null>();
 
         const now = new Date();
         const adjustments: {
@@ -1009,17 +1010,17 @@ knowledgeCommand
             }
           }
 
-          // Citation-based staleness penalty
+          // Citation penalty — only missing files (deleted source) affect confidence
           const citationsRaw = row.citations as string | null;
           if (citationsRaw) {
             const citations: Citation[] = JSON.parse(citationsRaw);
             if (citations.length > 0) {
-              const results = citations.map((c) => validateCitation(c, cwd, fileCache));
-              const staleCount = results.filter((r) => r.status !== 'valid').length;
-              if (staleCount > 0) {
-                const citationPenalty = -(staleCount / citations.length) * 0.15;
+              const results = citations.map((c) => validateCitation(c, cwd, fileHashCache));
+              const missingCount = results.filter((r) => r.status === 'missing').length;
+              if (missingCount > 0) {
+                const citationPenalty = -(missingCount / citations.length) * 0.15;
                 adjustment += citationPenalty;
-                reasons.push(`citations ${staleCount}/${citations.length} stale: ${citationPenalty.toFixed(2)}`);
+                reasons.push(`citations ${missingCount}/${citations.length} missing: ${citationPenalty.toFixed(2)}`);
               }
             }
           }

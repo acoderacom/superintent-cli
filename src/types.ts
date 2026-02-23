@@ -88,7 +88,7 @@ export type KnowledgeSource = 'ticket' | 'discovery' | 'manual';
 
 export interface Citation {
   path: string;
-  contentHash: string;
+  fileHash: string;
 }
 
 export interface Knowledge {

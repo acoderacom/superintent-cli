@@ -16,61 +16,48 @@ export function computeContentHash(content: string): string {
 
 export interface CitationValidationResult {
   path: string;
-  status: 'valid' | 'stale' | 'missing';
-  currentHash?: string;
+  status: 'valid' | 'changed' | 'missing';
+  currentFileHash?: string;
 }
 
 /**
- * Validate a single citation against the filesystem.
- * Uses a file cache to avoid re-reading the same file for multiple citations.
+ * Validate a citation against the filesystem using file-level hashing.
+ * Citations are provenance links — line numbers are navigation hints only.
+ * File hash detects when the source file has evolved since knowledge was written.
+ * Uses a file hash cache to avoid re-reading the same file for multiple citations.
  */
 export function validateCitation(
   citation: Citation,
   cwd: string,
-  fileCache: Map<string, string[] | null>,
+  fileHashCache: Map<string, string | null>,
 ): CitationValidationResult {
-  // Parse file:line from path
+  // Parse file path from file:line
   const colonIdx = citation.path.lastIndexOf(':');
-  if (colonIdx === -1) {
-    return { path: citation.path, status: 'missing' };
-  }
+  const filePath = colonIdx === -1 ? citation.path : citation.path.slice(0, colonIdx);
 
-  const filePath = citation.path.slice(0, colonIdx);
-  const lineNum = parseInt(citation.path.slice(colonIdx + 1), 10);
-
-  if (isNaN(lineNum) || lineNum < 1) {
-    return { path: citation.path, status: 'missing' };
-  }
-
-  // Read file (cached)
-  let lines = fileCache.get(filePath);
-  if (lines === undefined) {
+  // Check cache for computed file hash
+  let fileHash = fileHashCache.get(filePath);
+  if (fileHash === undefined) {
     try {
       const absPath = resolve(cwd, filePath);
       const content = readFileSync(absPath, 'utf-8');
-      lines = content.split('\n');
-      fileCache.set(filePath, lines);
+      fileHash = computeContentHash(content);
+      fileHashCache.set(filePath, fileHash);
     } catch {
-      fileCache.set(filePath, null);
-      lines = null;
+      fileHashCache.set(filePath, null);
+      fileHash = null;
     }
   }
 
-  if (lines === null) {
+  if (fileHash === null) {
     return { path: citation.path, status: 'missing' };
   }
 
-  // Check line exists
-  if (lineNum > lines.length) {
-    return { path: citation.path, status: 'missing' };
+  // Compare stored hash with current file hash
+  const storedHash = citation.fileHash;
+  if (storedHash === fileHash) {
+    return { path: citation.path, status: 'valid', currentFileHash: fileHash };
   }
 
-  const lineContent = lines[lineNum - 1]; // 1-indexed
-  const currentHash = computeContentHash(lineContent);
-
-  if (currentHash === citation.contentHash) {
-    return { path: citation.path, status: 'valid', currentHash };
-  }
-
-  return { path: citation.path, status: 'stale', currentHash };
+  return { path: citation.path, status: 'changed', currentFileHash: fileHash };
 }

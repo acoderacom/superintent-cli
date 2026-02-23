@@ -261,8 +261,8 @@ function validatePlanJson(plan: unknown): TicketPlan {
 }
 
 /**
- * Extract file:line references from text and compute content hashes.
- * Returns Citation[] for lines that exist on disk.
+ * Extract file:line references from text and compute file hashes.
+ * Returns Citation[] for files that exist on disk. Line numbers are navigation hints.
  */
 function extractFileReferences(text: string, cwd: string): Citation[] {
   // Match patterns like src/foo.ts:14, ./bar/baz.js:100
@@ -270,6 +270,7 @@ function extractFileReferences(text: string, cwd: string): Citation[] {
   const pattern = /(?<!\w:\/\/)(?:^|[\s,(])([a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+):(\d+)/g;
   const citations: Citation[] = [];
   const seen = new Set<string>();
+  const fileHashCache = new Map<string, string>();
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(text)) !== null) {
@@ -280,15 +281,17 @@ function extractFileReferences(text: string, cwd: string): Citation[] {
     seen.add(key);
 
     try {
-      const absPath = resolve(cwd, filePath);
-      const content = readFileSync(absPath, 'utf-8');
-      const lines = content.split('\n');
-      if (lineNum <= lines.length) {
-        citations.push({
-          path: key,
-          contentHash: computeContentHash(lines[lineNum - 1]),
-        });
+      let fileHash = fileHashCache.get(filePath);
+      if (fileHash === undefined) {
+        const absPath = resolve(cwd, filePath);
+        const content = readFileSync(absPath, 'utf-8');
+        fileHash = computeContentHash(content);
+        fileHashCache.set(filePath, fileHash);
       }
+      citations.push({
+        path: key,
+        fileHash,
+      });
     } catch {
       // File doesn't exist or can't be read — skip
     }
@@ -305,7 +308,8 @@ function collectTicketCitations(ticket: Ticket, cwd: string): Citation[] {
   const citations: Citation[] = [];
   const seen = new Set<string>();
 
-  // Citations from plan.files — cite line 1 of each listed file
+  // Citations from plan.files — cite line 1 of each listed file (file-level hash)
+  const fileHashCache = new Map<string, string>();
   if (ticket.plan?.files) {
     for (const filePath of ticket.plan.files) {
       const key = `${filePath}:1`;
@@ -314,10 +318,11 @@ function collectTicketCitations(ticket: Ticket, cwd: string): Citation[] {
       try {
         const absPath = resolve(cwd, filePath);
         const content = readFileSync(absPath, 'utf-8');
-        const firstLine = content.split('\n')[0];
+        const fileHash = computeContentHash(content);
+        fileHashCache.set(filePath, fileHash);
         citations.push({
           path: key,
-          contentHash: computeContentHash(firstLine),
+          fileHash,
         });
       } catch {
         // File doesn't exist — skip

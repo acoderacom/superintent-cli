@@ -111,7 +111,7 @@ export interface KnowledgeItem {
   source?: string;
   origin_ticket_type?: string;
   tags?: string[];
-  citations?: { path: string; contentHash: string }[];
+  citations?: { path: string; fileHash: string }[];
   confidence: number;
   active: boolean;
   decision_scope: string;
@@ -229,7 +229,7 @@ export function renderKnowledgeModal(knowledge: {
   content: string;
   category?: string;
   tags?: string[];
-  citations?: { path: string; contentHash: string }[];
+  citations?: { path: string; fileHash: string }[];
   source: string;
   origin_ticket_id?: string;
   origin_ticket_type?: string;
@@ -346,7 +346,7 @@ export function renderKnowledgeModal(knowledge: {
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                 </svg>
                 <span class="text-blue-600 dark:text-blue-400">${escapeHtml(c.path)}</span>
-                <span class="text-xs text-gray-400 dark:text-gray-500" title="Content hash">#${escapeHtml(c.contentHash.slice(0, 8))}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500" title="File hash">#${escapeHtml(c.fileHash.slice(0, 8))}</span>
               </div>
             `).join('')}
           </div>
