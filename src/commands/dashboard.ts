@@ -53,7 +53,6 @@ export const dashboardCommand = new Command('dashboard')
     const port = parseInt(options.port, 10);
     const namespace = getProjectNamespace();
     const app = new Hono();
-    const startTime = Date.now();
 
     // ============ STATIC ASSETS ============
     const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -71,16 +70,6 @@ export const dashboardCommand = new Command('dashboard')
       c.header('Content-Type', 'text/css');
       c.header('Cache-Control', 'public, max-age=3600');
       return c.body(cssContent);
-    });
-
-    // ============ HEALTH CHECK ============
-    app.get('/health', (c) => {
-      return c.json({
-        status: 'ok',
-        uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
-        version,
-        timestamp: new Date().toISOString(),
-      });
     });
 
     // Helper to fetch comments for any entity
