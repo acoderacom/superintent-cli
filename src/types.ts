@@ -86,6 +86,11 @@ export type KnowledgeCategory = 'pattern' | 'truth' | 'principle' | 'architectur
 export type DecisionScope = 'new-only' | 'backward-compatible' | 'global' | 'legacy-frozen';
 export type KnowledgeSource = 'ticket' | 'discovery' | 'manual';
 
+export interface Citation {
+  path: string;
+  contentHash: string;
+}
+
 export interface Knowledge {
   id: string;
   namespace: string;
@@ -94,6 +99,7 @@ export interface Knowledge {
   content: string;
   category?: KnowledgeCategory;
   tags?: string[];
+  citations?: Citation[];
   source: KnowledgeSource;
   origin_ticket_id?: string;
   origin_ticket_type?: TicketType;
@@ -115,6 +121,7 @@ export interface KnowledgeInput {
   content: string;
   category?: KnowledgeCategory;
   tags?: string[];
+  citations?: Citation[];
   source?: KnowledgeSource;
   originTicketId?: string;
   originTicketType?: TicketType;

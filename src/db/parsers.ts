@@ -44,6 +44,7 @@ export function parseKnowledgeRow(row: Record<string, unknown>): Knowledge {
     content: row.content as string,
     category: row.category as Knowledge['category'],
     tags: row.tags ? JSON.parse(row.tags as string) : undefined,
+    citations: row.citations ? JSON.parse(row.citations as string) : undefined,
     source: (row.source as Knowledge['source']) || 'manual',
     origin_ticket_id: row.origin_ticket_id as string | undefined,
     origin_ticket_type: row.origin_ticket_type as TicketType | undefined,

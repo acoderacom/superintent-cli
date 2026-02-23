@@ -64,7 +64,7 @@ export async function performVectorSearch(
       sql: `
         SELECT
           k.id, k.namespace, k.chunk_index, k.title, k.content,
-          k.category, k.tags, k.source, k.origin_ticket_id, k.origin_ticket_type, k.confidence, k.active, k.decision_scope,
+          k.category, k.tags, k.citations, k.source, k.origin_ticket_id, k.origin_ticket_type, k.confidence, k.active, k.decision_scope,
           k.usage_count, k.last_used_at, k.author, k.branch, k.created_at,
           vector_distance_cos(k.embedding, vector32(?)) as distance
         FROM vector_top_k('knowledge_embedding_idx', vector32(?), ${topK}) AS v
@@ -82,7 +82,7 @@ export async function performVectorSearch(
         sql: `
           SELECT
             k.id, k.namespace, k.chunk_index, k.title, k.content,
-            k.category, k.tags, k.source, k.origin_ticket_id, k.origin_ticket_type, k.confidence, k.active, k.decision_scope,
+            k.category, k.tags, k.citations, k.source, k.origin_ticket_id, k.origin_ticket_type, k.confidence, k.active, k.decision_scope,
             k.usage_count, k.last_used_at, k.created_at,
             vector_distance_cos(k.embedding, vector32(?)) as distance
           FROM knowledge k

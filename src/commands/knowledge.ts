@@ -7,8 +7,9 @@ import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
 import { getProjectNamespace } from '../utils/config.js';
 import { getGitUsername, getGitBranch } from '../utils/git.js';
+import { validateCitation } from '../utils/hash.js';
 import { generateExtractProposals } from './ticket.js';
-import type { Knowledge, SearchResult, KnowledgeInput, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType, TicketPlan } from '../types.js';
+import type { Knowledge, SearchResult, KnowledgeInput, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType, TicketPlan, Citation } from '../types.js';
 
 function clampConfidence(value: number): number {
   if (isNaN(value)) return 0.8;
@@ -31,6 +32,7 @@ interface KnowledgeJsonInput {
   confidence?: number;
   scope?: string;
   tags?: string[];
+  citations?: Citation[];
   author?: string;
   branch?: string;
 }
@@ -89,6 +91,27 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
       }
       result.tags = parsed.tags.map((t: string) => t.trim()).filter(Boolean);
     }
+    if (parsed.citations !== undefined) {
+      if (!Array.isArray(parsed.citations)) {
+        throw new Error('citations must be an array');
+      }
+      result.citations = parsed.citations.map((c: unknown, i: number) => {
+        if (typeof c !== 'object' || c === null) {
+          throw new Error(`citations[${i}] must be an object`);
+        }
+        const citation = c as Record<string, unknown>;
+        if (typeof citation.path !== 'string' || !citation.path.trim()) {
+          throw new Error(`citations[${i}].path must be a non-empty string`);
+        }
+        if (typeof citation.contentHash !== 'string' || !citation.contentHash.trim()) {
+          throw new Error(`citations[${i}].contentHash must be a non-empty string`);
+        }
+        return {
+          path: (citation.path as string).trim(),
+          contentHash: (citation.contentHash as string).trim(),
+        };
+      });
+    }
     if (parsed.author !== undefined) {
       if (typeof parsed.author !== 'string') throw new Error('author must be a string');
       result.author = parsed.author.trim();
@@ -132,6 +155,7 @@ knowledgeCommand
       let namespace: string;
       let category: string | null;
       let tags: string[] | null;
+      let citations: Citation[] | null;
       let source: KnowledgeSource;
       let originTicketId: string | null;
       let originTicketType: TicketType | null;
@@ -187,6 +211,7 @@ knowledgeCommand
         namespace = parsed.namespace!;
         category = parsed.category || null;
         tags = parsed.tags || null;
+        citations = parsed.citations?.length ? parsed.citations : null;
         source = parsed.originTicketId ? 'ticket' : (parsed.source as KnowledgeSource) || 'manual';
         originTicketId = parsed.originTicketId || null;
         originTicketType = (parsed.originTicketType as TicketType) || null;
@@ -211,6 +236,7 @@ knowledgeCommand
         namespace = options.namespace;
         category = options.category || null;
         tags = options.tags || null;
+        citations = null;
         source = options.origin ? 'ticket' : options.source;
         originTicketId = options.origin || null;
         originTicketType = null;
@@ -230,9 +256,9 @@ knowledgeCommand
         await client.execute({
           sql: `INSERT INTO knowledge (
             id, namespace, chunk_index, title, content, embedding,
-            category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+            category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
             author, branch
-          ) VALUES (?, ?, 0, ?, ?, vector32(?), ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+          ) VALUES (?, ?, 0, ?, ?, vector32(?), ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
           args: [
             id,
             namespace,
@@ -241,6 +267,7 @@ knowledgeCommand
             JSON.stringify(embedding),
             category,
             tags ? JSON.stringify(tags) : null,
+            citations ? JSON.stringify(citations) : null,
             source,
             originTicketId,
             originTicketType,
@@ -298,7 +325,7 @@ knowledgeCommand
       try {
         result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
-                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                 usage_count, last_used_at, author, branch, created_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
@@ -344,7 +371,7 @@ knowledgeCommand
       try {
         const result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
-                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                 usage_count, last_used_at, author, branch, created_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
@@ -452,7 +479,7 @@ knowledgeCommand
         }
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
-                   category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                   category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                    usage_count, last_used_at, author, branch, created_at
                    FROM knowledge`;
         if (conditions.length > 0) {
@@ -538,6 +565,10 @@ knowledgeCommand
           updates.push('tags = ?');
           args.push(JSON.stringify(options.tags || stdinParsed!.tags));
           contentChanged = true;
+        }
+        if (stdinParsed?.citations !== undefined) {
+          updates.push('citations = ?');
+          args.push(stdinParsed.citations.length > 0 ? JSON.stringify(stdinParsed.citations) : null);
         }
         if (options.origin || stdinParsed?.originTicketId) {
           updates.push('origin_ticket_id = ?');
@@ -766,6 +797,120 @@ knowledgeCommand
     }
   });
 
+// Validate citations subcommand
+knowledgeCommand
+  .command('validate')
+  .description('Validate knowledge citations against the filesystem')
+  .argument('[id]', 'Knowledge ID (or use --all)')
+  .option('--all', 'Validate all entries with citations')
+  .option('--dry-run', 'Preview only, no side effects')
+  .action(async (id: string | undefined, options: Record<string, unknown>) => {
+    try {
+      if (!id && !options.all) {
+        const response: CliResponse = {
+          success: false,
+          error: 'Provide a knowledge ID or use --all',
+        };
+        console.log(JSON.stringify(response));
+        process.exit(1);
+      }
+
+      const client = await getClient();
+      try {
+        let rows;
+        if (id) {
+          const result = await client.execute({
+            sql: 'SELECT id, title, citations FROM knowledge WHERE id = ?',
+            args: [id],
+          });
+          if (result.rows.length === 0) {
+            const response: CliResponse = {
+              success: false,
+              error: `Knowledge ${id} not found`,
+            };
+            console.log(JSON.stringify(response));
+            process.exit(1);
+          }
+          rows = result.rows;
+        } else {
+          const result = await client.execute({
+            sql: 'SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL',
+            args: [],
+          });
+          rows = result.rows;
+        }
+
+        const cwd = process.cwd();
+        const fileCache = new Map<string, string[] | null>();
+        const entries: {
+          id: string;
+          title: string;
+          total: number;
+          valid: number;
+          stale: number;
+          missing: number;
+          details: { path: string; status: string; currentHash?: string }[];
+        }[] = [];
+        let uncited = 0;
+
+        for (const row of rows) {
+          const entryId = row.id as string;
+          const title = row.title as string;
+          const citationsRaw = row.citations as string | null;
+
+          if (!citationsRaw) {
+            uncited++;
+            continue;
+          }
+
+          const citations: Citation[] = JSON.parse(citationsRaw);
+          if (citations.length === 0) {
+            uncited++;
+            continue;
+          }
+
+          const details = citations.map((c) => validateCitation(c, cwd, fileCache));
+          const valid = details.filter((d) => d.status === 'valid').length;
+          const stale = details.filter((d) => d.status === 'stale').length;
+          const missing = details.filter((d) => d.status === 'missing').length;
+
+          entries.push({
+            id: entryId,
+            title: title.slice(0, 60),
+            total: citations.length,
+            valid,
+            stale,
+            missing,
+            details,
+          });
+        }
+
+        const response: CliResponse<{
+          validated: number;
+          uncited: number;
+          entries: typeof entries;
+        }> = {
+          success: true,
+          data: {
+            validated: entries.length,
+            uncited,
+            entries,
+          },
+        };
+        console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
+    } catch (error) {
+      const response: CliResponse = {
+        success: false,
+        error: `Failed to validate citations: ${(error as Error).message}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(1);
+    }
+  });
+
 // Recalculate confidence subcommand
 knowledgeCommand
   .command('recalculate')
@@ -775,12 +920,15 @@ knowledgeCommand
     try {
       const client = await getClient();
       try {
-        // Fetch all active knowledge with usage data
+        // Fetch all active knowledge with usage data and citations
         const result = await client.execute({
-          sql: `SELECT id, title, category, confidence, usage_count, last_used_at, created_at
+          sql: `SELECT id, title, category, confidence, usage_count, last_used_at, citations, created_at
                 FROM knowledge WHERE active = 1`,
           args: [],
         });
+
+        const cwd = process.cwd();
+        const fileCache = new Map<string, string[] | null>();
 
         const now = new Date();
         const adjustments: {
@@ -828,6 +976,21 @@ knowledgeCommand
               const penalty = slowDecay ? 0.02 : 0.10;
               adjustment -= penalty;
               reasons.push(`stale (${daysSince}d): -${penalty.toFixed(2)}`);
+            }
+          }
+
+          // Citation-based staleness penalty
+          const citationsRaw = row.citations as string | null;
+          if (citationsRaw) {
+            const citations: Citation[] = JSON.parse(citationsRaw);
+            if (citations.length > 0) {
+              const results = citations.map((c) => validateCitation(c, cwd, fileCache));
+              const staleCount = results.filter((r) => r.status !== 'valid').length;
+              if (staleCount > 0) {
+                const citationPenalty = -(staleCount / citations.length) * 0.15;
+                adjustment += citationPenalty;
+                reasons.push(`citations ${staleCount}/${citations.length} stale: ${citationPenalty.toFixed(2)}`);
+              }
             }
           }
 

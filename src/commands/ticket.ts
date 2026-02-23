@@ -6,7 +6,10 @@ import { getProjectNamespace } from '../utils/config.js';
 import { readStdin } from '../utils/io.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
-import type { Ticket, CliResponse, KnowledgeInput, TicketPlan, TicketType } from '../types.js';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import { computeContentHash } from '../utils/hash.js';
+import type { Ticket, CliResponse, KnowledgeInput, TicketPlan, TicketType, Citation } from '../types.js';
 
 /**
  * Infer ticket type from intent keywords
@@ -257,10 +260,91 @@ function validatePlanJson(plan: unknown): TicketPlan {
   return result;
 }
 
+/**
+ * Extract file:line references from text and compute content hashes.
+ * Returns Citation[] for lines that exist on disk.
+ */
+function extractFileReferences(text: string, cwd: string): Citation[] {
+  // Match patterns like src/foo.ts:14, ./bar/baz.js:100
+  // Avoid matching URLs (http://..., https://...)
+  const pattern = /(?<!\w:\/\/)(?:^|[\s,(])([a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+):(\d+)/g;
+  const citations: Citation[] = [];
+  const seen = new Set<string>();
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const filePath = match[1];
+    const lineNum = parseInt(match[2], 10);
+    const key = `${filePath}:${lineNum}`;
+    if (seen.has(key) || lineNum < 1) continue;
+    seen.add(key);
+
+    try {
+      const absPath = resolve(cwd, filePath);
+      const content = readFileSync(absPath, 'utf-8');
+      const lines = content.split('\n');
+      if (lineNum <= lines.length) {
+        citations.push({
+          path: key,
+          contentHash: computeContentHash(lines[lineNum - 1]),
+        });
+      }
+    } catch {
+      // File doesn't exist or can't be read — skip
+    }
+  }
+
+  return citations;
+}
+
+/**
+ * Collect citations from ticket plan.files (line 1 of each file) and
+ * any file:line references found in ticket context/intent.
+ */
+function collectTicketCitations(ticket: Ticket, cwd: string): Citation[] {
+  const citations: Citation[] = [];
+  const seen = new Set<string>();
+
+  // Citations from plan.files — cite line 1 of each listed file
+  if (ticket.plan?.files) {
+    for (const filePath of ticket.plan.files) {
+      const key = `${filePath}:1`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      try {
+        const absPath = resolve(cwd, filePath);
+        const content = readFileSync(absPath, 'utf-8');
+        const firstLine = content.split('\n')[0];
+        citations.push({
+          path: key,
+          contentHash: computeContentHash(firstLine),
+        });
+      } catch {
+        // File doesn't exist — skip
+      }
+    }
+  }
+
+  // Citations from text references in context and intent
+  const textSources = [ticket.context, ticket.intent].filter(Boolean).join('\n');
+  if (textSources) {
+    for (const c of extractFileReferences(textSources, cwd)) {
+      if (!seen.has(c.path)) {
+        seen.add(c.path);
+        citations.push(c);
+      }
+    }
+  }
+
+  return citations;
+}
+
 // Generate knowledge extraction proposals from a completed ticket
 export function generateExtractProposals(ticket: Ticket, namespace: string): KnowledgeInput[] {
   const suggestions: KnowledgeInput[] = [];
   const ticketType = ticket.type;  // Pass to all suggestions
+  const cwd = process.cwd();
+  const citations = collectTicketCitations(ticket, cwd);
 
   // Pattern from intent + context
   if (ticket.intent && ticket.context) {
@@ -430,6 +514,13 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
       confidence: 0.8,
       decisionScope: 'backward-compatible',
     });
+  }
+
+  // Attach collected citations to all suggestions
+  if (citations.length > 0) {
+    for (const suggestion of suggestions) {
+      suggestion.citations = citations;
+    }
   }
 
   return suggestions;

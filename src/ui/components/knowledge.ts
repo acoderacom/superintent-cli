@@ -111,6 +111,7 @@ export interface KnowledgeItem {
   source?: string;
   origin_ticket_type?: string;
   tags?: string[];
+  citations?: { path: string; contentHash: string }[];
   confidence: number;
   active: boolean;
   decision_scope: string;
@@ -157,6 +158,7 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
         <span><span class="text-gray-400">Scope:</span> ${k.decision_scope}</span>
         ${k.author ? `<span><span class="text-gray-400">Author:</span> ${escapeHtml(k.author)}</span>` : ''}
         ${k.branch ? `<span><span class="text-gray-400">Branch:</span> ${k.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">${escapeHtml(k.branch)}</span>` : 'main'}</span>` : ''}
+        ${k.citations?.length ? `<span class="inline-flex items-center gap-1 text-gray-400"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${k.citations.length} citation${k.citations.length !== 1 ? 's' : ''}</span>` : ''}
       </div>
     </div>
   `;
@@ -227,6 +229,7 @@ export function renderKnowledgeModal(knowledge: {
   content: string;
   category?: string;
   tags?: string[];
+  citations?: { path: string; contentHash: string }[];
   source: string;
   origin_ticket_id?: string;
   origin_ticket_type?: string;
@@ -333,6 +336,23 @@ export function renderKnowledgeModal(knowledge: {
         </div>
       ` : ''}
 
+      ${knowledge.citations?.length ? `
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Citations</h3>
+          <div class="space-y-1">
+            ${knowledge.citations.map(c => `
+              <div class="flex items-center gap-2 text-sm font-mono">
+                <svg class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                <span class="text-blue-600 dark:text-blue-400">${escapeHtml(c.path)}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500" title="Content hash">#${escapeHtml(c.contentHash.slice(0, 8))}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
       ${renderCommentsSection(comments || [], 'knowledge', knowledge.id)}
 
       <!-- Hidden export data -->
@@ -349,6 +369,7 @@ export function renderKnowledgeModal(knowledge: {
         active: knowledge.active,
         decision_scope: knowledge.decision_scope,
         tags: knowledge.tags,
+        citations: knowledge.citations,
         author: knowledge.author,
         branch: knowledge.branch,
         created_at: knowledge.created_at,

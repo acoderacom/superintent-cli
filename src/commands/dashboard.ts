@@ -421,7 +421,7 @@ export const dashboardCommand = new Command('dashboard')
         // Fetch updated knowledge and return modal HTML
         const result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
-                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                 usage_count, last_used_at, author, branch, created_at, updated_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
@@ -477,7 +477,7 @@ export const dashboardCommand = new Command('dashboard')
         const offset = parseInt(c.req.query('offset') || '0', 10) || 0;
 
         const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-        const sql = `SELECT id, namespace, title, category, tags, source, confidence, active, decision_scope,
+        const sql = `SELECT id, namespace, title, category, tags, citations, source, confidence, active, decision_scope,
                      usage_count, author, branch, created_at, updated_at
                      FROM knowledge ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
         args.push(limit, offset);
@@ -498,7 +498,7 @@ export const dashboardCommand = new Command('dashboard')
         const client = await getClient();
         const result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
-                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                 usage_count, last_used_at, author, branch, created_at, updated_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
@@ -786,7 +786,7 @@ export const dashboardCommand = new Command('dashboard')
         const { conditions, args, filters } = buildKnowledgeConditions(c);
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
-                     category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                     category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                      usage_count, last_used_at, author, branch, created_at, updated_at
                      FROM knowledge`;
         if (conditions.length > 0) {
@@ -813,7 +813,7 @@ export const dashboardCommand = new Command('dashboard')
         const { conditions, args, filters } = buildKnowledgeConditions(c);
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
-                     category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                     category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                      usage_count, last_used_at, author, branch, created_at, updated_at
                      FROM knowledge`;
         if (conditions.length > 0) {
@@ -838,7 +838,7 @@ export const dashboardCommand = new Command('dashboard')
         const client = await getClient();
         const result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
-                category, tags, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
+                category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
                 usage_count, last_used_at, author, branch, created_at, updated_at
                 FROM knowledge WHERE id = ?`,
           args: [id],

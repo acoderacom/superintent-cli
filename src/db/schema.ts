@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS knowledge (
   embedding F32_BLOB(384),
   category TEXT,
   tags TEXT,
+  citations TEXT,
   source TEXT NOT NULL DEFAULT 'manual',
   origin_ticket_id TEXT,
   origin_ticket_type TEXT,
