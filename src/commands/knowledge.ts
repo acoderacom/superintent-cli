@@ -456,6 +456,7 @@ knowledgeCommand
   .option('--branch-auto', 'Filter by main + current git branch together')
   .option('--status <status>', 'Filter by status (active|inactive|all)', 'active')
   .option('--limit <n>', 'Limit results', '20')
+  .option('--offset <n>', 'Skip results (for pagination)', '0')
   .action(async (options) => {
     try {
       const client = await getClient();
@@ -516,8 +517,9 @@ knowledgeCommand
         if (conditions.length > 0) {
           sql += ` WHERE ${conditions.join(' AND ')}`;
         }
-        sql += ' ORDER BY created_at DESC LIMIT ?';
+        sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
         args.push(parseInt(options.limit, 10));
+        args.push(parseInt(options.offset, 10));
 
         const result = await client.execute({ sql, args });
 

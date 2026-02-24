@@ -222,13 +222,14 @@ specCommand
   .command('list')
   .description('List specs')
   .option('--limit <n>', 'Limit results', '20')
+  .option('--offset <n>', 'Skip results (for pagination)', '0')
   .action(async (options) => {
     try {
       const client = await getClient();
       try {
         const result = await client.execute({
-          sql: 'SELECT * FROM specs ORDER BY created_at DESC LIMIT ?',
-          args: [parseInt(options.limit, 10)],
+          sql: 'SELECT * FROM specs ORDER BY created_at DESC LIMIT ? OFFSET ?',
+          args: [parseInt(options.limit, 10), parseInt(options.offset, 10)],
         });
 
         const specs = result.rows.map((row) =>

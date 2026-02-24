@@ -1057,6 +1057,7 @@ ticketCommand
   .description('List tickets')
   .option('--status <status>', 'Filter by status')
   .option('--limit <n>', 'Limit results', '20')
+  .option('--offset <n>', 'Skip results (for pagination)', '0')
   .action(async (options) => {
     try {
       const client = await getClient();
@@ -1069,8 +1070,9 @@ ticketCommand
           args.push(options.status);
         }
 
-        sql += ' ORDER BY created_at DESC LIMIT ?';
+        sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
         args.push(parseInt(options.limit, 10));
+        args.push(parseInt(options.offset, 10));
 
         const result = await client.execute({ sql, args });
 
