@@ -834,15 +834,16 @@ knowledgeCommand
 knowledgeCommand
   .command('validate')
   .description('Validate knowledge citations against the filesystem')
-  .argument('[id]', 'Knowledge ID (or use --all)')
-  .option('--all', 'Validate all entries with citations')
+  .argument('[id]', 'Knowledge ID (or use --all/--main)')
+  .option('--all', 'Validate all active entries with citations')
+  .option('--main', 'Validate main branch entries with citations')
   .option('--dry-run', 'Preview only, no side effects')
   .action(async (id: string | undefined, options: Record<string, unknown>) => {
     try {
-      if (!id && !options.all) {
+      if (!id && !options.all && !options.main) {
         const response: CliResponse = {
           success: false,
-          error: 'Provide a knowledge ID or use --all',
+          error: 'Provide a knowledge ID or use --all or --main',
         };
         console.log(JSON.stringify(response));
         process.exit(1);
@@ -866,10 +867,10 @@ knowledgeCommand
           }
           rows = result.rows;
         } else {
-          const result = await client.execute({
-            sql: "SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL AND branch = 'main'",
-            args: [],
-          });
+          const sql = options.main
+            ? "SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL AND branch = 'main'"
+            : 'SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL';
+          const result = await client.execute({ sql, args: [] });
           rows = result.rows;
         }
 

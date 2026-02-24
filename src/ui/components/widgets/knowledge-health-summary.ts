@@ -114,7 +114,7 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
 
 export const knowledgeHealthSummaryWidget: WidgetDefinition = {
   id: 'knowledge-health-summary',
-  title: 'Knowledge Health',
+  title: 'Knowledge Health (Main Branch)',
   size: 'L',
   render: renderKnowledgeHealthSummary,
 };
