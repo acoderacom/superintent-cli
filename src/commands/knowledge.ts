@@ -867,7 +867,7 @@ knowledgeCommand
           rows = result.rows;
         } else {
           const result = await client.execute({
-            sql: 'SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL',
+            sql: "SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL AND branch = 'main'",
             args: [],
           });
           rows = result.rows;

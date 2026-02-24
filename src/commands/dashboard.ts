@@ -66,7 +66,7 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
     `SELECT id, title, category, confidence, usage_count, citations,
             CAST((julianday('now') - julianday(created_at)) AS REAL) as age_days,
             CAST((julianday('now') - julianday(last_used_at)) AS REAL) as quiet_days
-     FROM knowledge WHERE active = 1`
+     FROM knowledge WHERE active = 1 AND branch = 'main'`
   );
 
   const byHealth: Record<HealthStatus, number> = {
@@ -634,7 +634,7 @@ export const dashboardCommand = new Command('dashboard')
         const client = await getClient();
         const result = await client.execute({
           sql: `SELECT id, title, category, confidence, tags
-                FROM knowledge WHERE active = 1`,
+                FROM knowledge WHERE active = 1 AND branch = 'main'`,
           args: [],
         });
 
@@ -992,7 +992,7 @@ export const dashboardCommand = new Command('dashboard')
                SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as active_count,
                SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END) as inactive_count,
                AVG(CASE WHEN active = 1 THEN confidence ELSE NULL END) as avg_confidence
-             FROM knowledge`
+             FROM knowledge WHERE branch = 'main'`
           );
           const stats = statsResult.rows[0] as Record<string, unknown>;
           const total = Number(stats.total ?? 0);
@@ -1002,7 +1002,7 @@ export const dashboardCommand = new Command('dashboard')
 
           // Category breakdown (active only)
           const catResult = await client.execute(
-            `SELECT category, COUNT(*) as cnt FROM knowledge WHERE active = 1 GROUP BY category ORDER BY cnt DESC`
+            `SELECT category, COUNT(*) as cnt FROM knowledge WHERE active = 1 AND branch = 'main' GROUP BY category ORDER BY cnt DESC`
           );
           const byCategory: Record<string, number> = {};
           for (const row of catResult.rows) {
@@ -1015,7 +1015,7 @@ export const dashboardCommand = new Command('dashboard')
 
           // Recent entries (last 7 days)
           const recentResult = await client.execute(
-            `SELECT COUNT(*) as cnt FROM knowledge WHERE active = 1 AND created_at >= datetime('now', '-7 days')`
+            `SELECT COUNT(*) as cnt FROM knowledge WHERE active = 1 AND branch = 'main' AND created_at >= datetime('now', '-7 days')`
           );
           const recentCount = Number((recentResult.rows[0] as Record<string, unknown>).cnt ?? 0);
 
