@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 import type { Citation } from '../types.js';
 
@@ -54,6 +55,43 @@ export function validateCitation(
   }
 
   // Compare stored hash with current file hash
+  const storedHash = citation.fileHash;
+  if (storedHash === fileHash) {
+    return { path: citation.path, status: 'valid', currentFileHash: fileHash };
+  }
+
+  return { path: citation.path, status: 'changed', currentFileHash: fileHash };
+}
+
+/**
+ * Async variant of validateCitation for use in long-lived servers (dashboard)
+ * where blocking the event loop is unacceptable.
+ */
+export async function validateCitationAsync(
+  citation: Citation,
+  cwd: string,
+  fileHashCache: Map<string, string | null>,
+): Promise<CitationValidationResult> {
+  const colonIdx = citation.path.lastIndexOf(':');
+  const filePath = colonIdx === -1 ? citation.path : citation.path.slice(0, colonIdx);
+
+  let fileHash = fileHashCache.get(filePath);
+  if (fileHash === undefined) {
+    try {
+      const absPath = resolve(cwd, filePath);
+      const content = await readFile(absPath, 'utf-8');
+      fileHash = computeContentHash(content);
+      fileHashCache.set(filePath, fileHash);
+    } catch {
+      fileHashCache.set(filePath, null);
+      fileHash = null;
+    }
+  }
+
+  if (fileHash === null) {
+    return { path: citation.path, status: 'missing' };
+  }
+
   const storedHash = citation.fileHash;
   if (storedHash === fileHash) {
     return { path: citation.path, status: 'valid', currentFileHash: fileHash };

@@ -44,7 +44,7 @@ import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
 import { emitSSE, createSSEStream, closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
 import type { Comment, Citation } from '../types.js';
-import { validateCitation } from '../utils/hash.js';
+import { validateCitationAsync } from '../utils/hash.js';
 import type { Client } from '@libsql/client';
 
 interface HealthCacheEntry { id: string; title: string; category: string; confidence: number }
@@ -86,7 +86,7 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
       try {
         const citations: Citation[] = JSON.parse(citationsRaw);
         for (const c of citations) {
-          const result = validateCitation(c, cwd, fileHashCache);
+          const result = await validateCitationAsync(c, cwd, fileHashCache);
           if (result.status === 'missing') hasMissing = true;
           else if (result.status === 'changed') hasChanged = true;
         }
