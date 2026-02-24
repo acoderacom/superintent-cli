@@ -141,19 +141,17 @@ export function renderHealthEntriesModal(
            hx-trigger="click"
            onclick="event.stopPropagation()">
         <span class="size-2 rounded-full ${info.dot} shrink-0"></span>
-        <div class="flex-1 flex items-center gap-1 min-w-0">
-          <span class="text-sm text-gray-800 dark:text-gray-100 truncate">${escapeHtml(e.title)}</span>
-          <button type="button"
-                  class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer shrink-0"
-                  title="Copy knowledge ID"
-                  onclick="event.stopPropagation(); event.preventDefault(); navigator.clipboard.writeText('${escapeHtml(e.id)}').then(() => { const svg = this.querySelector('svg'); const orig = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = orig; this.classList.remove('text-green-600'); }, 1500); })">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-            </svg>
-          </button>
-        </div>
+        <span class="flex-1 text-sm text-gray-800 dark:text-gray-100 truncate">${escapeHtml(e.title)}</span>
         <span class="px-1.5 py-0.5 text-xs rounded bg-${catColor}-100 dark:bg-${catColor}-900/30 text-${catColor}-700 dark:text-${catColor}-300">${escapeHtml(e.category)}</span>
         <span class="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">${Math.round(e.confidence * 100)}%</span>
+        <button type="button"
+                class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer shrink-0"
+                title="Copy knowledge ID"
+                onclick="event.stopPropagation(); event.preventDefault(); navigator.clipboard.writeText('${escapeHtml(e.id)}').then(() => { const svg = this.querySelector('svg'); const orig = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = orig; this.classList.remove('text-green-600'); }, 1500); })">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+          </svg>
+        </button>
       </div>`;
   }).join('');
 
