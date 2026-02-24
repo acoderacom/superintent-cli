@@ -47,15 +47,9 @@ import type { Comment, Citation } from '../types.js';
 import { validateCitation } from '../utils/hash.js';
 import type { Client } from '@libsql/client';
 
-// Cached health classification — avoids re-reading files from disk on every request
-const HEALTH_CACHE_TTL_MS = 30_000;
 interface HealthCacheEntry { id: string; title: string; category: string; confidence: number }
-let healthCache: { byHealth: Record<HealthStatus, number>; entries: Record<HealthStatus, HealthCacheEntry[]>; ts: number } | null = null;
 
 async function classifyHealth(client: Client): Promise<{ byHealth: Record<HealthStatus, number>; entries: Record<HealthStatus, HealthCacheEntry[]> }> {
-  if (healthCache && Date.now() - healthCache.ts < HEALTH_CACHE_TTL_MS) {
-    return { byHealth: healthCache.byHealth, entries: healthCache.entries };
-  }
 
   const DECAY_QUIET_DAYS = 7;
   const RISING_VELOCITY = 2.0;
@@ -120,7 +114,6 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
     }
   }
 
-  healthCache = { byHealth, entries, ts: Date.now() };
   return { byHealth, entries };
 }
 

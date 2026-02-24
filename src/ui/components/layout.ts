@@ -833,8 +833,6 @@ export function getHtml(namespace: string, version: string): string {
         evtSource.addEventListener('knowledge-updated', function() {
           var el = document.getElementById('knowledge-list');
           if (el) htmx.trigger(el, 'refresh');
-          var dg = document.getElementById('dashboard-grid');
-          if (dg) htmx.trigger(dg, 'refresh');
           if (typeof window._refreshGraph === 'function') window._refreshGraph();
         });
 

@@ -68,6 +68,9 @@ export function renderDashboardView(): string {
         #dashboard-grid.htmx-settling > .grid {
           opacity: 0;
         }
+        @keyframes spin-refresh { to { transform: rotate(360deg) } }
+        .refresh-spin svg { animation: spin-refresh 0.8s linear infinite; }
+        .refresh-spin { pointer-events: none; }
       </style>
       <div id="dashboard-grid"
            hx-get="/partials/dashboard-grid"
@@ -89,8 +92,15 @@ export function renderDashboardGrid(data: DashboardData): string {
     const gridClasses = sizeToGridClasses[widget.size];
     return `
       <div class="${gridClasses} bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg shadow-xs overflow-hidden flex flex-col">
-        <div class="px-4 py-3 border-b border-gray-100 dark:border-dark-border">
+        <div class="px-4 py-3 border-b border-gray-100 dark:border-dark-border flex items-center justify-between">
           <h3 class="text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(widget.title)}</h3>
+          <button class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                  title="Refresh"
+                  onclick="this.classList.add('refresh-spin'); htmx.trigger('#dashboard-grid', 'refresh')">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </button>
         </div>
         <div class="px-4 py-3 flex-1 overflow-auto">
           ${widget.render(data)}
