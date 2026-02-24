@@ -13,7 +13,7 @@ export interface WidgetDefinition {
   render: (data: DashboardData) => string;
 }
 
-export type HealthStatus = 'healthy' | 'stale' | 'decaying' | 'rising' | 'needsValidation';
+export type HealthStatus = 'stale' | 'decaying' | 'rising' | 'needsValidation';
 
 export interface HealthEntry {
   id: string;

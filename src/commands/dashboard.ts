@@ -70,10 +70,10 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
   );
 
   const byHealth: Record<HealthStatus, number> = {
-    healthy: 0, stale: 0, decaying: 0, rising: 0, needsValidation: 0,
+    stale: 0, decaying: 0, rising: 0, needsValidation: 0,
   };
   const entries: Record<HealthStatus, HealthCacheEntry[]> = {
-    healthy: [], stale: [], decaying: [], rising: [], needsValidation: [],
+    stale: [], decaying: [], rising: [], needsValidation: [],
   };
 
   const cwd = process.cwd();
@@ -99,7 +99,7 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
       } catch { /* malformed citations → skip */ }
     }
 
-    let status: HealthStatus;
+    let status: HealthStatus | null = null;
     if (hasMissing) {
       status = 'stale';
     } else if (hasChanged) {
@@ -108,16 +108,16 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
       status = 'decaying';
     } else if (ageDays >= RISING_MIN_AGE_DAYS && ageDays > 0 && (usageCount / ageDays) > RISING_VELOCITY && usageCount >= RISING_MIN_USES) {
       status = 'rising';
-    } else {
-      status = 'healthy';
     }
-    byHealth[status]++;
-    entries[status].push({
-      id: String(r.id),
-      title: String(r.title ?? ''),
-      category: String(r.category ?? 'unknown'),
-      confidence: Number(r.confidence ?? 0),
-    });
+    if (status) {
+      byHealth[status]++;
+      entries[status].push({
+        id: String(r.id),
+        title: String(r.title ?? ''),
+        category: String(r.category ?? 'unknown'),
+        confidence: Number(r.confidence ?? 0),
+      });
+    }
   }
 
   healthCache = { byHealth, entries, ts: Date.now() };
@@ -951,7 +951,7 @@ export const dashboardCommand = new Command('dashboard')
     app.get('/partials/health-entries/:status', async (c) => {
       try {
         const status = c.req.param('status') as HealthStatus;
-        const validStatuses: HealthStatus[] = ['healthy', 'rising', 'needsValidation', 'decaying', 'stale'];
+        const validStatuses: HealthStatus[] = ['rising', 'needsValidation', 'decaying', 'stale'];
         if (!validStatuses.includes(status)) {
           return c.html('<div class="p-6 text-red-500">Invalid health status</div>');
         }

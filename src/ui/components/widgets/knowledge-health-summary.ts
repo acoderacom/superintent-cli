@@ -3,7 +3,6 @@ import type { WidgetDefinition, DashboardData, HealthStatus } from '../dashboard
 import { escapeHtml } from '../utils.js';
 
 const statusLabels: Record<HealthStatus, { label: string; color: string; dot: string }> = {
-  healthy: { label: 'Healthy', color: 'bg-green-500', dot: 'bg-green-500' },
   rising: { label: 'Rising', color: 'bg-blue-500', dot: 'bg-blue-500' },
   needsValidation: { label: 'Needs Validation', color: 'bg-yellow-500', dot: 'bg-yellow-500' },
   decaying: { label: 'Decaying', color: 'bg-orange-500', dot: 'bg-orange-500' },
@@ -15,11 +14,11 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
 
   // Health score: weighted formula
   const activeRatio = kh.total > 0 ? kh.active / kh.total : 0;
-  const healthyCount = kh.byHealth.healthy || 0;
-  const healthyRatio = kh.active > 0 ? healthyCount / kh.active : 0;
+  const issueCount = (kh.byHealth.stale || 0) + (kh.byHealth.needsValidation || 0) + (kh.byHealth.decaying || 0);
+  const noIssuesRatio = kh.active > 0 ? Math.max(0, (kh.active - issueCount) / kh.active) : 0;
   const recentRatio = kh.active > 0 ? Math.min(kh.recentCount / kh.active, 1) : 0;
   const healthScore = Math.round(
-    (activeRatio * 0.3 + kh.avgConfidence * 0.3 + healthyRatio * 0.25 + recentRatio * 0.15) * 100
+    (activeRatio * 0.3 + kh.avgConfidence * 0.3 + noIssuesRatio * 0.25 + recentRatio * 0.15) * 100
   );
 
   // Health score color
