@@ -39,10 +39,90 @@ import {
   renderDashboardGrid,
 } from '../ui/components/index.js';
 import type { DashboardData, HealthStatus, KnowledgeHealthData } from '../ui/components/dashboard.js';
+import { renderHealthEntriesModal } from '../ui/components/widgets/knowledge-health-summary.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
 import { emitSSE, createSSEStream, closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
-import type { Comment } from '../types.js';
+import type { Comment, Citation } from '../types.js';
+import { validateCitation } from '../utils/hash.js';
+import type { Client } from '@libsql/client';
+
+// Cached health classification — avoids re-reading files from disk on every request
+const HEALTH_CACHE_TTL_MS = 30_000;
+interface HealthCacheEntry { id: string; title: string; category: string; confidence: number }
+let healthCache: { byHealth: Record<HealthStatus, number>; entries: Record<HealthStatus, HealthCacheEntry[]>; ts: number } | null = null;
+
+async function classifyHealth(client: Client): Promise<{ byHealth: Record<HealthStatus, number>; entries: Record<HealthStatus, HealthCacheEntry[]> }> {
+  if (healthCache && Date.now() - healthCache.ts < HEALTH_CACHE_TTL_MS) {
+    return { byHealth: healthCache.byHealth, entries: healthCache.entries };
+  }
+
+  const DECAY_QUIET_DAYS = 7;
+  const RISING_VELOCITY = 2.0;
+  const RISING_MIN_USES = 3;
+  const RISING_MIN_AGE_DAYS = 1;
+
+  const entriesResult = await client.execute(
+    `SELECT id, title, category, confidence, usage_count, citations,
+            CAST((julianday('now') - julianday(created_at)) AS REAL) as age_days,
+            CAST((julianday('now') - julianday(last_used_at)) AS REAL) as quiet_days
+     FROM knowledge WHERE active = 1`
+  );
+
+  const byHealth: Record<HealthStatus, number> = {
+    healthy: 0, stale: 0, decaying: 0, rising: 0, needsValidation: 0,
+  };
+  const entries: Record<HealthStatus, HealthCacheEntry[]> = {
+    healthy: [], stale: [], decaying: [], rising: [], needsValidation: [],
+  };
+
+  const cwd = process.cwd();
+  const fileHashCache = new Map<string, string | null>();
+
+  for (const row of entriesResult.rows) {
+    const r = row as Record<string, unknown>;
+    const usageCount = Number(r.usage_count ?? 0);
+    const ageDays = Number(r.age_days ?? 0);
+    const quietDays = Number(r.quiet_days ?? 0);
+    const citationsRaw = r.citations as string | null;
+
+    let hasMissing = false;
+    let hasChanged = false;
+    if (citationsRaw) {
+      try {
+        const citations: Citation[] = JSON.parse(citationsRaw);
+        for (const c of citations) {
+          const result = validateCitation(c, cwd, fileHashCache);
+          if (result.status === 'missing') hasMissing = true;
+          else if (result.status === 'changed') hasChanged = true;
+        }
+      } catch { /* malformed citations → skip */ }
+    }
+
+    let status: HealthStatus;
+    if (hasMissing) {
+      status = 'stale';
+    } else if (hasChanged) {
+      status = 'needsValidation';
+    } else if (usageCount > 0 && quietDays > DECAY_QUIET_DAYS) {
+      status = 'decaying';
+    } else if (ageDays >= RISING_MIN_AGE_DAYS && ageDays > 0 && (usageCount / ageDays) > RISING_VELOCITY && usageCount >= RISING_MIN_USES) {
+      status = 'rising';
+    } else {
+      status = 'healthy';
+    }
+    byHealth[status]++;
+    entries[status].push({
+      id: String(r.id),
+      title: String(r.title ?? ''),
+      category: String(r.category ?? 'unknown'),
+      confidence: Number(r.confidence ?? 0),
+    });
+  }
+
+  healthCache = { byHealth, entries, ts: Date.now() };
+  return { byHealth, entries };
+}
 
 export const dashboardCommand = new Command('dashboard')
   .aliases(['dash'])
@@ -867,6 +947,22 @@ export const dashboardCommand = new Command('dashboard')
       }
     });
 
+    // Health entries drilldown modal
+    app.get('/partials/health-entries/:status', async (c) => {
+      try {
+        const status = c.req.param('status') as HealthStatus;
+        const validStatuses: HealthStatus[] = ['healthy', 'rising', 'needsValidation', 'decaying', 'stale'];
+        if (!validStatuses.includes(status)) {
+          return c.html('<div class="p-6 text-red-500">Invalid health status</div>');
+        }
+        const client = await getClient();
+        const { entries } = await classifyHealth(client);
+        return c.html(renderHealthEntriesModal(status, entries[status]));
+      } catch (error) {
+        return c.html(`<div class="p-6 text-red-500">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
     // ============ VIEW PARTIALS (Spec, Graph, Dashboard) ============
 
     // Spec view
@@ -914,51 +1010,8 @@ export const dashboardCommand = new Command('dashboard')
             byCategory[String(r.category ?? 'unknown')] = Number(r.cnt ?? 0);
           }
 
-          // Health classification for active entries
-          const STALE_AGE_DAYS = 2;
-          const DECAY_QUIET_DAYS = 7;
-          const RISING_VELOCITY = 2.0;
-          const RISING_MIN_USES = 3;
-          const VALIDATION_CONF_LOW = 0.80;
-          const VALIDATION_CONF_HIGH = 0.85;
-          const VALIDATION_MIN_USES = 3;
-          const VALIDATION_MIN_AGE = 5;
-
-          const entriesResult = await client.execute(
-            `SELECT id, title, category, confidence, usage_count,
-                    CAST((julianday('now') - julianday(created_at)) AS REAL) as age_days,
-                    CAST((julianday('now') - julianday(last_used_at)) AS REAL) as quiet_days
-             FROM knowledge WHERE active = 1`
-          );
-
-          const byHealth: Record<HealthStatus, number> = {
-            healthy: 0, stale: 0, decaying: 0, rising: 0, needsValidation: 0,
-          };
-
-          for (const row of entriesResult.rows) {
-            const r = row as Record<string, unknown>;
-            const usageCount = Number(r.usage_count ?? 0);
-            const ageDays = Number(r.age_days ?? 0);
-            const quietDays = Number(r.quiet_days ?? 0);
-            const confidence = Number(r.confidence ?? 0);
-
-            let status: HealthStatus;
-            if (usageCount === 0 && ageDays >= STALE_AGE_DAYS) {
-              status = 'stale';
-            } else if (usageCount > 0 && quietDays > DECAY_QUIET_DAYS) {
-              status = 'decaying';
-            } else if (ageDays > 0 && (usageCount / ageDays) > RISING_VELOCITY && usageCount >= RISING_MIN_USES) {
-              status = 'rising';
-            } else if (
-              confidence >= VALIDATION_CONF_LOW && confidence <= VALIDATION_CONF_HIGH &&
-              (usageCount >= VALIDATION_MIN_USES || ageDays >= VALIDATION_MIN_AGE)
-            ) {
-              status = 'needsValidation';
-            } else {
-              status = 'healthy';
-            }
-            byHealth[status]++;
-          }
+          // Health classification using citation provenance model (cached 30s)
+          const { byHealth } = await classifyHealth(client);
 
           // Recent entries (last 7 days)
           const recentResult = await client.execute(

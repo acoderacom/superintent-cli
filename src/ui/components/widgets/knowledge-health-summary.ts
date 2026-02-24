@@ -1,5 +1,14 @@
 // Knowledge Health Summary widget — stats panel + server-rendered SVG donut
 import type { WidgetDefinition, DashboardData, HealthStatus } from '../dashboard.js';
+import { escapeHtml } from '../utils.js';
+
+const statusLabels: Record<HealthStatus, { label: string; color: string; dot: string }> = {
+  healthy: { label: 'Healthy', color: 'bg-green-500', dot: 'bg-green-500' },
+  rising: { label: 'Rising', color: 'bg-blue-500', dot: 'bg-blue-500' },
+  needsValidation: { label: 'Needs Validation', color: 'bg-yellow-500', dot: 'bg-yellow-500' },
+  decaying: { label: 'Decaying', color: 'bg-orange-500', dot: 'bg-orange-500' },
+  stale: { label: 'Stale', color: 'bg-red-500', dot: 'bg-red-500' },
+};
 
 function renderKnowledgeHealthSummary(data: DashboardData): string {
   const kh = data.knowledgeHealth;
@@ -26,15 +35,7 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
       ? 'bg-yellow-50 dark:bg-yellow-900/20'
       : 'bg-red-50 dark:bg-red-900/20';
 
-  // Health status breakdown
-  const statusLabels: Record<HealthStatus, { label: string; color: string }> = {
-    healthy: { label: 'Healthy', color: 'bg-green-500' },
-    rising: { label: 'Rising', color: 'bg-blue-500' },
-    needsValidation: { label: 'Needs Validation', color: 'bg-yellow-500' },
-    decaying: { label: 'Decaying', color: 'bg-orange-500' },
-    stale: { label: 'Stale', color: 'bg-red-500' },
-  };
-
+  // Health status breakdown (clickable)
   const statusBars = (Object.keys(statusLabels) as HealthStatus[])
     .filter(s => (kh.byHealth[s] || 0) > 0)
     .map(s => {
@@ -42,7 +43,11 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
       const pct = kh.active > 0 ? Math.round((count / kh.active) * 100) : 0;
       const info = statusLabels[s];
       return `
-        <div class="flex items-center gap-2 text-xs">
+        <div class="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded -mx-1 px-1"
+             hx-get="/partials/health-entries/${s}"
+             hx-target="#modal-content"
+             hx-trigger="click"
+             onclick="showModal()">
           <span class="size-2 rounded-full ${info.color} shrink-0"></span>
           <span class="text-gray-600 dark:text-gray-400 flex-1">${info.label}</span>
           <span class="text-gray-800 dark:text-gray-200 font-medium">${count}</span>
@@ -114,3 +119,54 @@ export const knowledgeHealthSummaryWidget: WidgetDefinition = {
   size: 'L',
   render: renderKnowledgeHealthSummary,
 };
+
+// Modal listing entries for a given health status
+export function renderHealthEntriesModal(
+  status: HealthStatus,
+  entries: { id: string; title: string; category: string; confidence: number }[],
+): string {
+  const info = statusLabels[status];
+  const categoryColors: Record<string, string> = {
+    pattern: 'purple', truth: 'green', principle: 'orange',
+    architecture: 'blue', gotcha: 'red', convention: 'cyan',
+    decision: 'indigo', reference: 'gray', workflow: 'slate', insight: 'yellow',
+  };
+
+  const rows = entries.map(e => {
+    const catColor = categoryColors[e.category] || 'gray';
+    return `
+      <div class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer border-b border-gray-100 dark:border-dark-border last:border-b-0"
+           hx-get="/partials/knowledge-modal/${encodeURIComponent(e.id)}"
+           hx-target="#modal-content"
+           hx-trigger="click"
+           onclick="event.stopPropagation()">
+        <span class="size-2 rounded-full ${info.dot} shrink-0"></span>
+        <div class="flex-1 flex items-center gap-1 min-w-0">
+          <span class="text-sm text-gray-800 dark:text-gray-100 truncate">${escapeHtml(e.title)}</span>
+          <button type="button"
+                  class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer shrink-0"
+                  title="Copy knowledge ID"
+                  onclick="event.stopPropagation(); event.preventDefault(); navigator.clipboard.writeText('${escapeHtml(e.id)}').then(() => { const svg = this.querySelector('svg'); const orig = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = orig; this.classList.remove('text-green-600'); }, 1500); })">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+          </button>
+        </div>
+        <span class="px-1.5 py-0.5 text-xs rounded bg-${catColor}-100 dark:bg-${catColor}-900/30 text-${catColor}-700 dark:text-${catColor}-300">${escapeHtml(e.category)}</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">${Math.round(e.confidence * 100)}%</span>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="p-6 max-w-2xl mx-auto">
+      <div class="flex items-center gap-3 mb-4">
+        <span class="size-3 rounded-full ${info.color}"></span>
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">${info.label}</h2>
+        <span class="text-sm text-gray-500 dark:text-gray-400">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}</span>
+      </div>
+      ${entries.length > 0
+        ? `<div class="border border-gray-200 dark:border-dark-border rounded-lg overflow-hidden">${rows}</div>`
+        : '<p class="text-sm text-gray-500 dark:text-gray-400">No entries in this category.</p>'
+      }
+    </div>`;
+}

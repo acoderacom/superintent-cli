@@ -137,7 +137,17 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
          hx-target="#modal-content"
          hx-trigger="click"
          onclick="showModal()">
-      <div class="text-xs font-mono text-gray-400 dark:text-gray-500 mb-1">${escapeHtml(k.id)}</div>
+      <div class="flex items-center gap-1 mb-1">
+        <span class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(k.id)}</span>
+        <button type="button"
+                class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer"
+                title="Copy knowledge ID"
+                onclick="event.stopPropagation(); navigator.clipboard.writeText('${escapeHtml(k.id)}').then(() => { const svg = this.querySelector('svg'); const orig = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = orig; this.classList.remove('text-green-600'); }, 1500); })">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+          </svg>
+        </button>
+      </div>
       <div class="flex items-start justify-between">
         <div class="flex-1">
           <div class="flex items-center gap-2">

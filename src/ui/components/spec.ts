@@ -70,7 +70,17 @@ export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
          onclick="showModal()">
       <div class="p-4 flex flex-col flex-1">
         <div class="flex items-start justify-between mb-1">
-          <div class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(spec.id)}</div>
+          <div class="flex items-center gap-1">
+            <span class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(spec.id)}</span>
+            <button type="button"
+                    class="p-0.5 text-gray-400 hover:text-blue-600 rounded transition-colors cursor-pointer"
+                    title="Copy spec ID"
+                    onclick="event.stopPropagation(); navigator.clipboard.writeText('${escapeHtml(spec.id)}').then(() => { const svg = this.querySelector('svg'); const orig = svg.innerHTML; svg.innerHTML = '<path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M5 13l4 4L19 7&quot;></path>'; this.classList.add('text-green-600'); setTimeout(() => { svg.innerHTML = orig; this.classList.remove('text-green-600'); }, 1500); })">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+            </button>
+          </div>
           <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-all cursor-pointer"
                   title="Edit spec"
                   hx-get="/partials/edit-spec-modal/${encodeURIComponent(spec.id)}"
