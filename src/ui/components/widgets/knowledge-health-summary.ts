@@ -98,7 +98,7 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
 
         <!-- Health Status Breakdown -->
         <div class="flex flex-col gap-1.5">
-          ${statusBars || '<p class="text-xs text-gray-400 dark:text-gray-500">No active entries</p>'}
+          ${statusBars || '<p class="text-xs text-gray-400 dark:text-gray-500">No data available</p>'}
         </div>
       </div>
 
