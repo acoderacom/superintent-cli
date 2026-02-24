@@ -13,7 +13,9 @@ export interface WidgetDefinition {
   render: (data: DashboardData) => string;
 }
 
-export type HealthStatus = 'stale' | 'decaying' | 'rising' | 'needsValidation';
+export type UsageHealth = 'rising' | 'stable' | 'decaying';
+export type CitationHealth = 'needsValidation' | 'missing';
+export type HealthStatus = UsageHealth | CitationHealth;
 
 export interface HealthEntry {
   id: string;
@@ -31,7 +33,8 @@ export interface KnowledgeHealthData {
   inactive: number;
   avgConfidence: number;
   byCategory: Record<string, number>;
-  byHealth: Record<HealthStatus, number>;
+  byUsageHealth: Record<UsageHealth, number>;
+  byCitationHealth: Record<CitationHealth, number>;
   recentCount: number; // entries created in last 7 days
 }
 

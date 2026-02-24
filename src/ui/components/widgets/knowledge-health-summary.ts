@@ -1,20 +1,72 @@
-// Knowledge Health Summary widget — stats panel + server-rendered SVG donut
-import type { WidgetDefinition, DashboardData, HealthStatus } from '../dashboard.js';
+// Knowledge Health Summary widget — stats panel with usage & citation health groups
+import type { WidgetDefinition, DashboardData, HealthStatus, UsageHealth, CitationHealth } from '../dashboard.js';
 import { escapeHtml } from '../utils.js';
 
-const statusLabels: Record<HealthStatus, { label: string; color: string; dot: string }> = {
+const usageLabels: Record<UsageHealth, { label: string; color: string; dot: string }> = {
   rising: { label: 'Rising', color: 'bg-blue-500', dot: 'bg-blue-500' },
-  needsValidation: { label: 'Needs Validation', color: 'bg-yellow-500', dot: 'bg-yellow-500' },
+  stable: { label: 'Stable', color: 'bg-green-500', dot: 'bg-green-500' },
   decaying: { label: 'Decaying', color: 'bg-orange-500', dot: 'bg-orange-500' },
-  stale: { label: 'Stale', color: 'bg-red-500', dot: 'bg-red-500' },
 };
+
+const citationLabels: Record<CitationHealth, { label: string; color: string; dot: string }> = {
+  needsValidation: { label: 'Needs Validation', color: 'bg-yellow-500', dot: 'bg-yellow-500' },
+  missing: { label: 'Missing', color: 'bg-red-500', dot: 'bg-red-500' },
+};
+
+const allStatusLabels: Record<HealthStatus, { label: string; color: string; dot: string }> = {
+  ...usageLabels,
+  ...citationLabels,
+};
+
+/** Largest-remainder rounding so percentages always sum to 100% */
+function roundToHundred(values: number[]): number[] {
+  const floored = values.map(v => Math.floor(v));
+  let remainder = 100 - floored.reduce((a, b) => a + b, 0);
+  const fractions = values.map((v, i) => ({ i, f: v - floored[i] }));
+  fractions.sort((a, b) => b.f - a.f);
+  for (const { i } of fractions) {
+    if (remainder <= 0) break;
+    floored[i]++;
+    remainder--;
+  }
+  return floored;
+}
+
+function renderHealthBars<T extends string>(
+  labels: Record<T, { label: string; color: string; dot: string }>,
+  counts: Record<T, number>,
+  total: number,
+  showPct = true,
+): string {
+  const keys = Object.keys(labels) as T[];
+  const rawPcts = keys.map(s => total > 0 ? ((counts[s] || 0) / total) * 100 : 0);
+  const pcts = total > 0 ? roundToHundred(rawPcts) : rawPcts.map(() => 0);
+
+  return keys
+    .map((s, i) => {
+      const count = counts[s] || 0;
+      const info = labels[s];
+      return `
+        <div class="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded -mx-1 px-1"
+             hx-get="/partials/health-entries/${s}"
+             hx-target="#modal-content"
+             hx-trigger="click"
+             onclick="showModal()">
+          <span class="size-2 rounded-full ${info.color} shrink-0"></span>
+          <span class="text-gray-600 dark:text-gray-400 flex-1">${info.label}</span>
+          <span class="text-gray-800 dark:text-gray-200 font-medium">${count}</span>
+          ${showPct ? `<span class="text-gray-400 dark:text-gray-500 w-8 text-right">${pcts[i]}%</span>` : ''}
+        </div>`;
+    })
+    .join('');
+}
 
 function renderKnowledgeHealthSummary(data: DashboardData): string {
   const kh = data.knowledgeHealth;
 
   // Health score: weighted formula
   const activeRatio = kh.total > 0 ? kh.active / kh.total : 0;
-  const issueCount = (kh.byHealth.stale || 0) + (kh.byHealth.needsValidation || 0) + (kh.byHealth.decaying || 0);
+  const issueCount = (kh.byCitationHealth.missing || 0) + (kh.byCitationHealth.needsValidation || 0) + (kh.byUsageHealth.decaying || 0);
   const noIssuesRatio = kh.active > 0 ? Math.max(0, (kh.active - issueCount) / kh.active) : 0;
   const recentRatio = kh.active > 0 ? Math.min(kh.recentCount / kh.active, 1) : 0;
   const healthScore = Math.round(
@@ -34,26 +86,10 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
       ? 'bg-yellow-50 dark:bg-yellow-900/20'
       : 'bg-red-50 dark:bg-red-900/20';
 
-  // Health status breakdown (clickable)
-  const statusBars = (Object.keys(statusLabels) as HealthStatus[])
-    .filter(s => (kh.byHealth[s] || 0) > 0)
-    .map(s => {
-      const count = kh.byHealth[s] || 0;
-      const pct = kh.active > 0 ? Math.round((count / kh.active) * 100) : 0;
-      const info = statusLabels[s];
-      return `
-        <div class="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded -mx-1 px-1"
-             hx-get="/partials/health-entries/${s}"
-             hx-target="#modal-content"
-             hx-trigger="click"
-             onclick="showModal()">
-          <span class="size-2 rounded-full ${info.color} shrink-0"></span>
-          <span class="text-gray-600 dark:text-gray-400 flex-1">${info.label}</span>
-          <span class="text-gray-800 dark:text-gray-200 font-medium">${count}</span>
-          <span class="text-gray-400 dark:text-gray-500 w-8 text-right">${pct}%</span>
-        </div>`;
-    })
-    .join('');
+  // Health status breakdowns by group
+  const usageBars = renderHealthBars(usageLabels, kh.byUsageHealth, kh.active);
+  const citationTotal = (kh.byCitationHealth.needsValidation || 0) + (kh.byCitationHealth.missing || 0);
+  const citationBars = citationTotal > 0 ? renderHealthBars(citationLabels, kh.byCitationHealth, citationTotal, false) : '';
 
   // Empty state
   if (kh.total === 0) {
@@ -95,19 +131,26 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
             <div class="text-xs text-gray-500 dark:text-gray-400">Avg Confidence</div>
           </div>
         </div>
-
-        <!-- Health Status Breakdown -->
-        <div class="flex flex-col gap-1.5">
-          ${statusBars || '<p class="text-xs text-gray-400 dark:text-gray-500">No data available</p>'}
-        </div>
       </div>
 
-      <!-- Right: Chart placeholder -->
-      <div class="flex-1 flex flex-col items-center justify-center min-w-0 text-gray-300 dark:text-gray-600">
-        <div class="border-2 border-dashed border-gray-200 dark:border-dark-border rounded-lg flex items-center justify-center" style="width: 200px; height: 160px;">
-          <span class="text-xs text-gray-400 dark:text-gray-500">[chart placeholder]</span>
+      <!-- Right: Health Breakdowns -->
+      <div class="flex-1 flex flex-col gap-3 min-w-0">
+        <!-- Usage Health -->
+        <div>
+          <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Usage Health</h4>
+          <div class="flex flex-col gap-1.5">
+            ${usageBars || '<p class="text-xs text-gray-400 dark:text-gray-500">No data available</p>'}
+          </div>
         </div>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">By Category</p>
+
+        <!-- Citation Health -->
+        <div>
+          <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Citation Health</h4>
+          <div class="flex flex-col gap-1.5">
+            ${citationBars || '<p class="text-xs text-gray-400 dark:text-gray-500">All citations valid</p>'}
+          </div>
+        </div>
+
       </div>
     </div>`;
 }
@@ -124,7 +167,7 @@ export function renderHealthEntriesModal(
   status: HealthStatus,
   entries: { id: string; title: string; category: string; confidence: number }[],
 ): string {
-  const info = statusLabels[status];
+  const info = allStatusLabels[status];
   const categoryColors: Record<string, string> = {
     pattern: 'purple', truth: 'green', principle: 'orange',
     architecture: 'blue', gotcha: 'red', convention: 'cyan',

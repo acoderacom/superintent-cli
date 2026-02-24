@@ -38,7 +38,7 @@ import {
   renderDashboardView,
   renderDashboardGrid,
 } from '../ui/components/index.js';
-import type { DashboardData, HealthStatus, KnowledgeHealthData } from '../ui/components/dashboard.js';
+import type { DashboardData, HealthStatus, UsageHealth, CitationHealth, KnowledgeHealthData } from '../ui/components/dashboard.js';
 import { renderHealthEntriesModal } from '../ui/components/widgets/knowledge-health-summary.js';
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
@@ -49,7 +49,11 @@ import type { Client } from '@libsql/client';
 
 interface HealthCacheEntry { id: string; title: string; category: string; confidence: number }
 
-async function classifyHealth(client: Client): Promise<{ byHealth: Record<HealthStatus, number>; entries: Record<HealthStatus, HealthCacheEntry[]> }> {
+async function classifyHealth(client: Client): Promise<{
+  byUsageHealth: Record<UsageHealth, number>;
+  byCitationHealth: Record<CitationHealth, number>;
+  entries: Record<HealthStatus, HealthCacheEntry[]>;
+}> {
 
   const DECAY_QUIET_DAYS = 7;
   const RISING_VELOCITY = 2.0;
@@ -63,11 +67,10 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
      FROM knowledge WHERE active = 1 AND branch = 'main'`
   );
 
-  const byHealth: Record<HealthStatus, number> = {
-    stale: 0, decaying: 0, rising: 0, needsValidation: 0,
-  };
+  const byUsageHealth: Record<UsageHealth, number> = { rising: 0, stable: 0, decaying: 0 };
+  const byCitationHealth: Record<CitationHealth, number> = { needsValidation: 0, missing: 0 };
   const entries: Record<HealthStatus, HealthCacheEntry[]> = {
-    stale: [], decaying: [], rising: [], needsValidation: [],
+    rising: [], stable: [], decaying: [], needsValidation: [], missing: [],
   };
 
   const cwd = process.cwd();
@@ -80,6 +83,14 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
     const quietDays = Number(r.quiet_days ?? 0);
     const citationsRaw = r.citations as string | null;
 
+    const entry: HealthCacheEntry = {
+      id: String(r.id),
+      title: String(r.title ?? ''),
+      category: String(r.category ?? 'unknown'),
+      confidence: Number(r.confidence ?? 0),
+    };
+
+    // Citation health dimension
     let hasMissing = false;
     let hasChanged = false;
     if (citationsRaw) {
@@ -93,28 +104,30 @@ async function classifyHealth(client: Client): Promise<{ byHealth: Record<Health
       } catch { /* malformed citations → skip */ }
     }
 
-    let status: HealthStatus | null = null;
+    // Citation health: only track issues
     if (hasMissing) {
-      status = 'stale';
+      byCitationHealth.missing++;
+      entries.missing.push(entry);
     } else if (hasChanged) {
-      status = 'needsValidation';
-    } else if (usageCount > 0 && quietDays > DECAY_QUIET_DAYS) {
-      status = 'decaying';
+      byCitationHealth.needsValidation++;
+      entries.needsValidation.push(entry);
+    }
+
+    // Usage health dimension
+    let usageStatus: UsageHealth;
+    if (usageCount > 0 && quietDays > DECAY_QUIET_DAYS) {
+      usageStatus = 'decaying';
     } else if (ageDays >= RISING_MIN_AGE_DAYS && ageDays > 0 && (usageCount / ageDays) > RISING_VELOCITY && usageCount >= RISING_MIN_USES) {
-      status = 'rising';
+      usageStatus = 'rising';
+    } else {
+      usageStatus = 'stable';
     }
-    if (status) {
-      byHealth[status]++;
-      entries[status].push({
-        id: String(r.id),
-        title: String(r.title ?? ''),
-        category: String(r.category ?? 'unknown'),
-        confidence: Number(r.confidence ?? 0),
-      });
-    }
+
+    byUsageHealth[usageStatus]++;
+    entries[usageStatus].push(entry);
   }
 
-  return { byHealth, entries };
+  return { byUsageHealth, byCitationHealth, entries };
 }
 
 export const dashboardCommand = new Command('dashboard')
@@ -944,7 +957,7 @@ export const dashboardCommand = new Command('dashboard')
     app.get('/partials/health-entries/:status', async (c) => {
       try {
         const status = c.req.param('status') as HealthStatus;
-        const validStatuses: HealthStatus[] = ['rising', 'needsValidation', 'decaying', 'stale'];
+        const validStatuses: HealthStatus[] = ['rising', 'stable', 'decaying', 'needsValidation', 'missing'];
         if (!validStatuses.includes(status)) {
           return c.html('<div class="p-6 text-red-500">Invalid health status</div>');
         }
@@ -1003,8 +1016,8 @@ export const dashboardCommand = new Command('dashboard')
             byCategory[String(r.category ?? 'unknown')] = Number(r.cnt ?? 0);
           }
 
-          // Health classification using citation provenance model (cached 30s)
-          const { byHealth } = await classifyHealth(client);
+          // Health classification — usage + citation dimensions
+          const { byUsageHealth, byCitationHealth } = await classifyHealth(client);
 
           // Recent entries (last 7 days)
           const recentResult = await client.execute(
@@ -1018,7 +1031,8 @@ export const dashboardCommand = new Command('dashboard')
             inactive: inactiveCount,
             avgConfidence,
             byCategory,
-            byHealth,
+            byUsageHealth,
+            byCitationHealth,
             recentCount,
           };
 
