@@ -108,7 +108,7 @@ async function classifyHealth(client: Client): Promise<{
     if (hasMissing) {
       byCitationHealth.missing++;
       entries.missing.push(entry);
-    } else if (hasChanged) {
+    } else if (hasChanged && usageCount > 0) {
       byCitationHealth.needsValidation++;
       entries.needsValidation.push(entry);
     }
