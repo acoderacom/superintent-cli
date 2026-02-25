@@ -173,7 +173,7 @@ function renderDirNode(node: DirNode, depth: number): string {
     const fileCount = countFiles(dir);
     html += `
       <div data-wiki-dir="${escapeHtml(dir.path)}">
-        <details open>
+        <details>
           <summary class="flex items-center gap-1.5 py-1 px-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded cursor-pointer select-none"
                    hx-get="/partials/wiki-dir/${encodeURIComponent(dir.path)}"
                    hx-target="#wiki-content"
