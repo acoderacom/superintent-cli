@@ -44,7 +44,7 @@ function tokenize(text: string): Set<string> {
 // Load all active knowledge entries for matching
 async function loadKnowledgeEntries(client: Client): Promise<KnowledgeEntry[]> {
   const result = await client.execute({
-    sql: 'SELECT id, title, content, tags FROM knowledge WHERE active = 1',
+    sql: "SELECT id, title, content, tags FROM knowledge WHERE active = 1 AND branch = 'main'",
     args: [],
   });
 
