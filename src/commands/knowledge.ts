@@ -834,7 +834,7 @@ knowledgeCommand
 knowledgeCommand
   .command('validate')
   .description('Validate knowledge citations against the filesystem')
-  .argument('[id]', 'Knowledge ID (or use --all/--main)')
+  .argument('[id]', 'Knowledge ID or comma-separated IDs (or use --all/--main)')
   .option('--all', 'Validate all active entries with citations')
   .option('--main', 'Validate main branch entries with citations')
   .option('--dry-run', 'Preview only, no side effects')
@@ -853,14 +853,26 @@ knowledgeCommand
       try {
         let rows;
         if (id) {
+          const ids = id.split(',').map((s) => s.trim()).filter(Boolean);
+          const placeholders = ids.map(() => '?').join(', ');
           const result = await client.execute({
-            sql: 'SELECT id, title, citations FROM knowledge WHERE id = ?',
-            args: [id],
+            sql: `SELECT id, title, citations FROM knowledge WHERE id IN (${placeholders})`,
+            args: ids,
           });
           if (result.rows.length === 0) {
             const response: CliResponse = {
               success: false,
-              error: `Knowledge ${id} not found`,
+              error: `Knowledge not found: ${ids.join(', ')}`,
+            };
+            console.log(JSON.stringify(response));
+            process.exit(1);
+          }
+          const foundIds = new Set(result.rows.map((r) => r.id as string));
+          const notFound = ids.filter((i) => !foundIds.has(i));
+          if (notFound.length > 0) {
+            const response: CliResponse = {
+              success: false,
+              error: `Knowledge not found: ${notFound.join(', ')}`,
             };
             console.log(JSON.stringify(response));
             process.exit(1);
