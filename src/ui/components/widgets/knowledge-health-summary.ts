@@ -151,6 +151,12 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
           </div>
         </div>
 
+        <!-- Footer: Indexed date + Open Knowledge Tab -->
+        <div class="mt-auto pt-2 flex items-center justify-between">
+          <span class="text-[10px] text-gray-400 dark:text-gray-500">Indexed ${kh.lastIndexedAt ? new Date(kh.lastIndexedAt).toLocaleString() : 'Never'}</span>
+          <button onclick="switchTab('knowledge')" class="text-[10px] text-blue-500 dark:text-blue-400 hover:underline cursor-pointer">Open Knowledge Tab</button>
+        </div>
+
       </div>
     </div>`;
 }

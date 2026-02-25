@@ -37,6 +37,7 @@ export interface KnowledgeHealthData {
   byUsageHealth: Record<UsageHealth, number>;
   byCitationHealth: Record<CitationHealth, number>;
   recentCount: number; // entries created in last 7 days
+  lastIndexedAt: string | null;
 }
 
 export interface WikiCoverageData {

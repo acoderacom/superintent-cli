@@ -1250,6 +1250,11 @@ export const dashboardCommand = new Command('dashboard')
           );
           const recentCount = Number((recentResult.rows[0] as Record<string, unknown>).cnt ?? 0);
 
+          const lastKnowledgeResult = await client.execute(
+            `SELECT MAX(updated_at) as last_indexed FROM knowledge WHERE branch = 'main'`
+          );
+          const knowledgeLastIndexedAt = lastKnowledgeResult.rows[0]?.last_indexed as string | null;
+
           const knowledgeHealth: KnowledgeHealthData = {
             total,
             active: activeCount,
@@ -1259,6 +1264,7 @@ export const dashboardCommand = new Command('dashboard')
             byUsageHealth,
             byCitationHealth,
             recentCount,
+            lastIndexedAt: knowledgeLastIndexedAt,
           };
 
           // Wiki coverage data (best-effort — wiki tables may be empty)
