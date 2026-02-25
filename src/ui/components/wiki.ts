@@ -2,6 +2,18 @@
 
 import { escapeHtml } from './utils.js';
 import type { ASTFileResult, ASTClass, ASTFunction, ASTImport, WikiScanResult } from '../../wiki/scanner.js';
+import type { CoverageStats, CitationWithKnowledge } from '../../wiki/indexer.js';
+
+// ============ Types ============
+
+export interface WikiSearchHit {
+  type: 'function' | 'class' | 'method' | 'file';
+  name: string;
+  filePath: string;
+  line?: number;
+  endLine?: number;
+  detail?: string;
+}
 
 // ============ Main View Shell ============
 
@@ -11,7 +23,17 @@ export function renderWikiView(): string {
       <!-- Sidebar: directory tree -->
       <div class="w-[280px] shrink-0 border-r border-gray-200 dark:border-dark-border overflow-y-auto">
         <div class="p-3">
-          <!-- Search -->
+          <!-- Code search -->
+          <input type="text" id="wiki-code-search" placeholder="Search code elements..."
+                 name="q"
+                 hx-get="/partials/wiki-search-results"
+                 hx-trigger="input changed delay:250ms"
+                 hx-target="#wiki-search-results"
+                 hx-swap="innerHTML"
+                 class="w-full px-2.5 py-1.5 text-sm border border-gray-200 dark:border-dark-border rounded-md bg-white dark:bg-dark-surface text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2">
+          <div id="wiki-search-results"></div>
+          <hr class="border-gray-200 dark:border-dark-border my-2">
+          <!-- File filter -->
           <input type="text" id="wiki-tree-search" placeholder="Filter files..."
                  class="w-full px-2.5 py-1.5 text-sm border border-gray-200 dark:border-dark-border rounded-md bg-white dark:bg-dark-surface text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2"
                  oninput="filterWikiTree(this.value)">
@@ -204,7 +226,7 @@ export function renderWikiTree(scan: WikiScanResult): string {
 
 // ============ Overview Page ============
 
-export function renderWikiOverview(scan: WikiScanResult): string {
+export function renderWikiOverview(scan: WikiScanResult, coverageStats?: CoverageStats): string {
   // Language breakdown
   const langCounts: Record<string, { files: number; lines: number }> = {};
   for (const file of scan.files) {
@@ -248,6 +270,25 @@ export function renderWikiOverview(scan: WikiScanResult): string {
         ${renderStatCard('Classes', String(scan.totalClasses), 'purple')}
         ${renderStatCard('Lines', totalLines.toLocaleString(), 'gray')}
       </div>
+
+      ${coverageStats ? `
+      <!-- Knowledge Coverage -->
+      <div class="mb-6">
+        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Knowledge Coverage</h2>
+        <div class="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-md">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm text-gray-600 dark:text-gray-300">${coverageStats.coveredElements} / ${coverageStats.totalElements} code elements linked to knowledge</span>
+            <span class="text-sm font-bold text-${coverageStats.coveragePercent >= 50 ? 'green' : coverageStats.coveragePercent >= 20 ? 'yellow' : 'red'}-600 dark:text-${coverageStats.coveragePercent >= 50 ? 'green' : coverageStats.coveragePercent >= 20 ? 'yellow' : 'red'}-400">${coverageStats.coveragePercent}%</span>
+          </div>
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div class="bg-${coverageStats.coveragePercent >= 50 ? 'green' : coverageStats.coveragePercent >= 20 ? 'yellow' : 'red'}-500 h-2 rounded-full transition-all" style="width: ${coverageStats.coveragePercent}%"></div>
+          </div>
+          <div class="flex gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span>${coverageStats.coveredFiles} / ${coverageStats.totalFiles} files covered</span>
+          </div>
+        </div>
+      </div>
+      ` : ''}
 
       <!-- Language Breakdown -->
       <div class="mb-6">
@@ -385,9 +426,18 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
 
 // ============ File Page ============
 
-export function renderWikiFile(file: ASTFileResult): string {
+export function renderWikiFile(file: ASTFileResult, citations?: CitationWithKnowledge[]): string {
   const fileName = file.relativePath.split('/').pop() || '';
-  const dirPath = file.relativePath.includes('/') ? file.relativePath.substring(0, file.relativePath.lastIndexOf('/')) : '';
+
+  // Build lookup: function_name → citations for that function
+  const citationsByFn = new Map<string, CitationWithKnowledge[]>();
+  if (citations) {
+    for (const c of citations) {
+      const list = citationsByFn.get(c.function_name) || [];
+      list.push(c);
+      citationsByFn.set(c.function_name, list);
+    }
+  }
 
   return `
     <div>
@@ -442,7 +492,7 @@ export function renderWikiFile(file: ASTFileResult): string {
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Classes</h2>
           <div class="space-y-3">
-            ${file.classes.map(cls => renderClassDetail(cls)).join('')}
+            ${file.classes.map(cls => renderClassDetail(cls, citationsByFn)).join('')}
           </div>
         </div>
       ` : ''}
@@ -451,32 +501,37 @@ export function renderWikiFile(file: ASTFileResult): string {
       ${file.functions.length > 0 ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Functions</h2>
-          ${renderFunctionsTable(file.functions)}
+          ${renderFunctionsTable(file.functions, citationsByFn)}
         </div>
       ` : ''}
+
+      <!-- Linked Knowledge -->
+      ${citations && citations.length > 0 ? renderLinkedKnowledge(citations) : ''}
     </div>
   `;
 }
 
-function renderClassDetail(cls: ASTClass): string {
+function renderClassDetail(cls: ASTClass, citationsByFn?: Map<string, CitationWithKnowledge[]>): string {
+  const classCitations = citationsByFn?.get(cls.name);
   return `
     <div class="border border-gray-200 dark:border-dark-border rounded-md overflow-hidden">
       <div class="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-purple-900/20 border-b border-gray-200 dark:border-dark-border">
         ${cls.isExported ? '<span class="text-[10px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">export</span>' : ''}
         <span class="text-[10px] px-1 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">class</span>
         <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">${escapeHtml(cls.name)}</span>
+        ${classCitations ? `<span class="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded" title="${classCitations.length} linked knowledge">${classCitations.length} linked</span>` : ''}
         <span class="text-xs text-gray-400 dark:text-gray-500 ml-auto">L${cls.line}-${cls.endLine}</span>
       </div>
       ${cls.methods.length > 0 ? `
         <div class="px-3 py-2">
-          ${renderFunctionsTable(cls.methods)}
+          ${renderFunctionsTable(cls.methods, citationsByFn)}
         </div>
       ` : '<div class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">No methods</div>'}
     </div>
   `;
 }
 
-function renderFunctionsTable(functions: ASTFunction[]): string {
+function renderFunctionsTable(functions: ASTFunction[], citationsByFn?: Map<string, CitationWithKnowledge[]>): string {
   return `
     <table class="w-full text-sm">
       <thead>
@@ -492,6 +547,8 @@ function renderFunctionsTable(functions: ASTFunction[]): string {
           if (fn.isExported) badges.push('<span class="text-[10px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">export</span>');
           if (fn.isAsync) badges.push('<span class="text-[10px] px-1 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded">async</span>');
           if (fn.kind === 'arrow') badges.push('<span class="text-[10px] px-1 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">=&gt;</span>');
+          const fnCitations = citationsByFn?.get(fn.name);
+          if (fnCitations) badges.push(`<span class="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded" title="${fnCitations.length} linked knowledge">${fnCitations.length} linked</span>`);
 
           return `
             <tr class="border-b border-gray-100 dark:border-gray-800 last:border-0">
@@ -511,6 +568,42 @@ function renderFunctionsTable(functions: ASTFunction[]): string {
         }).join('')}
       </tbody>
     </table>
+  `;
+}
+
+// ============ Linked Knowledge Section ============
+
+function matchTypeBadge(matchType: string): string {
+  switch (matchType) {
+    case 'tag': return '<span class="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">tag</span>';
+    case 'content': return '<span class="text-[10px] px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded">content</span>';
+    case 'vector': return '<span class="text-[10px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">vector</span>';
+    default: return '';
+  }
+}
+
+function renderLinkedKnowledge(citations: CitationWithKnowledge[]): string {
+  return `
+    <div class="mb-6">
+      <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Linked Knowledge</h2>
+      <div class="space-y-1.5">
+        ${citations.map(c => `
+          <div class="flex items-center gap-2 py-2 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-md">
+            <div class="flex-1 min-w-0">
+              <a hx-get="/partials/knowledge/${encodeURIComponent(c.knowledge_id)}"
+                 hx-target="#modal-content"
+                 hx-swap="innerHTML"
+                 class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate block">${escapeHtml(c.knowledge_title)}</a>
+              <div class="flex items-center gap-2 mt-0.5">
+                ${matchTypeBadge(c.match_type)}
+                ${c.knowledge_category ? `<span class="text-[10px] text-gray-400 dark:text-gray-500">${escapeHtml(c.knowledge_category)}</span>` : ''}
+                <span class="text-[10px] text-gray-400 dark:text-gray-500">${escapeHtml(c.function_name)} (L${c.start_line}-${c.end_line})</span>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
   `;
 }
 
@@ -543,4 +636,50 @@ function renderBreadcrumb(path: string): string {
 
   html += '</nav>';
   return html;
+}
+
+// ============ Code Search Results ============
+
+function searchTypeIcon(type: WikiSearchHit['type']): string {
+  switch (type) {
+    case 'function':
+      return '<svg class="size-3.5 shrink-0 text-green-500 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 8-4 4 4 4"/><path d="m17 8 4 4-4 4"/><path d="m14 4-4 16"/></svg>';
+    case 'class':
+      return '<svg class="size-3.5 shrink-0 text-purple-500 dark:text-purple-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h10"/></svg>';
+    case 'method':
+      return '<svg class="size-3.5 shrink-0 text-blue-500 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/></svg>';
+    case 'file':
+      return '<svg class="size-3.5 shrink-0 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+  }
+}
+
+export function renderWikiSearchResults(hits: WikiSearchHit[]): string {
+  if (hits.length === 0) {
+    return '<p class="text-xs text-gray-400 dark:text-gray-500 text-center py-2">No results found.</p>';
+  }
+
+  return `
+    <div class="space-y-0.5 max-h-[300px] overflow-y-auto">
+      ${hits.map(hit => {
+        const lineInfo = hit.line ? `L${hit.line}${hit.endLine ? '-' + hit.endLine : ''}` : '';
+        return `
+          <a hx-get="/partials/wiki-file/${encodeURIComponent(hit.filePath)}"
+             hx-target="#wiki-content"
+             hx-swap="innerHTML"
+             class="flex items-start gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded cursor-pointer group">
+            ${searchTypeIcon(hit.type)}
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">${escapeHtml(hit.name)}</span>
+                <span class="text-[10px] px-1 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">${hit.type}</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-500 truncate">
+                <span class="truncate">${escapeHtml(hit.filePath)}</span>
+                ${lineInfo ? `<span>${lineInfo}</span>` : ''}
+              </div>
+              ${hit.detail ? `<div class="text-[10px] text-gray-400 dark:text-gray-500 truncate">${escapeHtml(hit.detail)}</div>` : ''}
+            </div>
+          </a>`;
+      }).join('')}
+    </div>`;
 }

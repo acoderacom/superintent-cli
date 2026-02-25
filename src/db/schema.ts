@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS wiki_pages (
   path TEXT NOT NULL UNIQUE,
   type TEXT NOT NULL DEFAULT 'file',
   data TEXT,
+  mtime INTEGER,
   updated_at TEXT DEFAULT (datetime('now'))
 )`;
 

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { Client } from '@libsql/client';
 
-export type SSEEventType = 'ticket-updated' | 'knowledge-updated' | 'spec-updated';
+export type SSEEventType = 'ticket-updated' | 'knowledge-updated' | 'spec-updated' | 'wiki-updated';
 
 interface SSEClient {
   id: number;
@@ -92,6 +92,8 @@ const tableToEvent: Record<string, SSEEventType> = {
   tickets: 'ticket-updated',
   knowledge: 'knowledge-updated',
   specs: 'spec-updated',
+  wiki_pages: 'wiki-updated',
+  wiki_citations: 'wiki-updated',
 };
 
 export function startChangeWatcher(client: Client): void {
@@ -107,13 +109,15 @@ export function startChangeWatcher(client: Client): void {
           (SELECT MAX(updated_at) || '|' || COUNT(*) FROM tickets) AS tickets,
           (SELECT MAX(updated_at) || '|' || COUNT(*) || '|' || SUM(active) FROM knowledge) AS knowledge,
           (SELECT MAX(updated_at) || '|' || COUNT(*) FROM specs) AS specs,
-          (SELECT MAX(updated_at) || '|' || COUNT(*) FROM comments) AS comments`,
+          (SELECT MAX(updated_at) || '|' || COUNT(*) FROM comments) AS comments,
+          (SELECT MAX(updated_at) || '|' || COUNT(*) FROM wiki_pages) AS wiki_pages,
+          (SELECT MAX(created_at) || '|' || COUNT(*) FROM wiki_citations) AS wiki_citations`,
         args: [],
       });
 
       const row = result.rows[0] as Record<string, unknown>;
 
-      for (const table of ['tickets', 'knowledge', 'specs', 'comments']) {
+      for (const table of ['tickets', 'knowledge', 'specs', 'comments', 'wiki_pages', 'wiki_citations']) {
         const current = (row[table] as string) || '';
         if (firstPoll) {
           lastSeen[table] = current;

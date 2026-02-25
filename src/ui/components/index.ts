@@ -67,4 +67,6 @@ export {
   renderWikiOverview,
   renderWikiDirectory,
   renderWikiFile,
+  renderWikiSearchResults,
 } from './wiki.js';
+export type { WikiSearchHit } from './wiki.js';

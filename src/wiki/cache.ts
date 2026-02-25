@@ -2,6 +2,7 @@
 
 interface CacheEntry<T> {
   data: T;
+  validatorData?: unknown;
   expiresAt: number;
 }
 
@@ -25,8 +26,28 @@ export class WikiCache<T> {
     return entry.data;
   }
 
-  set(key: string, data: T): void {
-    this.store.set(key, { data, expiresAt: Date.now() + this.ttlMs });
+  set(key: string, data: T, validatorData?: unknown): void {
+    this.store.set(key, { data, validatorData, expiresAt: Date.now() + this.ttlMs });
+  }
+
+  getValidatorData(key: string): unknown | null {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.validatorData ?? null;
+  }
+
+  has(key: string): boolean {
+    const entry = this.store.get(key);
+    if (!entry) return false;
+    if (Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return false;
+    }
+    return true;
   }
 
   invalidate(key: string): void {

@@ -58,6 +58,13 @@ export async function initSchema(client: Client): Promise<void> {
   // Create wiki pages table
   await client.execute(CREATE_WIKI_PAGES_TABLE);
 
+  // Migration: add mtime column if missing (backward compat)
+  try {
+    await client.execute(`ALTER TABLE wiki_pages ADD COLUMN mtime INTEGER`);
+  } catch {
+    // Column already exists
+  }
+
   const wikiPagesIndexes = CREATE_WIKI_PAGES_INDEXES.split(';').filter(s => s.trim());
   for (const stmt of wikiPagesIndexes) {
     await client.execute(stmt);

@@ -1,7 +1,7 @@
 // web-tree-sitter AST pipeline for scanning TypeScript/JavaScript files
 
 import { Parser, Language, type Node as SyntaxNode } from 'web-tree-sitter';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanCache } from './cache.js';
@@ -50,6 +50,12 @@ export interface WikiScanResult {
   totalFiles: number;
   totalFunctions: number;
   totalClasses: number;
+}
+
+export interface FileMtimeEntry {
+  relativePath: string;
+  absolutePath: string;
+  mtimeMs: number;
 }
 
 // ============ Parser Singleton ============
@@ -373,27 +379,54 @@ function collectFiles(dir: string): string[] {
   return files;
 }
 
-export async function scanProject(rootPath: string): Promise<WikiScanResult> {
-  // Check cache
-  const cached = scanCache.get(rootPath) as WikiScanResult | null;
-  if (cached) return cached;
-
+// Collect files with their modification times for incremental scanning
+export function collectFilesWithMtimes(rootPath: string): FileMtimeEntry[] {
   const filePaths = collectFiles(rootPath);
-  const files: ASTFileResult[] = [];
+  const entries: FileMtimeEntry[] = [];
 
   for (const fp of filePaths) {
-    const result = await scanFile(fp, rootPath);
-    if (result) files.push(result);
+    try {
+      const stat = statSync(fp);
+      entries.push({
+        relativePath: relative(rootPath, fp),
+        absolutePath: fp,
+        mtimeMs: Math.floor(stat.mtimeMs),
+      });
+    } catch {
+      // File may have been deleted between collect and stat
+    }
   }
 
-  // Sort by relative path
+  return entries;
+}
+
+// Scan only a specified subset of files (for incremental indexing)
+export async function scanFiles(filePaths: string[], rootPath: string): Promise<ASTFileResult[]> {
+  const results: ASTFileResult[] = [];
+  for (const fp of filePaths) {
+    const result = await scanFile(fp, rootPath);
+    if (result) results.push(result);
+  }
+  return results;
+}
+
+// Get file mtime in epoch ms, or null if file doesn't exist
+export function getMtimeForFile(filePath: string): number | null {
+  try {
+    return Math.floor(statSync(filePath).mtimeMs);
+  } catch {
+    return null;
+  }
+}
+
+function buildScanResult(rootPath: string, files: ASTFileResult[]): WikiScanResult {
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 
   const totalFunctions = files.reduce((sum, f) =>
     sum + f.functions.length + f.classes.reduce((s, c) => s + c.methods.length, 0), 0);
   const totalClasses = files.reduce((sum, f) => sum + f.classes.length, 0);
 
-  const result: WikiScanResult = {
+  return {
     rootPath,
     files,
     scannedAt: new Date().toISOString(),
@@ -401,7 +434,59 @@ export async function scanProject(rootPath: string): Promise<WikiScanResult> {
     totalFunctions,
     totalClasses,
   };
+}
 
-  scanCache.set(rootPath, result);
+export async function scanProject(rootPath: string): Promise<WikiScanResult> {
+  // Check cache — with mtime spot-check validation
+  if (scanCache.has(rootPath)) {
+    const cachedMtimes = scanCache.getValidatorData(rootPath) as Record<string, number> | null;
+    if (cachedMtimes) {
+      // Sample up to 10 files and compare mtimes
+      const paths = Object.keys(cachedMtimes);
+      const sampleSize = Math.min(10, paths.length);
+      const sampled = paths.length <= sampleSize
+        ? paths
+        : paths.sort(() => Math.random() - 0.5).slice(0, sampleSize);
+
+      let allMatch = true;
+      for (const relPath of sampled) {
+        const absPath = join(rootPath, relPath);
+        const currentMtime = getMtimeForFile(absPath);
+        if (currentMtime === null || currentMtime !== cachedMtimes[relPath]) {
+          allMatch = false;
+          break;
+        }
+      }
+
+      if (allMatch) {
+        return scanCache.get(rootPath) as WikiScanResult;
+      }
+      // Mtime changed — invalidate and re-scan
+      scanCache.invalidate(rootPath);
+    } else {
+      // No validator data but cache exists — return cached
+      const cached = scanCache.get(rootPath);
+      if (cached) return cached as WikiScanResult;
+    }
+  }
+
+  const filePaths = collectFiles(rootPath);
+  const files: ASTFileResult[] = [];
+  const mtimeMap: Record<string, number> = {};
+
+  for (const fp of filePaths) {
+    const result = await scanFile(fp, rootPath);
+    if (result) {
+      files.push(result);
+      const mtime = getMtimeForFile(fp);
+      if (mtime !== null) {
+        mtimeMap[result.relativePath] = mtime;
+      }
+    }
+  }
+
+  const result = buildScanResult(rootPath, files);
+
+  scanCache.set(rootPath, result, mtimeMap);
   return result;
 }

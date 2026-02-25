@@ -1,6 +1,7 @@
 // Dashboard component
 import { escapeHtml } from './utils.js';
 import { knowledgeHealthSummaryWidget } from './widgets/knowledge-health-summary.js';
+import { wikiCoverageWidget } from './widgets/wiki-coverage.js';
 
 // ============ Widget Architecture ============
 
@@ -38,8 +39,18 @@ export interface KnowledgeHealthData {
   recentCount: number; // entries created in last 7 days
 }
 
+export interface WikiCoverageData {
+  totalFiles: number;
+  coveredFiles: number;
+  totalElements: number;
+  coveredElements: number;
+  coveragePercent: number;
+  lastIndexedAt: string | null;
+}
+
 export interface DashboardData {
   knowledgeHealth: KnowledgeHealthData;
+  wikiCoverage?: WikiCoverageData;
 }
 
 // Size → CSS grid span mapping (responsive)
@@ -55,6 +66,7 @@ const sizeToGridClasses: Record<WidgetSize, string> = {
 
 const widgetRegistry: WidgetDefinition[] = [
   knowledgeHealthSummaryWidget,
+  wikiCoverageWidget,
 ];
 
 // ============ Dashboard View (HTMX shell) ============
