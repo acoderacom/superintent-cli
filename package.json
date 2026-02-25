@@ -16,8 +16,9 @@
     "superintent": "bin/superintent.js"
   },
   "scripts": {
-    "build": "tsc && npm run build:css",
+    "build": "tsc && npm run build:css && npm run setup:grammars",
     "build:css": "npx @tailwindcss/cli -i src/ui/styles/main.css -o dist/ui/styles.css --minify",
+    "setup:grammars": "mkdir -p grammars && cp node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-typescript.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-tsx.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-javascript.wasm grammars/ && cp node_modules/web-tree-sitter/web-tree-sitter.wasm grammars/tree-sitter.wasm",
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build"
   },
@@ -27,12 +28,14 @@
     "@libsql/client": "^0.17.0",
     "commander": "^14.0.3",
     "hono": "^4.11.9",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "web-tree-sitter": "^0.26.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/cli": "^4.1.18",
     "@types/node": "^25.2.3",
+    "@vscode/tree-sitter-wasm": "^0.3.0",
     "eslint": "^10.0.0",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
@@ -46,6 +49,7 @@
     "dist/**/*.js",
     "dist/**/*.d.ts",
     "dist/ui/styles.css",
+    "grammars/*.wasm",
     "bin"
   ],
   "keywords": [

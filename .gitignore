@@ -4,3 +4,4 @@ dist
 .superintent/.env
 .superintent/*.db
 .claude/settings.local.json
+grammars/

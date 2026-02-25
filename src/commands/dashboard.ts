@@ -37,6 +37,11 @@ import {
   renderGraphView,
   renderDashboardView,
   renderDashboardGrid,
+  renderWikiView,
+  renderWikiTree,
+  renderWikiOverview,
+  renderWikiDirectory,
+  renderWikiFile,
 } from '../ui/components/index.js';
 import type { DashboardData, HealthStatus, UsageHealth, CitationHealth, KnowledgeHealthData } from '../ui/components/dashboard.js';
 import { renderHealthEntriesModal } from '../ui/components/widgets/knowledge-health-summary.js';
@@ -45,6 +50,8 @@ import { getGitUsername } from '../utils/git.js';
 import { emitSSE, createSSEStream, closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
 import type { Comment, Citation } from '../types.js';
 import { validateCitationAsync } from '../utils/hash.js';
+import { scanProject } from '../wiki/scanner.js';
+import { scanCache } from '../wiki/cache.js';
 import type { Client } from '@libsql/client';
 
 interface HealthCacheEntry { id: string; title: string; category: string; confidence: number }
@@ -979,6 +986,92 @@ export const dashboardCommand = new Command('dashboard')
     // Graph view
     app.get('/partials/graph-view', (c) => {
       return c.html(renderGraphView());
+    });
+
+    // ============ WIKI ROUTES ============
+
+    // Wiki view shell
+    app.get('/partials/wiki-view', (c) => {
+      return c.html(renderWikiView());
+    });
+
+    // Wiki tree (sidebar directory listing)
+    app.get('/partials/wiki-tree', async (c) => {
+      try {
+        const scan = await scanProject(process.cwd());
+        return c.html(renderWikiTree(scan));
+      } catch (error) {
+        return c.html(`<div class="text-red-500 text-sm p-2">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
+    // Wiki overview (landing page)
+    app.get('/partials/wiki-overview', async (c) => {
+      try {
+        const scan = await scanProject(process.cwd());
+        return c.html(renderWikiOverview(scan));
+      } catch (error) {
+        return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
+    // Wiki directory view
+    app.get('/partials/wiki-dir/:path{.+}', async (c) => {
+      try {
+        const dirPath = c.req.param('path');
+        const scan = await scanProject(process.cwd());
+        const files = scan.files.filter(f => {
+          const fileDirParts = f.relativePath.split('/');
+          fileDirParts.pop(); // Remove filename
+          const fileDir = fileDirParts.join('/');
+          return fileDir === dirPath;
+        });
+
+        // Find immediate subdirectories
+        const subdirSet = new Set<string>();
+        const prefix = dirPath + '/';
+        for (const file of scan.files) {
+          if (file.relativePath.startsWith(prefix)) {
+            const rest = file.relativePath.slice(prefix.length);
+            const slashIdx = rest.indexOf('/');
+            if (slashIdx !== -1) {
+              subdirSet.add(rest.substring(0, slashIdx));
+            }
+          }
+        }
+
+        return c.html(renderWikiDirectory(dirPath, files, Array.from(subdirSet)));
+      } catch (error) {
+        return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
+    // Wiki file view
+    app.get('/partials/wiki-file/:path{.+}', async (c) => {
+      try {
+        const filePath = c.req.param('path');
+        const scan = await scanProject(process.cwd());
+        const file = scan.files.find(f => f.relativePath === filePath);
+
+        if (!file) {
+          return c.html('<div class="text-red-500 p-4">File not found</div>');
+        }
+
+        return c.html(renderWikiFile(file));
+      } catch (error) {
+        return c.html(`<div class="text-red-500 p-4">Error: ${(error as Error).message}</div>`);
+      }
+    });
+
+    // Wiki rescan
+    app.post('/api/wiki/rescan', async (c) => {
+      try {
+        scanCache.invalidateAll();
+        const scan = await scanProject(process.cwd());
+        return c.html(renderWikiTree(scan));
+      } catch (error) {
+        return c.json({ error: (error as Error).message }, 500);
+      }
     });
 
     // Dashboard view

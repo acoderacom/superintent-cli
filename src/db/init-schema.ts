@@ -9,6 +9,10 @@ import {
   CREATE_SPECS_INDEXES,
   CREATE_COMMENTS_TABLE,
   CREATE_COMMENTS_INDEXES,
+  CREATE_WIKI_PAGES_TABLE,
+  CREATE_WIKI_PAGES_INDEXES,
+  CREATE_WIKI_CITATIONS_TABLE,
+  CREATE_WIKI_CITATIONS_INDEXES,
 } from './schema.js';
 
 export async function initSchema(client: Client): Promise<void> {
@@ -48,6 +52,22 @@ export async function initSchema(client: Client): Promise<void> {
 
   const commentIndexes = CREATE_COMMENTS_INDEXES.split(';').filter(s => s.trim());
   for (const stmt of commentIndexes) {
+    await client.execute(stmt);
+  }
+
+  // Create wiki pages table
+  await client.execute(CREATE_WIKI_PAGES_TABLE);
+
+  const wikiPagesIndexes = CREATE_WIKI_PAGES_INDEXES.split(';').filter(s => s.trim());
+  for (const stmt of wikiPagesIndexes) {
+    await client.execute(stmt);
+  }
+
+  // Create wiki citations table
+  await client.execute(CREATE_WIKI_CITATIONS_TABLE);
+
+  const wikiCitationsIndexes = CREATE_WIKI_CITATIONS_INDEXES.split(';').filter(s => s.trim());
+  for (const stmt of wikiCitationsIndexes) {
     await client.execute(stmt);
   }
 

@@ -170,6 +170,15 @@ export function getHtml(namespace: string, version: string): string {
                 Graph
               </button>
             </li>
+            <li>
+              <button id="nav-wiki" onclick="switchTab('wiki')"
+                      class="w-full flex items-center gap-x-2.5 py-2 px-2.5 text-sm text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-hover focus:outline-none">
+                <svg class="shrink-0 size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="m9 9.5 2 2 4-4"/>
+                </svg>
+                Wiki
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -210,6 +219,8 @@ export function getHtml(namespace: string, version: string): string {
         <div id="view-knowledge" class="hidden mx-auto" hx-get="/partials/knowledge-view" hx-trigger="revealed"></div>
         <!-- Knowledge Graph View -->
         <div id="view-graph" class="hidden" hx-get="/partials/graph-view" hx-trigger="intersect once"></div>
+        <!-- Wiki View -->
+        <div id="view-wiki" class="hidden" hx-get="/partials/wiki-view" hx-trigger="revealed"></div>
       </div>
     </div>
   </main>
@@ -377,7 +388,7 @@ export function getHtml(namespace: string, version: string): string {
 
     // Tab/view switching with URL hash persistence
     function switchTab(tab, updateHash = true) {
-      ['dashboard', 'ticket', 'knowledge', 'spec', 'graph'].forEach(t => {
+      ['dashboard', 'ticket', 'knowledge', 'spec', 'graph', 'wiki'].forEach(t => {
         document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
         document.getElementById('nav-' + t).classList.toggle('nav-active', t === tab);
       });
@@ -398,7 +409,7 @@ export function getHtml(namespace: string, version: string): string {
     // Restore tab from URL hash on page load
     (function() {
       const hash = window.location.hash.slice(1);
-      if (['dashboard', 'ticket', 'knowledge', 'spec', 'graph'].includes(hash)) {
+      if (['dashboard', 'ticket', 'knowledge', 'spec', 'graph', 'wiki'].includes(hash)) {
         switchTab(hash, false);
       }
     })();

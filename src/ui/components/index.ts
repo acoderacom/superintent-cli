@@ -59,3 +59,12 @@ export {
   renderDashboardView,
   renderDashboardGrid,
 } from './dashboard.js';
+
+// Wiki components
+export {
+  renderWikiView,
+  renderWikiTree,
+  renderWikiOverview,
+  renderWikiDirectory,
+  renderWikiFile,
+} from './wiki.js';

@@ -90,3 +90,34 @@ export const CREATE_COMMENTS_INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_type, parent_id);
 CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created_at)`;
 
+export const CREATE_WIKI_PAGES_TABLE = `
+CREATE TABLE IF NOT EXISTS wiki_pages (
+  id TEXT PRIMARY KEY,
+  path TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL DEFAULT 'file',
+  data TEXT,
+  updated_at TEXT DEFAULT (datetime('now'))
+)`;
+
+export const CREATE_WIKI_PAGES_INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_path ON wiki_pages(path);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_type ON wiki_pages(type)`;
+
+export const CREATE_WIKI_CITATIONS_TABLE = `
+CREATE TABLE IF NOT EXISTS wiki_citations (
+  id TEXT PRIMARY KEY,
+  wiki_page_id TEXT NOT NULL,
+  knowledge_id TEXT NOT NULL,
+  function_name TEXT,
+  start_line INTEGER,
+  end_line INTEGER,
+  match_type TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (wiki_page_id) REFERENCES wiki_pages(id),
+  FOREIGN KEY (knowledge_id) REFERENCES knowledge(id)
+)`;
+
+export const CREATE_WIKI_CITATIONS_INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_wiki_citations_page ON wiki_citations(wiki_page_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_citations_knowledge ON wiki_citations(knowledge_id)`;
+
