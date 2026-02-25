@@ -17,7 +17,7 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch']">
+                    hx-include="[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch'],[name='k-sort']">
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
               <option value="all">All</option>
@@ -30,7 +30,7 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-status'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch']">
+                    hx-include="[name='k-status'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch'],[name='k-sort']">
               <option value="">All</option>
               <option value="pattern">Pattern</option>
               <option value="truth">Truth</option>
@@ -46,7 +46,7 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-origin'],[name='k-author'],[name='k-branch']">
+                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-origin'],[name='k-author'],[name='k-branch'],[name='k-sort']">
               <option value="">All</option>
               <option value="global">Global</option>
               <option value="new-only">New Only</option>
@@ -61,11 +61,27 @@ export function renderKnowledgeView(): string {
                     hx-get="/partials/knowledge-list"
                     hx-trigger="change"
                     hx-target="#knowledge-list"
-                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-author'],[name='k-branch']">
+                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-author'],[name='k-branch'],[name='k-sort']">
               <option value="">All</option>
               <option value="ticket">Ticket</option>
               <option value="discovery">Discovery</option>
               <option value="manual">Manual</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="k-sort" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Sort</label>
+            <select id="k-sort" name="k-sort" class="w-full border dark:border-dark-border rounded-lg px-3 py-2 text-sm bg-white dark:bg-dark-surface dark:text-gray-200"
+                    hx-get="/partials/knowledge-list"
+                    hx-trigger="change"
+                    hx-target="#knowledge-list"
+                    hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch']">
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="updated">Recently Updated</option>
+              <option value="stale">Last Updated</option>
+              <option value="usage">Most Used</option>
+              <option value="least-used">Least Used</option>
             </select>
           </div>
 
@@ -76,7 +92,7 @@ export function renderKnowledgeView(): string {
                    hx-get="/partials/knowledge-list"
                    hx-trigger="keyup changed delay:400ms"
                    hx-target="#knowledge-list"
-                   hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-branch']">
+                   hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-branch'],[name='k-sort']">
           </div>
 
           <div>
@@ -86,14 +102,14 @@ export function renderKnowledgeView(): string {
                    hx-get="/partials/knowledge-list"
                    hx-trigger="keyup changed delay:400ms"
                    hx-target="#knowledge-list"
-                   hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author']">
+                   hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-sort']">
           </div>
         </div>
       </aside>
 
       <main class="flex-1">
         <div id="knowledge-list" hx-get="/partials/knowledge-list" hx-trigger="load, refresh" hx-swap="innerHTML"
-             hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch']">
+             hx-include="[name='k-status'],[name='k-category'],[name='k-namespace'],[name='k-scope'],[name='k-origin'],[name='k-author'],[name='k-branch'],[name='k-sort']">
         </div>
       </main>
     </div>
@@ -175,7 +191,7 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
 }
 
 // Build query params string for knowledge filters (used in load-more URLs)
-function buildKnowledgeFilterParams(filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string }): string {
+function buildKnowledgeFilterParams(filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string; sort?: string }): string {
   if (!filters) return '';
   const params = new URLSearchParams();
   if (filters.status) params.set('k-status', filters.status);
@@ -185,12 +201,13 @@ function buildKnowledgeFilterParams(filters?: { status?: string; category?: stri
   if (filters.source) params.set('k-origin', filters.source);
   if (filters.author) params.set('k-author', filters.author);
   if (filters.branch) params.set('k-branch', filters.branch);
+  if (filters.sort) params.set('k-sort', filters.sort);
   const str = params.toString();
   return str ? `&${str}` : '';
 }
 
 // Helper to render knowledge list with optional load-more
-export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string }): string {
+export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string; sort?: string }): string {
   if (items.length === 0) {
     return '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No knowledge entries found</p>';
   }
@@ -212,7 +229,7 @@ export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, f
 }
 
 // Helper to render more knowledge items (pagination)
-export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, hasMore: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string }): string {
+export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, hasMore: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string; sort?: string }): string {
   const cards = items.map(k => renderKnowledgeCard(k)).join('');
 
   if (!hasMore) {

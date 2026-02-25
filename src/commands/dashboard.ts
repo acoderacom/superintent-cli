@@ -863,6 +863,7 @@ export const dashboardCommand = new Command('dashboard')
       const author = c.req.query('k-author');
       const branch = c.req.query('k-branch');
       const status = c.req.query('k-status') || 'active';
+      const sort = c.req.query('k-sort') || 'newest';
 
       const conditions: string[] = [];
       const args: InValue[] = [];
@@ -880,17 +881,27 @@ export const dashboardCommand = new Command('dashboard')
       if (author) { conditions.push('author LIKE ?'); args.push(`%${author}%`); }
       if (branch) { conditions.push('branch LIKE ?'); args.push(`%${branch}%`); }
 
-      const filters = { status, category, namespace, scope, source: sourceFilter, author, branch };
+      const orderByMap: Record<string, string> = {
+        newest: 'created_at DESC',
+        oldest: 'created_at ASC',
+        updated: 'updated_at DESC',
+        stale: 'updated_at ASC',
+        usage: 'usage_count DESC',
+        'least-used': 'usage_count ASC',
+      };
+      const orderBy = orderByMap[sort] || 'created_at DESC';
 
-      return { conditions, args, filters };
+      const filters = { status, category, namespace, scope, source: sourceFilter, author, branch, sort };
+
+      return { conditions, args, filters, orderBy };
     }
 
-    // Knowledge list (paginated, 10 per page)
+    // Knowledge list (paginated)
     app.get('/partials/knowledge-list', async (c) => {
       try {
         const limit = 12;
         const client = await getClient();
-        const { conditions, args, filters } = buildKnowledgeConditions(c);
+        const { conditions, args, filters, orderBy } = buildKnowledgeConditions(c);
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
                      category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
@@ -900,7 +911,7 @@ export const dashboardCommand = new Command('dashboard')
           sql += ` WHERE ${conditions.join(' AND ')}`;
         }
         args.push(limit + 1);
-        sql += ` ORDER BY created_at DESC LIMIT ?`;
+        sql += ` ORDER BY ${orderBy} LIMIT ?`;
 
         const result = await client.execute({ sql, args });
         const hasMore = result.rows.length > limit;
@@ -917,7 +928,7 @@ export const dashboardCommand = new Command('dashboard')
         const offset = parseInt(c.req.query('offset') || '0', 10);
         const limit = 12;
         const client = await getClient();
-        const { conditions, args, filters } = buildKnowledgeConditions(c);
+        const { conditions, args, filters, orderBy } = buildKnowledgeConditions(c);
 
         let sql = `SELECT id, namespace, chunk_index, title, content,
                      category, tags, citations, source, origin_ticket_id, origin_ticket_type, confidence, active, decision_scope,
@@ -927,7 +938,7 @@ export const dashboardCommand = new Command('dashboard')
           sql += ` WHERE ${conditions.join(' AND ')}`;
         }
         args.push(limit + 1, offset);
-        sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        sql += ` ORDER BY ${orderBy} LIMIT ? OFFSET ?`;
 
         const result = await client.execute({ sql, args });
         const hasMore = result.rows.length > limit;
@@ -1304,7 +1315,7 @@ export const dashboardCommand = new Command('dashboard')
       return c.html(renderNewSpecModal());
     });
 
-    // Spec list (paginated, 10 per page)
+    // Spec list (paginated)
     app.get('/partials/spec-list', async (c) => {
       try {
         const limit = 12;
