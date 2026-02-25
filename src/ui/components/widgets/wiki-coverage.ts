@@ -13,9 +13,12 @@ function renderWikiCoverage(data: DashboardData): string {
         </svg>
         <p class="text-sm">No wiki data yet</p>
         <button type="button"
+                id="wiki-index-btn"
                 hx-post="/api/wiki/index"
                 hx-swap="none"
-                class="mt-1 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer">
+                hx-disabled-elt="this"
+                onclick="this.textContent=''; var s=document.createElement('span'); s.className='animate-spin inline-block size-3.5 border-2 border-blue-500 border-t-transparent rounded-full'; this.appendChild(s); this.append(' Indexing...');"
+                class="mt-1 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
           Index Now
         </button>
       </div>`;
@@ -58,10 +61,7 @@ function renderWikiCoverage(data: DashboardData): string {
       <!-- Footer -->
       <div class="mt-auto flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
         <span>Indexed ${lastIndexed}</span>
-        <a hx-get="/partials/wiki-view"
-           hx-target="#tab-content"
-           hx-swap="innerHTML"
-           hx-push-url="false"
+        <a onclick="switchTab('wiki')"
            class="text-blue-500 dark:text-blue-400 hover:underline cursor-pointer">Open Wiki Tab</a>
       </div>
     </div>`;

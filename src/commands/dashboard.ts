@@ -1126,8 +1126,10 @@ export const dashboardCommand = new Command('dashboard')
         const stats = full
           ? await indexProject(client)
           : await indexProjectIncremental(client);
+        c.header('HX-Trigger', 'refresh');
         return c.json(stats);
       } catch (error) {
+        c.header('HX-Trigger', 'refresh');
         return c.json({ error: (error as Error).message }, 500);
       }
     });

@@ -590,9 +590,10 @@ function renderLinkedKnowledge(citations: CitationWithKnowledge[]): string {
         ${citations.map(c => `
           <div class="flex items-center gap-2 py-2 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-md">
             <div class="flex-1 min-w-0">
-              <a hx-get="/partials/knowledge/${encodeURIComponent(c.knowledge_id)}"
+              <a hx-get="/partials/knowledge-modal/${encodeURIComponent(c.knowledge_id)}"
                  hx-target="#modal-content"
-                 hx-swap="innerHTML"
+                 hx-trigger="click"
+                 onclick="showModal()"
                  class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate block">${escapeHtml(c.knowledge_title)}</a>
               <div class="flex items-center gap-2 mt-0.5">
                 ${matchTypeBadge(c.match_type)}
