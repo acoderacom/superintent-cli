@@ -36,7 +36,7 @@ export interface ASTImport {
 export interface ASTFileResult {
   path: string;
   relativePath: string;
-  language: 'typescript' | 'javascript' | 'tsx' | 'jsx';
+  language: 'typescript' | 'javascript' | 'tsx' | 'jsx' | 'php' | 'go';
   lines: number;
   functions: ASTFunction[];
   classes: ASTClass[];
@@ -68,6 +68,8 @@ const GRAMMAR_MAP: Record<string, string> = {
   '.tsx': 'tree-sitter-tsx.wasm',
   '.js': 'tree-sitter-javascript.wasm',
   '.jsx': 'tree-sitter-javascript.wasm',
+  '.php': 'tree-sitter-php.wasm',
+  '.go': 'tree-sitter-go.wasm',
 };
 
 const LANG_MAP: Record<string, ASTFileResult['language']> = {
@@ -75,6 +77,8 @@ const LANG_MAP: Record<string, ASTFileResult['language']> = {
   '.tsx': 'tsx',
   '.js': 'javascript',
   '.jsx': 'jsx',
+  '.php': 'php',
+  '.go': 'go',
 };
 
 function getGrammarsDir(): string {
@@ -111,28 +115,58 @@ async function getLanguage(ext: string): Promise<Language> {
 
 // ============ AST Extraction ============
 
-function isExported(node: SyntaxNode): boolean {
+function isExported(node: SyntaxNode, lang: string): boolean {
+  if (lang === 'php') {
+    // In PHP, public visibility = exported
+    return hasVisibility(node, 'public');
+  }
   const parent = node.parent;
   if (!parent) return false;
   return parent.type === 'export_statement';
 }
 
-function extractParams(node: SyntaxNode): string[] {
+function hasVisibility(node: SyntaxNode, visibility: string): boolean {
+  for (let i = 0; i < node.childCount; i++) {
+    const child = node.child(i);
+    if (child && child.type === 'visibility_modifier' && child.text === visibility) return true;
+  }
+  return false;
+}
+
+function extractParams(node: SyntaxNode, lang: string): string[] {
   const params: string[] = [];
   const paramsNode = node.childForFieldName('parameters');
   if (!paramsNode) return params;
 
   for (const child of paramsNode.namedChildren) {
-    if (child.type === 'required_parameter' || child.type === 'optional_parameter') {
-      const pattern = child.childForFieldName('pattern');
-      if (pattern) params.push(pattern.text);
-    } else if (child.type === 'identifier') {
-      params.push(child.text);
-    } else if (child.type === 'rest_pattern') {
-      params.push('...' + (child.namedChildren[0]?.text || ''));
-    } else if (child.type === 'assignment_pattern') {
-      const left = child.childForFieldName('left');
-      if (left) params.push(left.text);
+    if (lang === 'php') {
+      if (child.type === 'simple_parameter') {
+        const nameNode = child.childForFieldName('name');
+        if (nameNode) params.push(nameNode.text);
+      } else if (child.type === 'variadic_parameter') {
+        const nameNode = child.childForFieldName('name');
+        if (nameNode) params.push('...' + nameNode.text);
+      }
+    } else if (lang === 'go') {
+      if (child.type === 'parameter_declaration') {
+        const nameNode = child.childForFieldName('name');
+        if (nameNode) params.push(nameNode.text);
+      } else if (child.type === 'variadic_parameter_declaration') {
+        const nameNode = child.childForFieldName('name');
+        if (nameNode) params.push('...' + nameNode.text);
+      }
+    } else {
+      if (child.type === 'required_parameter' || child.type === 'optional_parameter') {
+        const pattern = child.childForFieldName('pattern');
+        if (pattern) params.push(pattern.text);
+      } else if (child.type === 'identifier') {
+        params.push(child.text);
+      } else if (child.type === 'rest_pattern') {
+        params.push('...' + (child.namedChildren[0]?.text || ''));
+      } else if (child.type === 'assignment_pattern') {
+        const left = child.childForFieldName('left');
+        if (left) params.push(left.text);
+      }
     }
   }
   return params;
@@ -146,10 +180,74 @@ function checkAsync(node: SyntaxNode): boolean {
   return false;
 }
 
-function extractFunctions(rootNode: SyntaxNode): ASTFunction[] {
+function extractFunctions(rootNode: SyntaxNode, lang: string): ASTFunction[] {
   const functions: ASTFunction[] = [];
 
-  // Function declarations
+  if (lang === 'php') {
+    // PHP: function_definition for top-level functions
+    const funcDefs = rootNode.descendantsOfType('function_definition');
+    for (const node of funcDefs) {
+      // Skip methods inside class bodies
+      let parent = node.parent;
+      let insideClass = false;
+      while (parent) {
+        if (parent.type === 'declaration_list') { insideClass = true; break; }
+        parent = parent.parent;
+      }
+      if (insideClass) continue;
+
+      const nameNode = node.childForFieldName('name');
+      if (!nameNode) continue;
+      functions.push({
+        name: nameNode.text,
+        line: node.startPosition.row + 1,
+        endLine: node.endPosition.row + 1,
+        params: extractParams(node, lang),
+        isAsync: false,
+        isExported: false,
+        kind: 'function',
+      });
+    }
+    return functions;
+  }
+
+  if (lang === 'go') {
+    // Go: function_declaration (top-level functions)
+    const funcDecls = rootNode.descendantsOfType('function_declaration');
+    for (const node of funcDecls) {
+      const nameNode = node.childForFieldName('name');
+      if (!nameNode) continue;
+      const name = nameNode.text;
+      functions.push({
+        name,
+        line: node.startPosition.row + 1,
+        endLine: node.endPosition.row + 1,
+        params: extractParams(node, lang),
+        isAsync: false,
+        isExported: name[0] === name[0].toUpperCase() && name[0] !== name[0].toLowerCase(),
+        kind: 'function',
+      });
+    }
+    // Go: method_declaration (receiver methods) — treat as top-level functions with 'method' kind
+    const methodDecls = rootNode.descendantsOfType('method_declaration');
+    for (const node of methodDecls) {
+      const nameNode = node.childForFieldName('name');
+      if (!nameNode) continue;
+      const name = nameNode.text;
+      functions.push({
+        name: name,
+        line: node.startPosition.row + 1,
+        endLine: node.endPosition.row + 1,
+        params: extractParams(node, lang),
+        isAsync: false,
+        isExported: name[0] === name[0].toUpperCase() && name[0] !== name[0].toLowerCase(),
+        kind: 'method',
+      });
+    }
+    return functions;
+  }
+
+  // JS/TS: Function declarations
   const funcDecls = rootNode.descendantsOfType('function_declaration');
   for (const node of funcDecls) {
     const nameNode = node.childForFieldName('name');
@@ -158,9 +256,9 @@ function extractFunctions(rootNode: SyntaxNode): ASTFunction[] {
       name: nameNode.text,
       line: node.startPosition.row + 1,
       endLine: node.endPosition.row + 1,
-      params: extractParams(node),
+      params: extractParams(node, lang),
       isAsync: checkAsync(node),
-      isExported: isExported(node),
+      isExported: isExported(node, lang),
       kind: 'function',
     });
   }
@@ -186,13 +284,13 @@ function extractFunctions(rootNode: SyntaxNode): ASTFunction[] {
 
     // Check export: lexical_declaration → export_statement
     const lexDecl = declarator.parent;
-    const exported = lexDecl ? isExported(lexDecl) : false;
+    const exported = lexDecl ? isExported(lexDecl, lang) : false;
 
     functions.push({
       name: nameNode.text,
       line: declarator.startPosition.row + 1,
       endLine: valueNode.endPosition.row + 1,
-      params: extractParams(valueNode),
+      params: extractParams(valueNode, lang),
       isAsync: checkAsync(valueNode),
       isExported: exported,
       kind: 'arrow',
@@ -202,9 +300,10 @@ function extractFunctions(rootNode: SyntaxNode): ASTFunction[] {
   return functions;
 }
 
-function extractMethods(classBody: SyntaxNode): ASTFunction[] {
+function extractMethods(classBody: SyntaxNode, lang: string): ASTFunction[] {
   const methods: ASTFunction[] = [];
-  const methodDefs = classBody.descendantsOfType('method_definition');
+  const nodeType = lang === 'php' ? 'method_declaration' : 'method_definition';
+  const methodDefs = classBody.descendantsOfType(nodeType);
 
   for (const node of methodDefs) {
     const nameNode = node.childForFieldName('name');
@@ -213,9 +312,9 @@ function extractMethods(classBody: SyntaxNode): ASTFunction[] {
       name: nameNode.text,
       line: node.startPosition.row + 1,
       endLine: node.endPosition.row + 1,
-      params: extractParams(node),
-      isAsync: checkAsync(node),
-      isExported: false,
+      params: extractParams(node, lang),
+      isAsync: lang === 'php' ? false : checkAsync(node),
+      isExported: lang === 'php' ? hasVisibility(node, 'public') : false,
       kind: 'method',
     });
   }
@@ -223,8 +322,29 @@ function extractMethods(classBody: SyntaxNode): ASTFunction[] {
   return methods;
 }
 
-function extractClasses(rootNode: SyntaxNode): ASTClass[] {
+function extractClasses(rootNode: SyntaxNode, lang: string): ASTClass[] {
   const classes: ASTClass[] = [];
+
+  if (lang === 'go') {
+    // Go: type_spec with struct_type (type Foo struct { ... })
+    const typeSpecs = rootNode.descendantsOfType('type_spec');
+    for (const node of typeSpecs) {
+      const nameNode = node.childForFieldName('name');
+      const typeNode = node.childForFieldName('type');
+      if (!nameNode || !typeNode || typeNode.type !== 'struct_type') continue;
+
+      const name = nameNode.text;
+      classes.push({
+        name,
+        line: node.startPosition.row + 1,
+        endLine: node.endPosition.row + 1,
+        isExported: name[0] === name[0].toUpperCase() && name[0] !== name[0].toLowerCase(),
+        methods: [], // Go methods are at top level, already captured in extractFunctions
+      });
+    }
+    return classes;
+  }
+
   const classDecls = rootNode.descendantsOfType('class_declaration');
 
   for (const node of classDecls) {
@@ -232,13 +352,13 @@ function extractClasses(rootNode: SyntaxNode): ASTClass[] {
     if (!nameNode) continue;
 
     const body = node.childForFieldName('body');
-    const methods = body ? extractMethods(body) : [];
+    const methods = body ? extractMethods(body, lang) : [];
 
     classes.push({
       name: nameNode.text,
       line: node.startPosition.row + 1,
       endLine: node.endPosition.row + 1,
-      isExported: isExported(node),
+      isExported: isExported(node, lang),
       methods,
     });
   }
@@ -246,8 +366,74 @@ function extractClasses(rootNode: SyntaxNode): ASTClass[] {
   return classes;
 }
 
-function extractImports(rootNode: SyntaxNode): ASTImport[] {
+function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
   const imports: ASTImport[] = [];
+
+  if (lang === 'go') {
+    // Go: import_declaration with import_spec
+    const importDecls = rootNode.descendantsOfType('import_declaration');
+    for (const node of importDecls) {
+      const specs = node.descendantsOfType('import_spec');
+      for (const spec of specs) {
+        const pathNode = spec.childForFieldName('path');
+        if (!pathNode) continue;
+        const source = pathNode.text.replace(/"/g, '');
+        const parts = source.split('/');
+        const nameNode = spec.childForFieldName('name');
+        const specifier = nameNode?.text || parts[parts.length - 1];
+        imports.push({
+          source,
+          specifiers: [specifier],
+          line: spec.startPosition.row + 1,
+          isTypeOnly: false,
+        });
+      }
+    }
+    return imports;
+  }
+
+  if (lang === 'php') {
+    // PHP: namespace_use_declaration (use statements)
+    const useDecls = rootNode.descendantsOfType('namespace_use_declaration');
+    for (const node of useDecls) {
+      const clauses = node.descendantsOfType('namespace_use_clause');
+      for (const clause of clauses) {
+        const qualifiedName = clause.descendantsOfType('qualified_name')[0]
+          || clause.descendantsOfType('name')[0];
+        if (!qualifiedName) continue;
+
+        const source = qualifiedName.text;
+        const parts = source.split('\\');
+        const aliasNode = clause.childForFieldName('alias');
+        const specifier = aliasNode?.text || parts[parts.length - 1];
+
+        imports.push({
+          source,
+          specifiers: [specifier],
+          line: node.startPosition.row + 1,
+          isTypeOnly: false,
+        });
+      }
+      // If no clauses found, try the node itself
+      if (clauses.length === 0) {
+        const qualifiedName = node.descendantsOfType('qualified_name')[0]
+          || node.descendantsOfType('name')[0];
+        if (qualifiedName) {
+          const source = qualifiedName.text;
+          const parts = source.split('\\');
+          imports.push({
+            source,
+            specifiers: [parts[parts.length - 1]],
+            line: node.startPosition.row + 1,
+            isTypeOnly: false,
+          });
+        }
+      }
+    }
+    return imports;
+  }
+
+  // JS/TS: import_statement
   const importStmts = rootNode.descendantsOfType('import_statement');
 
   for (const node of importStmts) {
@@ -311,6 +497,7 @@ function extractImports(rootNode: SyntaxNode): ASTImport[] {
 const SKIP_DIRS = new Set([
   'node_modules', '.git', '.superintent', 'dist', '.next',
   '.nuxt', '.svelte-kit', 'coverage', '.turbo', '.cache',
+  'vendor',
 ]);
 
 const SUPPORTED_EXTS = new Set(Object.keys(GRAMMAR_MAP));
@@ -335,17 +522,18 @@ export async function scanFile(filePath: string, rootPath: string): Promise<ASTF
 
   const rootNode = tree.rootNode;
   const lineCount = content.split('\n').length;
+  const lang = LANG_MAP[ext];
 
-  const functions = extractFunctions(rootNode);
-  const classes = extractClasses(rootNode);
-  const imports = extractImports(rootNode);
+  const functions = extractFunctions(rootNode, lang);
+  const classes = extractClasses(rootNode, lang);
+  const imports = extractImports(rootNode, lang);
 
   tree.delete();
 
   return {
     path: filePath,
     relativePath: relative(rootPath, filePath),
-    language: LANG_MAP[ext],
+    language: lang,
     lines: lineCount,
     functions,
     classes,

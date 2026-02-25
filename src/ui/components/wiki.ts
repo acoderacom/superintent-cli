@@ -150,6 +150,8 @@ function getLangIcon(lang: string): string {
     case 'tsx': return '<span class="text-blue-400 dark:text-blue-300 font-mono text-[10px] font-bold">TX</span>';
     case 'javascript': return '<span class="text-yellow-500 dark:text-yellow-400 font-mono text-[10px] font-bold">JS</span>';
     case 'jsx': return '<span class="text-yellow-400 dark:text-yellow-300 font-mono text-[10px] font-bold">JX</span>';
+    case 'php': return '<span class="text-indigo-500 dark:text-indigo-400 font-mono text-[10px] font-bold">PH</span>';
+    case 'go': return '<span class="text-teal-500 dark:text-teal-400 font-mono text-[10px] font-bold">GO</span>';
     default: return '';
   }
 }
@@ -171,7 +173,7 @@ function renderDirNode(node: DirNode, depth: number): string {
     const fileCount = countFiles(dir);
     html += `
       <div data-wiki-dir="${escapeHtml(dir.path)}">
-        <details ${depth < 2 ? 'open' : ''}>
+        <details open>
           <summary class="flex items-center gap-1.5 py-1 px-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-dark-hover rounded cursor-pointer select-none"
                    hx-get="/partials/wiki-dir/${encodeURIComponent(dir.path)}"
                    hx-target="#wiki-content"
@@ -256,6 +258,8 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
     tsx: 'cyan',
     javascript: 'yellow',
     jsx: 'orange',
+    php: 'indigo',
+    go: 'teal',
   };
 
   return `
