@@ -573,6 +573,12 @@ function renderFunctionsTable(functions: ASTFunction[], citationsByFn?: Map<stri
 
 // ============ Linked Knowledge Section ============
 
+function categoryBadge(category: string): string {
+  const colors: Record<string, string> = { pattern: 'purple', truth: 'green', principle: 'orange', architecture: 'blue', gotcha: 'red' };
+  const c = colors[category] || 'gray';
+  return `<span class="text-[10px] px-1.5 py-0.5 bg-${c}-100 dark:bg-${c}-900/30 text-${c}-600 dark:text-${c}-400 rounded">${escapeHtml(category)}</span>`;
+}
+
 function matchTypeBadge(matchType: string): string {
   switch (matchType) {
     case 'tag': return '<span class="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">tag</span>';
@@ -597,7 +603,8 @@ function renderLinkedKnowledge(citations: CitationWithKnowledge[]): string {
                  class="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate block">${escapeHtml(c.knowledge_title)}</a>
               <div class="flex items-center gap-2 mt-0.5">
                 ${matchTypeBadge(c.match_type)}
-                ${c.knowledge_category ? `<span class="text-[10px] text-gray-400 dark:text-gray-500">${escapeHtml(c.knowledge_category)}</span>` : ''}
+                ${c.knowledge_category ? categoryBadge(c.knowledge_category) : ''}
+                ${c.knowledge_confidence != null ? `<span class="text-[10px] text-gray-400 dark:text-gray-500">${Math.round(c.knowledge_confidence * 100)}%</span>` : ''}
                 <span class="text-[10px] text-gray-400 dark:text-gray-500">${escapeHtml(c.function_name)} (L${c.start_line}-${c.end_line})</span>
               </div>
             </div>

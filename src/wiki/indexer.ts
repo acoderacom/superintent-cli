@@ -29,6 +29,7 @@ export interface CoverageStats {
 export interface CitationWithKnowledge extends WikiCitation {
   knowledge_title: string;
   knowledge_category: string | null;
+  knowledge_confidence: number | null;
 }
 
 // Full pipeline: scan → upsert pages → match → persist citations
@@ -296,7 +297,7 @@ export async function getCitationsForFile(client: Client, filePath: string): Pro
   const result = await client.execute({
     sql: `SELECT wc.id, wc.wiki_page_id, wc.knowledge_id, wc.function_name,
                  wc.start_line, wc.end_line, wc.match_type,
-                 k.title AS knowledge_title, k.category AS knowledge_category
+                 k.title AS knowledge_title, k.category AS knowledge_category, k.confidence AS knowledge_confidence
           FROM wiki_citations wc
           JOIN wiki_pages wp ON wp.id = wc.wiki_page_id
           JOIN knowledge k ON k.id = wc.knowledge_id
@@ -315,5 +316,6 @@ export async function getCitationsForFile(client: Client, filePath: string): Pro
     match_type: row.match_type as WikiCitation['match_type'],
     knowledge_title: row.knowledge_title as string,
     knowledge_category: row.knowledge_category as string | null,
+    knowledge_confidence: row.knowledge_confidence as number | null,
   }));
 }
