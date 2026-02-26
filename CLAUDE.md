@@ -14,12 +14,12 @@ Always search knowledge before exploring the codebase — it is the primary sour
 
 ### Architecture
 - **Project Overview** — libSQL-backed CLI plugin for ticket management, knowledge with vector search, and feature specs; Hono+HTMX web UI on port 3456 (`KNOWLEDGE-20260215-113610232`)
-- **Source Code Architecture** — Modular TypeScript under src/: commands/, db/, embed/, ui/components/, utils/; lazy DB singleton, timestamp IDs, JSON stdin input (`KNOWLEDGE-20260215-113619989`)
+- **Source Code Architecture** — Modular TypeScript under src/: commands/, db/, embed/, ui/components/, ui/routes/, utils/; lazy DB singleton, timestamp IDs, JSON stdin input (`KNOWLEDGE-20260215-113619989`)
 - **Ticket System Design** — Structured tickets with status lifecycle (Backlog→Done), auto type inference, plan/tasks/DoD, knowledge extraction on completion (`KNOWLEDGE-20260215-113645961`)
 - **Knowledge Base and Semantic Search** — RAG store with 384-dim embeddings (bge-small-en-v1.5), vector_top_k with cosine distance, CLS pooling, query prefix required (`KNOWLEDGE-20260215-113657488`)
-- **Web UI Architecture** — Hono server-rendered HTML + HTMX partials via `npx superintent dashboard`; Tailwind v4; 5 tabs: Dashboard, Tickets, Knowledge, Specs, Graph; SSE real-time updates (`KNOWLEDGE-20260215-113709412`)
+- **Web UI Architecture** — Hono server-rendered HTML + HTMX partials via `npx superintent dashboard`; Tailwind v4; 6 tabs: Dashboard, Specs, Tickets, Knowledge, Graph, Wiki; SSE real-time updates (`KNOWLEDGE-20260215-113709412`)
 - **Knowledge Graph Tab Architecture** — vis-network graph of knowledge entries connected by shared tags; 5th tab with lazy loading via IntersectionObserver (`KNOWLEDGE-20260216-153549336`)
-- **SSE Real-Time Update Architecture** — EventSource at /api/events with 3 event types; DB change watcher polls every 2s for external changes (`KNOWLEDGE-20260216-143020427`)
+- **SSE Real-Time Update Architecture** — EventSource at /api/events with 4 event types (ticket/knowledge/spec/wiki-updated); DB change watcher polls every 2s for external changes (`KNOWLEDGE-20260216-143020427`)
 - **Polymorphic Comments Table** — Dedicated comments table supporting tickets, specs, and knowledge; polymorphic parent_type FK (`KNOWLEDGE-20260215-122855570`)
 - **Ticket to Knowledge Extraction Pipeline** — Completed tickets → extract proposals → AI review → knowledge entries with back-reference (`KNOWLEDGE-20260215-114409912`)
 - **superintent:maintain Skill** — Distills active knowledge into CLAUDE.md between markers; scores by confidence/usage/category/recency (`KNOWLEDGE-20260215-122823869`)
@@ -29,12 +29,13 @@ Always search knowledge before exploring the codebase — it is the primary sour
 - **Web UI Pagination: 12 Per Page with Load More** — LIMIT N+1 to detect hasMore; Load More uses hx-swap="outerHTML"; filter reset resets offset via hx-swap="innerHTML" on container (`KNOWLEDGE-20260215-122848212`)
 - **Dashboard Tab & Widget Architecture** — First tab; modular widget registry (WidgetDefinition); add widget by creating file in widgets/ and registering — no route/layout changes needed (`KNOWLEDGE-20260219-050543841`)
 - **Dark Mode Implementation with Tailwind v4** — Three-way Light/Dark/System toggle; `@custom-variant dark` in main.css; `.dark` on `<html>`; localStorage.theme; anti-FOUC inline script in `<head>` (`KNOWLEDGE-20260218-184030761`)
-- **Complete API Surface Audit — All 52 Routes** — All routes in src/commands/dashboard.ts: 2 page, 22 API (/api/*), 28 partial (/partials/*); covers tickets, knowledge, specs, comments, SSE, graph (`KNOWLEDGE-20260220-172601715`)
+- **Complete API Surface Audit — All 52 Routes** — Routes in src/ui/server.ts (createApp) + src/ui/routes/ modules; 3 page, 22 API (/api/*), 28+ partial (/partials/*); covers tickets, knowledge, specs, comments, wiki, SSE, graph (`KNOWLEDGE-20260220-172601715`)
+- **Knowledge Citations Data Model** — Citations are `{path, fileHash}` JSON on knowledge entries; provenance links to source files; hash detects drift when source evolves (`KNOWLEDGE-20260223-103800027`)
 
 ### Patterns
 - **HTMX Modal Edit-Save Pattern** — Form targets `#modal-content` to stay open after save; API returns detail view HTML + `HX-Trigger: refresh` for background updates (`KNOWLEDGE-20260215-122833218`)
 - **Dark Mode Color Palette Mapping Pattern** — bg-white→dark:bg-gray-900 (body), cards→dark:bg-gray-800; colored badges: bg-{color}-100 dark:bg-{color}-900/30; apply consistently across all components (`KNOWLEDGE-20260218-184044403`)
-- **Health Check Endpoint on Web UI Server** — GET /health in src/commands/dashboard.ts; startTime captured at startup; returns {status:'ok', uptimeSeconds, version, timestamp}; no auth, no DB queries (`KNOWLEDGE-20260218-174318272`)
+- **Health Check Endpoint on Web UI Server** — `GET /health` in `src/ui/server.ts` (createApp); startTime at app creation; returns {status:'ok', uptimeSeconds, version, timestamp}; no auth, no DB queries (`KNOWLEDGE-20260218-174318272`)
 
 ### Gotchas
 - **Mutex Crash on CLI Shutdown** — Never call `process.exit()` directly with active native modules; close HTTP server → DB client → exit in sequence (`KNOWLEDGE-20260215-122735114`)
@@ -45,6 +46,7 @@ Always search knowledge before exploring the codebase — it is the primary sour
 - **Dynamic Tailwind Classes Need Safelist for Dark Variants** — Template-literal classes (dark:bg-${color}-900/20) get purged; add `@source inline(...)` safelist in main.css for every dynamic dark: pattern (`KNOWLEDGE-20260218-184056007`)
 - **Silent DB defaults hide missing data** — DB DEFAULT 'global' for decision_scope made missing scope invisible; validate required fields in parser, not just schema defaults (`KNOWLEDGE-20260215-122804080`)
 - **jsPDF Built-in Fonts Cannot Render Unicode Characters** — WinAnsiEncoding only; use sanitizePdf() to map →, —, ✓ etc. to ASCII equivalents before passing to jsPDF (`KNOWLEDGE-20260216-065351828`)
+- **validateCitation sync/async** — Use `validateCitationAsync()` in Hono server code (src/ui/routes/shared.ts); sync variant only in CLI (short-lived processes); avoids blocking the event loop (`KNOWLEDGE-20260224-180241138`)
 
 <!-- superintent:knowledge:end -->
 
