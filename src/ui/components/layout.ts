@@ -10,6 +10,7 @@ export function getHtml(namespace: string, version: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Superintent</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <script>
     // Anti-FOUC: apply dark class before body renders
