@@ -169,6 +169,35 @@ export function registerWikiRoutes(app: Hono) {
             }
           }
         }
+
+        // Match constants and variables
+        for (const v of (file.variables || [])) {
+          if (hits.length >= MAX_RESULTS) break;
+          if (v.name.toLowerCase().includes(q)) {
+            hits.push({
+              type: v.kind === 'const' ? 'constant' : 'variable',
+              name: v.name,
+              filePath: file.relativePath,
+              line: v.line,
+              detail: v.kind,
+            });
+          }
+        }
+
+        // Match interfaces
+        for (const iface of (file.interfaces || [])) {
+          if (hits.length >= MAX_RESULTS) break;
+          if (iface.name.toLowerCase().includes(q)) {
+            hits.push({
+              type: 'interface',
+              name: iface.name,
+              filePath: file.relativePath,
+              line: iface.line,
+              endLine: iface.endLine,
+              detail: iface.properties.length > 0 ? `${iface.properties.length} prop${iface.properties.length !== 1 ? 's' : ''}` : undefined,
+            });
+          }
+        }
       }
 
       return c.html(renderWikiSearchResults(hits));

@@ -1,13 +1,13 @@
 // Wiki UI components — pure functions returning HTML strings
 
 import { escapeHtml } from './utils.js';
-import type { ASTFileResult, ASTClass, ASTFunction, ASTImport, WikiScanResult } from '../../wiki/scanner.js';
+import type { ASTFileResult, ASTClass, ASTFunction, ASTVariable, ASTInterface, WikiScanResult } from '../../wiki/scanner.js';
 import type { CoverageStats, CitationWithKnowledge } from '../../wiki/indexer.js';
 
 // ============ Types ============
 
 export interface WikiSearchHit {
-  type: 'function' | 'class' | 'method' | 'file';
+  type: 'function' | 'class' | 'method' | 'file' | 'variable' | 'constant' | 'interface';
   name: string;
   filePath: string;
   line?: number;
@@ -238,8 +238,6 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
   }
 
   const totalLines = scan.files.reduce((sum, f) => sum + f.lines, 0);
-  const totalExports = scan.files.reduce((sum, f) =>
-    sum + f.functions.filter(fn => fn.isExported).length + f.classes.filter(c => c.isExported).length, 0);
 
   // Top-level directories
   const topDirs = new Map<string, { files: number; lines: number }>();
@@ -268,11 +266,15 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Codebase overview &middot; Scanned ${escapeHtml(new Date(scan.scannedAt).toLocaleString())}</p>
 
       <!-- Stats Grid -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div class="grid grid-cols-4 gap-3 mb-6">
         ${renderStatCard('Files', String(scan.totalFiles), 'blue')}
-        ${renderStatCard('Functions', String(scan.totalFunctions), 'green')}
-        ${renderStatCard('Classes', String(scan.totalClasses), 'purple')}
         ${renderStatCard('Lines', totalLines.toLocaleString(), 'gray')}
+        ${renderStatCard('Imports', String(scan.totalImports || 0), 'blue')}
+        ${renderStatCard('Types', String(scan.totalInterfaces || 0), 'cyan')}
+        ${renderStatCard('Constants', String(scan.totalConstants || 0), 'indigo')}
+        ${renderStatCard('Variables', String(scan.totalVariables || 0), 'orange')}
+        ${renderStatCard('Classes', String(scan.totalClasses), 'purple')}
+        ${renderStatCard('Functions', String(scan.totalFunctions), 'green')}
       </div>
 
       ${coverageStats ? `
@@ -343,7 +345,7 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
 
       <!-- Exports Summary -->
       <div class="text-xs text-gray-400 dark:text-gray-500 mt-4">
-        ${totalExports} exported symbols &middot; ${scan.totalFunctions} total functions &middot; ${scan.totalClasses} total classes
+        ${scan.totalImports || 0} imports &middot; ${scan.totalInterfaces || 0} types &middot; ${scan.totalConstants || 0} constants &middot; ${scan.totalVariables || 0} variables &middot; ${scan.totalClasses} classes &middot; ${scan.totalFunctions} functions
       </div>
     </div>
   `;
@@ -394,9 +396,12 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
             <tr class="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-dark-border">
               <th class="pb-2 font-medium">File</th>
               <th class="pb-2 font-medium text-right">Lines</th>
-              <th class="pb-2 font-medium text-right">Functions</th>
-              <th class="pb-2 font-medium text-right">Classes</th>
               <th class="pb-2 font-medium text-right">Imports</th>
+              <th class="pb-2 font-medium text-right">Types</th>
+              <th class="pb-2 font-medium text-right">Const</th>
+              <th class="pb-2 font-medium text-right">Vars</th>
+              <th class="pb-2 font-medium text-right">Classes</th>
+              <th class="pb-2 font-medium text-right">Funcs</th>
             </tr>
           </thead>
           <tbody>
@@ -407,7 +412,7 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
             }).map(file => {
               const fileName = file.relativePath.split('/').pop() || '';
               return `
-                <tr class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-dark-hover cursor-pointer"
+                <tr class="border-b border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover cursor-pointer"
                     hx-get="/partials/wiki-file/${encodeURIComponent(file.relativePath)}"
                     hx-target="#wiki-content"
                     hx-swap="innerHTML">
@@ -416,9 +421,12 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
                     <span class="text-gray-700 dark:text-gray-200">${escapeHtml(fileName)}</span>
                   </td>
                   <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.lines}</td>
-                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.functions.length}</td>
-                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.classes.length}</td>
                   <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.imports.length}</td>
+                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.interfaces || []).length}</td>
+                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.variables || []).filter(v => v.kind === 'const').length}</td>
+                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.variables || []).filter(v => v.kind !== 'const').length}</td>
+                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.classes.length}</td>
+                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.functions.length}</td>
                 </tr>`;
             }).join('')}
           </tbody>
@@ -432,7 +440,8 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
 
 export function renderWikiFile(file: ASTFileResult, citations?: CitationWithKnowledge[]): string {
   const fileName = file.relativePath.split('/').pop() || '';
-
+  const consts = (file.variables || []).filter(v => v.kind === 'const');
+  const vars = (file.variables || []).filter(v => v.kind !== 'const');
   // Build lookup: function_name → citations for that function
   const citationsByFn = new Map<string, CitationWithKnowledge[]>();
   if (citations) {
@@ -458,18 +467,30 @@ export function renderWikiFile(file: ASTFileResult, citations?: CitationWithKnow
       </p>
 
       <!-- Metadata -->
-      <div class="grid grid-cols-3 gap-3 mb-6">
+      <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
         <div class="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-md text-center">
-          <div class="text-lg font-bold text-green-600 dark:text-green-400">${file.functions.length}</div>
-          <div class="text-[10px] text-gray-500 dark:text-gray-400">Functions</div>
+          <div class="text-lg font-bold text-blue-600 dark:text-blue-400">${file.imports.length}</div>
+          <div class="text-[10px] text-gray-500 dark:text-gray-400">Imports</div>
+        </div>
+        <div class="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-md text-center">
+          <div class="text-lg font-bold text-cyan-600 dark:text-cyan-400">${(file.interfaces || []).length}</div>
+          <div class="text-[10px] text-gray-500 dark:text-gray-400">Types</div>
+        </div>
+        <div class="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-md text-center">
+          <div class="text-lg font-bold text-indigo-600 dark:text-indigo-400">${consts.length}</div>
+          <div class="text-[10px] text-gray-500 dark:text-gray-400">Constants</div>
+        </div>
+        <div class="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-md text-center">
+          <div class="text-lg font-bold text-orange-600 dark:text-orange-400">${vars.length}</div>
+          <div class="text-[10px] text-gray-500 dark:text-gray-400">Variables</div>
         </div>
         <div class="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-md text-center">
           <div class="text-lg font-bold text-purple-600 dark:text-purple-400">${file.classes.length}</div>
           <div class="text-[10px] text-gray-500 dark:text-gray-400">Classes</div>
         </div>
         <div class="p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-md text-center">
-          <div class="text-lg font-bold text-blue-600 dark:text-blue-400">${file.imports.length}</div>
-          <div class="text-[10px] text-gray-500 dark:text-gray-400">Imports</div>
+          <div class="text-lg font-bold text-green-600 dark:text-green-400">${file.functions.length}</div>
+          <div class="text-[10px] text-gray-500 dark:text-gray-400">Functions</div>
         </div>
       </div>
 
@@ -488,6 +509,30 @@ export function renderWikiFile(file: ASTFileResult, citations?: CitationWithKnow
               </div>
             `).join('')}
           </div>
+        </div>
+      ` : ''}
+
+      <!-- Types -->
+      ${(file.interfaces || []).length > 0 ? `
+        <div class="mb-6">
+          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Types</h2>
+          ${renderInterfacesTable(file.interfaces || [])}
+        </div>
+      ` : ''}
+
+      <!-- Constants -->
+      ${consts.length > 0 ? `
+        <div class="mb-6">
+          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Constants</h2>
+          ${renderVariablesTable(consts)}
+        </div>
+      ` : ''}
+
+      <!-- Variables -->
+      ${vars.length > 0 ? `
+        <div class="mb-6">
+          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Variables</h2>
+          ${renderVariablesTable(vars)}
         </div>
       ` : ''}
 
@@ -535,6 +580,69 @@ function renderClassDetail(cls: ASTClass, citationsByFn?: Map<string, CitationWi
   `;
 }
 
+function renderVariablesTable(variables: ASTVariable[]): string {
+  return `
+    <div class="border border-gray-200 dark:border-dark-border rounded-md overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 dark:bg-gray-800/50 text-left text-xs text-gray-500 dark:text-gray-400">
+            <th class="px-3 py-2 font-medium">Name</th>
+            <th class="px-3 py-2 font-medium">Kind</th>
+            <th class="px-3 py-2 font-medium text-right">Line</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${variables.map(v => `
+            <tr class="border-t border-gray-200 dark:border-dark-border">
+              <td class="px-3 py-2">
+                <div class="flex items-center gap-1.5">
+                  ${v.isExported ? '<span class="text-[10px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">export</span>' : ''}
+                  <code class="text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(v.name)}</code>
+                </div>
+              </td>
+              <td class="px-3 py-2">
+                <span class="text-[10px] px-1 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded">${v.kind}</span>
+              </td>
+              <td class="px-3 py-2 text-right text-xs text-gray-400 dark:text-gray-500">L${v.line}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderInterfacesTable(interfaces: ASTInterface[]): string {
+  return `
+    <div class="border border-gray-200 dark:border-dark-border rounded-md overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 dark:bg-gray-800/50 text-left text-xs text-gray-500 dark:text-gray-400">
+            <th class="px-3 py-2 font-medium">Name</th>
+            <th class="px-3 py-2 font-medium">Properties</th>
+            <th class="px-3 py-2 font-medium text-right">Lines</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${interfaces.map(iface => `
+            <tr class="border-t border-gray-200 dark:border-dark-border">
+              <td class="px-3 py-2">
+                <div class="flex items-center gap-1.5">
+                  ${iface.isExported ? '<span class="text-[10px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">export</span>' : ''}
+                  <span class="text-[10px] px-1 py-0.5 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 rounded">interface</span>
+                  <code class="text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(iface.name)}</code>
+                </div>
+              </td>
+              <td class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                ${iface.properties.length > 0 ? escapeHtml(iface.properties.join(', ')) : '<span class="text-gray-400 dark:text-gray-500">-</span>'}
+              </td>
+              <td class="px-3 py-2 text-right text-xs text-gray-400 dark:text-gray-500">L${iface.line}-${iface.endLine}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function renderFunctionsTable(functions: ASTFunction[], citationsByFn?: Map<string, CitationWithKnowledge[]>): string {
   return `
     <table class="w-full text-sm">
@@ -555,7 +663,7 @@ function renderFunctionsTable(functions: ASTFunction[], citationsByFn?: Map<stri
           if (fnCitations) badges.push(`<span class="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded" title="${fnCitations.length} linked knowledge">${fnCitations.length} linked</span>`);
 
           return `
-            <tr class="border-b border-gray-100 dark:border-gray-800 last:border-0">
+            <tr class="border-b border-gray-200 dark:border-dark-border last:border-0">
               <td class="py-1.5">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <code class="text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(fn.name)}</code>
@@ -660,6 +768,12 @@ function searchTypeIcon(type: WikiSearchHit['type']): string {
       return '<svg class="size-3.5 shrink-0 text-purple-500 dark:text-purple-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h10"/></svg>';
     case 'method':
       return '<svg class="size-3.5 shrink-0 text-blue-500 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><path d="M20.2 20.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5Z"/><path d="M15.7 15.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5Z"/></svg>';
+    case 'constant':
+      return '<svg class="size-3.5 shrink-0 text-indigo-500 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1"/></svg>';
+    case 'variable':
+      return '<svg class="size-3.5 shrink-0 text-orange-500 dark:text-orange-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/><path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1"/></svg>';
+    case 'interface':
+      return '<svg class="size-3.5 shrink-0 text-cyan-500 dark:text-cyan-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>';
     case 'file':
       return '<svg class="size-3.5 shrink-0 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
   }

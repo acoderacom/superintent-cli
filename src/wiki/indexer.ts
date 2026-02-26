@@ -1,7 +1,7 @@
 // Wiki indexer — orchestrates scan + match + persist to DB
 
 import type { Client } from '@libsql/client';
-import { scanProject, collectFilesWithMtimes, scanFiles, getMtimeForFile } from './scanner.js';
+import { scanProject, collectFilesWithMtimes, scanFiles, getMtimeForFile, buildScanResult } from './scanner.js';
 import { scanCache } from './cache.js';
 import { matchKnowledgeToProject } from './matcher.js';
 import type { WikiCitation } from './matcher.js';
@@ -218,20 +218,7 @@ export async function indexProjectIncremental(client: Client): Promise<Increment
 
   // 8. Rebuild scan cache with merged results
   const allFiles = [...unchanged, ...freshlyScanned];
-  allFiles.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-
-  const totalFunctions = allFiles.reduce((sum, f) =>
-    sum + f.functions.length + f.classes.reduce((s, c) => s + c.methods.length, 0), 0);
-  const totalClasses = allFiles.reduce((sum, f) => sum + f.classes.length, 0);
-
-  const mergedResult = {
-    rootPath,
-    files: allFiles,
-    scannedAt: new Date().toISOString(),
-    totalFiles: allFiles.length,
-    totalFunctions,
-    totalClasses,
-  };
+  const mergedResult = buildScanResult(rootPath, allFiles);
 
   // Build mtime map for cache validator
   const mtimeMap: Record<string, number> = {};
@@ -264,6 +251,7 @@ export async function getCoverageStats(client: Client): Promise<CoverageStats> {
     fileIds.add(pageId);
     try {
       const data = JSON.parse(row.data as string);
+      // Only count functions + classes — matcher only links knowledge to these
       totalElements += (data.functions?.length || 0) + (data.classes?.length || 0);
     } catch {
       // skip malformed data

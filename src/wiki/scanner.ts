@@ -26,6 +26,21 @@ export interface ASTClass {
   methods: ASTFunction[];
 }
 
+export interface ASTVariable {
+  name: string;
+  line: number;
+  kind: 'const' | 'let' | 'var';
+  isExported: boolean;
+}
+
+export interface ASTInterface {
+  name: string;
+  line: number;
+  endLine: number;
+  isExported: boolean;
+  properties: string[];
+}
+
 export interface ASTImport {
   source: string;
   specifiers: string[];
@@ -40,6 +55,8 @@ export interface ASTFileResult {
   lines: number;
   functions: ASTFunction[];
   classes: ASTClass[];
+  variables: ASTVariable[];
+  interfaces: ASTInterface[];
   imports: ASTImport[];
 }
 
@@ -50,6 +67,10 @@ export interface WikiScanResult {
   totalFiles: number;
   totalFunctions: number;
   totalClasses: number;
+  totalConstants: number;
+  totalVariables: number;
+  totalInterfaces: number;
+  totalImports: number;
 }
 
 export interface FileMtimeEntry {
@@ -366,6 +387,138 @@ function extractClasses(rootNode: SyntaxNode, lang: string): ASTClass[] {
   return classes;
 }
 
+function extractVariables(rootNode: SyntaxNode, lang: string): ASTVariable[] {
+  const variables: ASTVariable[] = [];
+
+  // Variables only apply to JS/TS
+  if (lang === 'php' || lang === 'go') return variables;
+
+  const lexDecls = rootNode.descendantsOfType('lexical_declaration');
+  const varDecls = rootNode.descendantsOfType('variable_declaration');
+
+  for (const node of [...lexDecls, ...varDecls]) {
+    // Skip declarations inside functions or class bodies
+    let parent = node.parent;
+    let nested = false;
+    while (parent) {
+      if (parent.type === 'function_declaration' || parent.type === 'arrow_function' ||
+          parent.type === 'method_definition' || parent.type === 'class_body' ||
+          parent.type === 'function' || parent.type === 'statement_block') {
+        // Allow export_statement → lexical_declaration at top level
+        if (parent.type === 'statement_block' && parent.parent?.type !== 'program') {
+          nested = true;
+          break;
+        }
+        if (parent.type !== 'statement_block') {
+          nested = true;
+          break;
+        }
+      }
+      parent = parent.parent;
+    }
+    if (nested) continue;
+
+    const kindNode = node.children[0];
+    const kind = (kindNode?.text === 'let' ? 'let' : kindNode?.text === 'var' ? 'var' : 'const') as ASTVariable['kind'];
+    const exported = isExported(node, lang);
+
+    for (const declarator of node.descendantsOfType('variable_declarator')) {
+      const valueNode = declarator.childForFieldName('value');
+      // Skip arrow functions — already captured as functions
+      if (valueNode && valueNode.type === 'arrow_function') continue;
+
+      const nameNode = declarator.childForFieldName('name');
+      if (!nameNode) continue;
+
+      variables.push({
+        name: nameNode.text,
+        line: declarator.startPosition.row + 1,
+        kind,
+        isExported: exported,
+      });
+    }
+  }
+
+  return variables;
+}
+
+function extractInterfaces(rootNode: SyntaxNode, lang: string): ASTInterface[] {
+  const interfaces: ASTInterface[] = [];
+
+  if (lang === 'go') {
+    // Go: type_spec with interface_type
+    const typeSpecs = rootNode.descendantsOfType('type_spec');
+    for (const node of typeSpecs) {
+      const nameNode = node.childForFieldName('name');
+      const typeNode = node.childForFieldName('type');
+      if (!nameNode || !typeNode || typeNode.type !== 'interface_type') continue;
+
+      const name = nameNode.text;
+      const properties: string[] = [];
+      const methodSpecs = typeNode.descendantsOfType('method_spec');
+      for (const ms of methodSpecs) {
+        const mn = ms.childForFieldName('name');
+        if (mn) properties.push(mn.text);
+      }
+
+      interfaces.push({
+        name,
+        line: node.startPosition.row + 1,
+        endLine: node.endPosition.row + 1,
+        isExported: name[0] === name[0].toUpperCase() && name[0] !== name[0].toLowerCase(),
+        properties,
+      });
+    }
+    return interfaces;
+  }
+
+  // PHP has no interfaces in this context
+  if (lang === 'php') return interfaces;
+
+  // JS/TS: interface_declaration
+  const ifaceDecls = rootNode.descendantsOfType('interface_declaration');
+  for (const node of ifaceDecls) {
+    const nameNode = node.childForFieldName('name');
+    if (!nameNode) continue;
+
+    const properties: string[] = [];
+    const body = node.childForFieldName('body');
+    if (body) {
+      for (const child of body.namedChildren) {
+        if (child.type === 'property_signature' || child.type === 'method_signature') {
+          const propName = child.childForFieldName('name');
+          if (propName) properties.push(propName.text);
+        }
+      }
+    }
+
+    interfaces.push({
+      name: nameNode.text,
+      line: node.startPosition.row + 1,
+      endLine: node.endPosition.row + 1,
+      isExported: isExported(node, lang),
+      properties,
+    });
+  }
+
+  // TS: type_alias_declaration (type Foo = ...)
+  const typeAliasDecls = rootNode.descendantsOfType('type_alias_declaration');
+  for (const node of typeAliasDecls) {
+    const nameNode = node.childForFieldName('name');
+    if (!nameNode) continue;
+
+    interfaces.push({
+      name: nameNode.text,
+      line: node.startPosition.row + 1,
+      endLine: node.endPosition.row + 1,
+      isExported: isExported(node, lang),
+      properties: [],
+    });
+  }
+
+  return interfaces;
+}
+
 function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
   const imports: ASTImport[] = [];
 
@@ -526,6 +679,8 @@ export async function scanFile(filePath: string, rootPath: string): Promise<ASTF
 
   const functions = extractFunctions(rootNode, lang);
   const classes = extractClasses(rootNode, lang);
+  const variables = extractVariables(rootNode, lang);
+  const interfaces = extractInterfaces(rootNode, lang);
   const imports = extractImports(rootNode, lang);
 
   tree.delete();
@@ -537,6 +692,8 @@ export async function scanFile(filePath: string, rootPath: string): Promise<ASTF
     lines: lineCount,
     functions,
     classes,
+    variables,
+    interfaces,
     imports,
   };
 }
@@ -607,12 +764,17 @@ export function getMtimeForFile(filePath: string): number | null {
   }
 }
 
-function buildScanResult(rootPath: string, files: ASTFileResult[]): WikiScanResult {
+export function buildScanResult(rootPath: string, files: ASTFileResult[]): WikiScanResult {
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 
   const totalFunctions = files.reduce((sum, f) =>
     sum + f.functions.length + f.classes.reduce((s, c) => s + c.methods.length, 0), 0);
   const totalClasses = files.reduce((sum, f) => sum + f.classes.length, 0);
+  const allVars = files.flatMap(f => f.variables || []);
+  const totalConstants = allVars.filter(v => v.kind === 'const').length;
+  const totalVariables = allVars.filter(v => v.kind !== 'const').length;
+  const totalInterfaces = files.reduce((sum, f) => sum + (f.interfaces?.length || 0), 0);
+  const totalImports = files.reduce((sum, f) => sum + f.imports.length, 0);
 
   return {
     rootPath,
@@ -621,6 +783,10 @@ function buildScanResult(rootPath: string, files: ASTFileResult[]): WikiScanResu
     totalFiles: files.length,
     totalFunctions,
     totalClasses,
+    totalConstants,
+    totalVariables,
+    totalInterfaces,
+    totalImports,
   };
 }
 

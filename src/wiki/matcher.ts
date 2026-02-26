@@ -26,9 +26,9 @@ interface KnowledgeEntry {
 
 // Build a summary string for vector matching
 export function buildCodeElementSummary(file: ASTFileResult, element: ASTFunction | ASTClass): string {
-  const kind = 'methods' in element ? 'class' : element.kind;
-  const params = 'params' in element ? `(${element.params.join(', ')})` : '';
-  return `${kind} ${element.name}${params} in ${file.relativePath}`;
+  if ('methods' in element) return `class ${element.name} in ${file.relativePath}`;
+  const params = `(${element.params.join(', ')})`;
+  return `${element.kind} ${element.name}${params} in ${file.relativePath}`;
 }
 
 // Tokenize text into significant tokens (>3 chars, lowercase)
@@ -64,16 +64,20 @@ function tagMatch(elementName: string, entries: KnowledgeEntry[]): KnowledgeEntr
   );
 }
 
-// Tier 2: Content match — tokenize knowledge title+content, compare overlap with element name
-function contentMatch(elementName: string, entries: KnowledgeEntry[]): KnowledgeEntry[] {
+// Tier 2: Content match — compare overlap with pre-computed entry token sets
+function contentMatch(elementName: string, entries: KnowledgeEntry[], entryTokenCache: Map<string, Set<string>>): KnowledgeEntry[] {
   const nameTokens = tokenize(elementName);
   if (nameTokens.size === 0) return [];
 
   return entries.filter(entry => {
-    const entryTokens = tokenize(entry.title + ' ' + entry.content);
+    let tokens = entryTokenCache.get(entry.id);
+    if (!tokens) {
+      tokens = tokenize(entry.title + ' ' + entry.content);
+      entryTokenCache.set(entry.id, tokens);
+    }
     let overlap = 0;
     for (const token of nameTokens) {
-      if (entryTokens.has(token)) overlap++;
+      if (tokens.has(token)) overlap++;
     }
     return overlap / nameTokens.size >= 0.3;
   });
@@ -85,18 +89,23 @@ export async function matchKnowledgeToFile(
   file: ASTFileResult,
   wikiPageId: string,
   knowledgeEntries: KnowledgeEntry[],
+  entryTokenCache?: Map<string, Set<string>>,
 ): Promise<WikiCitation[]> {
+  const tokenCache = entryTokenCache || new Map<string, Set<string>>();
   const citations: WikiCitation[] = [];
 
-  // Collect all code elements (functions + classes)
-  interface CodeElement { name: string; line: number; endLine: number; isClass: boolean }
+  // Collect code elements for matching (functions + classes only)
+  // Variables and interfaces are excluded — their names are too generic
+  // and produce many false-positive matches against knowledge entries.
+  type ElementKind = 'function' | 'class';
+  interface CodeElement { name: string; line: number; endLine: number; elementKind: ElementKind }
   const elements: CodeElement[] = [];
 
   for (const fn of file.functions) {
-    elements.push({ name: fn.name, line: fn.line, endLine: fn.endLine, isClass: false });
+    elements.push({ name: fn.name, line: fn.line, endLine: fn.endLine, elementKind: 'function' });
   }
   for (const cls of file.classes) {
-    elements.push({ name: cls.name, line: cls.line, endLine: cls.endLine, isClass: true });
+    elements.push({ name: cls.name, line: cls.line, endLine: cls.endLine, elementKind: 'class' });
   }
 
   if (elements.length === 0 || knowledgeEntries.length === 0) return citations;
@@ -120,7 +129,7 @@ export async function matchKnowledgeToFile(
     }
 
     // Tier 2: Content match
-    const contentMatches = contentMatch(el.name, knowledgeEntries);
+    const contentMatches = contentMatch(el.name, knowledgeEntries, tokenCache);
     if (contentMatches.length > 0) {
       for (const entry of contentMatches) {
         citations.push({
@@ -138,9 +147,10 @@ export async function matchKnowledgeToFile(
 
     // Tier 3: Vector match (expensive — only for unmatched elements)
     try {
-      const source = el.isClass
-        ? file.classes.find(c => c.name === el.name && c.line === el.line)!
-        : file.functions.find(f => f.name === el.name && f.line === el.line)!;
+      let source: ASTFunction | ASTClass | undefined;
+      if (el.elementKind === 'class') source = file.classes.find(c => c.name === el.name && c.line === el.line);
+      else source = file.functions.find(f => f.name === el.name && f.line === el.line);
+      if (!source) continue;
       const summary = buildCodeElementSummary(file, source);
       const queryEmbedding = await embed(summary, true);
       const vectorResults = await performVectorSearch(client, queryEmbedding, {
@@ -177,13 +187,15 @@ export async function matchKnowledgeToProject(
   const knowledgeEntries = await loadKnowledgeEntries(client);
   if (knowledgeEntries.length === 0) return [];
 
+  // Pre-shared token cache across all files for content matching perf
+  const entryTokenCache = new Map<string, Set<string>>();
   const allCitations: WikiCitation[] = [];
 
   for (const file of files) {
     const wikiPageId = pageIdMap.get(file.relativePath);
     if (!wikiPageId) continue;
 
-    const fileCitations = await matchKnowledgeToFile(client, file, wikiPageId, knowledgeEntries);
+    const fileCitations = await matchKnowledgeToFile(client, file, wikiPageId, knowledgeEntries, entryTokenCache);
     allCitations.push(...fileCitations);
   }
 
