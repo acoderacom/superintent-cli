@@ -79,7 +79,7 @@ export function renderKnowledgeView(): string {
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
               <option value="updated">Recently Updated</option>
-              <option value="stale">Last Updated</option>
+              <option value="stale">Least Updated</option>
               <option value="usage">Most Used</option>
               <option value="least-used">Least Used</option>
             </select>

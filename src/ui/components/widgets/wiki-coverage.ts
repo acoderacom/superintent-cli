@@ -67,9 +67,22 @@ function renderWikiCoverage(data: DashboardData): string {
     </div>`;
 }
 
+function renderReindexAction(): string {
+  return `
+    <button type="button"
+            hx-post="/api/wiki/index?full=true"
+            hx-swap="none"
+            hx-disabled-elt="this"
+            class="text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Re-index all files from scratch">
+      Re-index
+    </button>`;
+}
+
 export const wikiCoverageWidget: WidgetDefinition = {
   id: 'wiki-coverage',
   title: 'Wiki Coverage',
   size: 'S',
   render: renderWikiCoverage,
+  renderHeaderActions: renderReindexAction,
 };

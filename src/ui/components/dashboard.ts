@@ -12,6 +12,7 @@ export interface WidgetDefinition {
   title: string;
   size: WidgetSize;
   render: (data: DashboardData) => string;
+  renderHeaderActions?: () => string;
 }
 
 export type UsageHealth = 'rising' | 'stable' | 'decaying';
@@ -75,7 +76,15 @@ const widgetRegistry: WidgetDefinition[] = [
 export function renderDashboardView(): string {
   return `
     <div>
-      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Dashboard</h1>
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Dashboard</h1>
+        <button type="button"
+                class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors cursor-pointer"
+                onclick="this.classList.add('refresh-spin'); var btn=this; htmx.trigger('#dashboard-grid', 'refresh'); document.getElementById('dashboard-grid').addEventListener('htmx:afterSettle', function h(){ btn.classList.remove('refresh-spin'); document.getElementById('dashboard-grid').removeEventListener('htmx:afterSettle', h); })">
+          <svg class="w-3 h-3 inline-block mr-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
+      </div>
       <style>
         #dashboard-grid > .grid {
           opacity: 1;
@@ -110,13 +119,7 @@ export function renderDashboardGrid(data: DashboardData): string {
       <div class="${gridClasses} bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg shadow-xs overflow-hidden flex flex-col">
         <div class="px-4 py-3 border-b border-gray-100 dark:border-dark-border flex items-center justify-between">
           <h3 class="text-sm font-medium text-gray-800 dark:text-gray-100">${escapeHtml(widget.title)}</h3>
-          <button class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                  title="Refresh"
-                  onclick="this.classList.add('refresh-spin'); htmx.trigger('#dashboard-grid', 'refresh')">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-          </button>
+          ${widget.renderHeaderActions ? widget.renderHeaderActions() : ''}
         </div>
         <div class="px-4 py-3 flex-1 overflow-auto">
           ${widget.render(data)}
