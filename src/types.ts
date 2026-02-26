@@ -42,7 +42,7 @@ export interface Ticket {
   updated_at?: string;
 }
 
-// JSON input shape for ticket create/update via --stdin (camelCase keys).
+// JSON input shape for ticket create/update via --json (camelCase keys).
 export interface TicketInput {
   id: string;
   type?: TicketType;
@@ -114,7 +114,7 @@ export interface Knowledge {
   updated_at?: string;
 }
 
-// JSON input shape for knowledge create/update via --stdin (camelCase keys).
+// JSON input shape for knowledge create/update via --json (camelCase keys).
 export interface KnowledgeInput {
   namespace?: string;
   title: string;

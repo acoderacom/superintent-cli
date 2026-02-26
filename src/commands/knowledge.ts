@@ -3,7 +3,7 @@ import { getClient, closeClient } from '../db/client.js';
 import { parseKnowledgeRow, parseTicketRow } from '../db/parsers.js';
 import { performVectorSearch } from '../db/search.js';
 import { embed } from '../embed/model.js';
-import { readStdin } from '../utils/io.js';
+
 import { generateId } from '../utils/id.js';
 import { getProjectNamespace } from '../utils/config.js';
 import { getGitUsername, getGitBranch } from '../utils/git.js';
@@ -40,7 +40,7 @@ interface KnowledgeJsonInput {
 }
 
 /**
- * Parse JSON knowledge input from stdin.
+ * Parse JSON knowledge input.
  * Expected format: {"title": "...", "namespace": "...", "content": "...", ...}
  */
 function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
@@ -168,7 +168,7 @@ export const knowledgeCommand = new Command('knowledge')
 knowledgeCommand
   .command('create')
   .description('Create a new knowledge entry')
-  .option('--stdin', 'Read JSON from stdin')
+  .option('--json <data>', 'JSON input')
   .option('--title <title>', 'Knowledge title')
   .option('--content <content>', 'Knowledge content')
   .option('--namespace <namespace>', 'Project namespace (use domain, not "global")')
@@ -195,8 +195,8 @@ knowledgeCommand
       let author: string;
       let branch: string;
 
-      if (options.stdin) {
-        const raw = await readStdin();
+      if (options.json) {
+        const raw = options.json;
         const parsed = parseJsonKnowledge(raw);
 
         // Field-level validation
@@ -255,7 +255,7 @@ knowledgeCommand
         if (!options.title || !options.namespace || !options.content || !options.scope) {
           const response: CliResponse = {
             success: false,
-            error: 'Required: --title, --namespace, --content, --scope (or use --stdin)',
+            error: 'Required: --title, --namespace, --content, --scope (or use --json)',
           };
           console.log(JSON.stringify(response));
           process.exit(1);
@@ -550,7 +550,7 @@ knowledgeCommand
   .command('update')
   .description('Update a knowledge entry')
   .argument('<id>', 'Knowledge ID')
-  .option('--stdin', 'Read JSON updates from stdin')
+  .option('--json <data>', 'JSON input')
   .option('--title <title>', 'New title')
   .option('--namespace <namespace>', 'New namespace')
   .option('--category <category>', 'New category')
@@ -564,58 +564,58 @@ knowledgeCommand
     try {
       const client = await getClient();
       try {
-        // Read JSON from stdin
-        let stdinParsed: KnowledgeJsonInput | undefined;
-        if (options.stdin) {
-          const raw = await readStdin();
-          stdinParsed = parseJsonKnowledge(raw);
+        // Read JSON from --json flag
+        let jsonParsed: KnowledgeJsonInput | undefined;
+        if (options.json) {
+          const raw = options.json;
+          jsonParsed = parseJsonKnowledge(raw);
         }
 
-        // Build dynamic update — CLI flags take priority over stdin fields
+        // Build dynamic update — CLI flags take priority over JSON fields
         const updates: string[] = [];
         const args: (string | number | null)[] = [];
         let contentChanged = false;
 
-        if (options.title || stdinParsed?.title) {
+        if (options.title || jsonParsed?.title) {
           updates.push('title = ?');
-          args.push(options.title || stdinParsed!.title!);
+          args.push(options.title || jsonParsed!.title!);
           contentChanged = true;
         }
-        if (stdinParsed?.content) {
+        if (jsonParsed?.content) {
           updates.push('content = ?');
-          args.push(stdinParsed.content);
+          args.push(jsonParsed.content);
           contentChanged = true;
         }
-        if (options.namespace || stdinParsed?.namespace) {
+        if (options.namespace || jsonParsed?.namespace) {
           updates.push('namespace = ?');
-          args.push(options.namespace || stdinParsed!.namespace!);
+          args.push(options.namespace || jsonParsed!.namespace!);
         }
-        if (options.category || stdinParsed?.category) {
+        if (options.category || jsonParsed?.category) {
           updates.push('category = ?');
-          args.push(options.category || stdinParsed!.category!);
+          args.push(options.category || jsonParsed!.category!);
         }
-        if (options.tags || stdinParsed?.tags?.length) {
+        if (options.tags || jsonParsed?.tags?.length) {
           updates.push('tags = ?');
-          args.push(JSON.stringify(options.tags || stdinParsed!.tags));
+          args.push(JSON.stringify(options.tags || jsonParsed!.tags));
           contentChanged = true;
         }
-        if (stdinParsed?.citations !== undefined) {
+        if (jsonParsed?.citations !== undefined) {
           updates.push('citations = ?');
-          args.push(stdinParsed.citations.length > 0 ? JSON.stringify(stdinParsed.citations) : null);
+          args.push(jsonParsed.citations.length > 0 ? JSON.stringify(jsonParsed.citations) : null);
         }
-        if (options.origin || stdinParsed?.originTicketId) {
+        if (options.origin || jsonParsed?.originTicketId) {
           updates.push('origin_ticket_id = ?');
-          args.push(options.origin || stdinParsed!.originTicketId!);
+          args.push(options.origin || jsonParsed!.originTicketId!);
         }
-        if (options.confidence || stdinParsed?.confidence !== undefined) {
+        if (options.confidence || jsonParsed?.confidence !== undefined) {
           updates.push('confidence = ?');
           const conf = options.confidence
             ? clampConfidence(parseFloat(options.confidence))
-            : clampConfidence(stdinParsed!.confidence!);
+            : clampConfidence(jsonParsed!.confidence!);
           args.push(conf);
         }
-        if (options.scope || stdinParsed?.scope) {
-          const scopeValue = options.scope || stdinParsed!.scope!;
+        if (options.scope || jsonParsed?.scope) {
+          const scopeValue = options.scope || jsonParsed!.scope!;
           if (!VALID_SCOPES.includes(scopeValue as DecisionScope)) {
             const response: CliResponse = {
               success: false,
@@ -631,7 +631,7 @@ knowledgeCommand
         // Add comment if provided
         if (options.comment) {
           const commentId = generateId('COMMENT');
-          const author = options.author || stdinParsed?.author || getGitUsername();
+          const author = options.author || jsonParsed?.author || getGitUsername();
           await client.execute({
             sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
             args: [commentId, 'knowledge', id, author, options.comment],
@@ -665,9 +665,9 @@ knowledgeCommand
           });
           if (current.rows.length > 0) {
             const row = current.rows[0] as Record<string, unknown>;
-            const newTitle = options.title || stdinParsed?.title || row.title;
-            const newContent = stdinParsed?.content || row.content;
-            const newTags: string[] = options.tags || stdinParsed?.tags || (row.tags ? JSON.parse(row.tags as string) : []);
+            const newTitle = options.title || jsonParsed?.title || row.title;
+            const newContent = jsonParsed?.content || row.content;
+            const newTags: string[] = options.tags || jsonParsed?.tags || (row.tags ? JSON.parse(row.tags as string) : []);
             const tagsText = newTags?.length ? ' ' + newTags.join(' ') : '';
             const embedding = await embed(`${newTitle} ${newContent}${tagsText}`);
             updates.push('embedding = vector32(?)');

@@ -51,61 +51,28 @@ All commands output structured JSON: `{ success: boolean, data?: T, error?: stri
 ### Tickets
 
 ```bash
-# Create (JSON stdin)
-superintent ticket create --stdin <<'TICKET'
-{
-  "title": "Add user authentication",
-  "type": "feature",
-  "intent": "Add JWT-based auth to the API",
-  "context": "All endpoints currently public",
-  "constraints": { "use": ["jsonwebtoken", "bcrypt"], "avoid": ["session cookies"] },
-  "changeClass": "B",
-  "changeClassReason": "Adds middleware to all routes",
-  "plan": {
-    "files": ["src/middleware/auth.ts", "src/routes/auth.ts"],
-    "taskSteps": [
-      { "task": "Create auth middleware", "steps": ["JWT verification", "Error handling"] },
-      { "task": "Add login/register routes", "steps": ["Password hashing", "Token generation"] }
-    ],
-    "dodVerification": [
-      { "dod": "All protected routes require valid JWT", "verify": "curl returns 401 without token" },
-      { "dod": "Passwords hashed with bcrypt", "verify": "DB inspection shows no plaintext" }
-    ]
-  }
-}
-TICKET
+# Create (JSON)
+superintent ticket create --json '{"title": "Add user authentication", "type": "feature", "intent": "Add JWT-based auth to the API", "context": "All endpoints currently public", "constraints": { "use": ["jsonwebtoken", "bcrypt"], "avoid": ["session cookies"] }, "changeClass": "B", "changeClassReason": "Adds middleware to all routes", "plan": {"files": ["src/middleware/auth.ts", "src/routes/auth.ts"], "taskSteps": [{"task": "Create auth middleware", "steps": ["JWT verification", "Error handling"]}, {"task": "Add login/register routes", "steps": ["Password hashing", "Token generation"]}], "dodVerification": [{"dod": "All protected routes require valid JWT", "verify": "curl returns 401 without token"}, {"dod": "Passwords hashed with bcrypt", "verify": "DB inspection shows no plaintext"}]}}'
 
 # Manage
 superintent ticket get <id>
 superintent ticket preview <id>
 superintent ticket list [--status <status>] [--limit N]
-superintent ticket update <id> [--stdin] [--status] [--context] [--comment <text>] [--author] [--complete-task 0,1] [--complete-dod 0,1] [--complete-all] [--spec <spec-id>]
+superintent ticket update <id> [--json <data>] [--status] [--context] [--comment <text>] [--author] [--complete-task 0,1] [--complete-dod 0,1] [--complete-all] [--spec <spec-id>]
 superintent ticket delete <id>
 ```
 
 ### Knowledge
 
 ```bash
-# Create (JSON stdin)
-superintent knowledge create --stdin <<'KNOWLEDGE'
-{
-  "title": "API Error Handling Pattern",
-  "namespace": "my-project",
-  "category": "pattern",
-  "source": "discovery",
-  "confidence": 0.85,
-  "scope": "new-only",
-  "tags": ["api", "error-handling"],
-  "citations": [{"path": "src/handlers/errors.ts:12"}, {"path": "src/middleware/catch.ts:5"}],
-  "content": "Why:\nConsistent error responses across all endpoints.\n\nWhen:\nAll new API routes.\n\nPattern:\nWrap handlers in try/catch, return { success, error }."
-}
-KNOWLEDGE
+# Create (JSON)
+superintent knowledge create --json '{"title": "API Error Handling Pattern", "namespace": "my-project", "category": "pattern", "source": "discovery", "confidence": 0.85, "scope": "new-only", "tags": ["api", "error-handling"], "citations": [{"path": "src/handlers/errors.ts:12"}, {"path": "src/middleware/catch.ts:5"}], "content": "Why:\nConsistent error responses across all endpoints.\n\nWhen:\nAll new API routes.\n\nPattern:\nWrap handlers in try/catch, return { success, error }."}'
 
 # Manage
 superintent knowledge get <id>
 superintent knowledge preview <id>
 superintent knowledge list [--namespace] [--category] [--scope] [--source] [--author] [--branch] [--status active|inactive|all] [--limit N]
-superintent knowledge update <id> [--stdin] [--title] [--namespace] [--category] [--tags] [--scope] [--origin <ticketId>] [--confidence <n>] [--comment] [--author]
+superintent knowledge update <id> [--json <data>] [--title] [--namespace] [--category] [--tags] [--scope] [--origin <ticketId>] [--confidence <n>] [--comment] [--author]
 superintent knowledge activate <id>
 superintent knowledge deactivate <id>
 superintent knowledge promote <id>
@@ -128,20 +95,14 @@ Extraction proposes entries across categories based on ticket intent, assumption
 ### Specs
 
 ```bash
-# Create (JSON stdin)
-superintent spec create --stdin <<'SPEC'
-{
-  "title": "User Authentication System",
-  "content": "## Summary\nFull auth: registration, login, JWT, middleware.\n\n## Scope\n**In Scope:** JWT auth, password hashing, protected routes\n**Out of Scope:** OAuth, 2FA, password reset\n\n## Work Areas\n1. User model and registration\n2. Login and token generation\n3. Auth middleware",
-  "author": "your-name"
-}
-SPEC
+# Create (JSON)
+superintent spec create --json '{"title": "User Authentication System", "content": "## Summary\nFull auth: registration, login, JWT, middleware.\n\n## Scope\n**In Scope:** JWT auth, password hashing, protected routes\n**Out of Scope:** OAuth, 2FA, password reset\n\n## Work Areas\n1. User model and registration\n2. Login and token generation\n3. Auth middleware", "author": "your-name"}'
 
 # Manage
 superintent spec get <id>
 superintent spec preview <id>
 superintent spec list [--limit N]
-superintent spec update <id> [--stdin] [--title] [--comment] [--author]
+superintent spec update <id> [--json <data>] [--title] [--comment] [--author]
 superintent spec delete <id>
 ```
 

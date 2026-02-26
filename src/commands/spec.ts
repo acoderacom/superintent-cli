@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { getClient, closeClient } from '../db/client.js';
 import { parseSpecRow } from '../db/parsers.js';
-import { readStdin } from '../utils/io.js';
+
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
 import type { Spec, CliResponse } from '../types.js';
@@ -13,7 +13,7 @@ interface SpecInput {
 }
 
 /**
- * Parse JSON spec input from stdin.
+ * Parse JSON spec input.
  * Expected format: {"title": "...", "content": "...", "author": "..."}
  */
 function parseJsonSpec(raw: string): SpecInput {
@@ -50,8 +50,8 @@ export const specCommand = new Command('spec')
 // Create subcommand
 specCommand
   .command('create')
-  .description('Create a new spec from JSON stdin')
-  .option('--stdin', 'Read spec JSON from stdin')
+  .description('Create a new spec from JSON or options')
+  .option('--json <data>', 'JSON input')
   .option('--title <title>', 'Spec title')
   .option('--content <content>', 'Spec content')
   .option('--author <author>', 'Author (default: git user.name)')
@@ -62,8 +62,8 @@ specCommand
       let content: string;
       let author: string | undefined;
 
-      if (options.stdin) {
-        const raw = await readStdin();
+      if (options.json) {
+        const raw = options.json;
         const parsed = parseJsonSpec(raw);
 
         // Field-level validation
@@ -87,7 +87,7 @@ specCommand
         if (!options.title) {
           const response: CliResponse = {
             success: false,
-            error: 'Required: --title (or use --stdin)',
+            error: 'Required: --title (or use --json)',
           };
           console.log(JSON.stringify(response));
           process.exit(1);
@@ -259,7 +259,7 @@ specCommand
   .command('update')
   .description('Update a spec')
   .argument('<id>', 'Spec ID')
-  .option('--stdin', 'Read JSON updates from stdin')
+  .option('--json <data>', 'JSON input')
   .option('--title <title>', 'New title')
   .option('--comment <comment>', 'Add a comment')
   .option('--author <author>', 'Comment author (default: git user.name)')
@@ -270,26 +270,26 @@ specCommand
         const updates: string[] = [];
         const args: (string | number)[] = [];
 
-        // Read JSON from stdin
-        let stdinParsed: SpecInput | undefined;
-        if (options.stdin) {
-          const raw = await readStdin();
-          stdinParsed = parseJsonSpec(raw);
+        // Read JSON from --json flag
+        let jsonParsed: SpecInput | undefined;
+        if (options.json) {
+          const raw = options.json;
+          jsonParsed = parseJsonSpec(raw);
         }
 
-        if (options.title || stdinParsed?.title) {
+        if (options.title || jsonParsed?.title) {
           updates.push('title = ?');
-          args.push(options.title || stdinParsed!.title!);
+          args.push(options.title || jsonParsed!.title!);
         }
-        if (stdinParsed?.content) {
+        if (jsonParsed?.content) {
           updates.push('content = ?');
-          args.push(stdinParsed.content);
+          args.push(jsonParsed.content);
         }
 
         // Add comment if provided
         if (options.comment) {
           const commentId = generateId('COMMENT');
-          const author = options.author || stdinParsed?.author || getGitUsername();
+          const author = options.author || jsonParsed?.author || getGitUsername();
           await client.execute({
             sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
             args: [commentId, 'spec', id, author, options.comment],
@@ -299,7 +299,7 @@ specCommand
         if (updates.length === 0 && !options.comment) {
           const response: CliResponse = {
             success: false,
-            error: 'No updates provided. Use --stdin, --title, or --comment',
+            error: 'No updates provided. Use --json, --title, or --comment',
           };
           console.log(JSON.stringify(response));
           process.exit(1);

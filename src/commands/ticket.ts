@@ -3,7 +3,7 @@ import type { InValue } from '@libsql/client';
 import { getClient, closeClient } from '../db/client.js';
 import { parseTicketRow } from '../db/parsers.js';
 import { getProjectNamespace } from '../utils/config.js';
-import { readStdin } from '../utils/io.js';
+
 import { generateId } from '../utils/id.js';
 import { getGitUsername } from '../utils/git.js';
 import { readFileSync } from 'fs';
@@ -67,7 +67,7 @@ interface TicketJsonInput {
 }
 
 /**
- * Parse JSON ticket input from stdin.
+ * Parse JSON ticket input.
  */
 function parseJsonTicket(raw: string): TicketJsonInput {
   try {
@@ -537,8 +537,8 @@ export const ticketCommand = new Command('ticket')
 // Create subcommand
 ticketCommand
   .command('create')
-  .description('Create a new ticket from JSON stdin or options')
-  .option('--stdin', 'Read ticket JSON from stdin')
+  .description('Create a new ticket from JSON or options')
+  .option('--json <data>', 'JSON input')
   .option('--intent <intent>', 'What user wants to achieve')
   .option('--context <context>', 'Relevant files, patterns, background')
   .option('--use <constraints...>', 'Constraints: things to use')
@@ -562,8 +562,8 @@ ticketCommand
       let originSpecId: string | null = null;
       let plan: TicketPlan | null = null;
 
-      if (options.stdin) {
-        const raw = await readStdin();
+      if (options.json) {
+        const raw = options.json;
         const parsed = parseJsonTicket(raw);
 
         // Field-level validation
@@ -613,7 +613,7 @@ ticketCommand
       } else {
         // Use CLI options
         if (!options.intent) {
-          throw new Error('--stdin or --intent is required');
+          throw new Error('--json or --intent is required');
         }
 
         id = generateId('TICKET');
@@ -832,7 +832,7 @@ ticketCommand
   .command('update')
   .description('Update a ticket')
   .argument('<id>', 'Ticket ID')
-  .option('--stdin', 'Read JSON updates from stdin')
+  .option('--json <data>', 'JSON input')
   .option('--status <status>', 'New status (Backlog|In Progress|In Review|Done)')
   .option('--context <context>', 'Update context')
   .option('--comment <comment>', 'Add a comment')
@@ -864,20 +864,20 @@ ticketCommand
         const updates: string[] = [];
         const args: InValue[] = [];
 
-        // Read JSON from stdin for field updates
-        let stdinParsed: TicketJsonInput | undefined;
-        if (options.stdin) {
-          const raw = await readStdin();
-          stdinParsed = parseJsonTicket(raw);
+        // Parse JSON field updates
+        let jsonParsed: TicketJsonInput | undefined;
+        if (options.json) {
+          const raw = options.json;
+          jsonParsed = parseJsonTicket(raw);
         }
 
         // Plan is single source of truth for tasks and DoD completion
         let plan = currentTicket.plan ? { ...currentTicket.plan } : null;
         let planModified = false;
 
-        // JSON stdin can replace the entire plan
-        if (stdinParsed?.plan) {
-          plan = stdinParsed.plan;
+        // JSON can replace the entire plan
+        if (jsonParsed?.plan) {
+          plan = jsonParsed.plan;
           planModified = true;
         }
 
@@ -932,48 +932,48 @@ ticketCommand
           }
         }
 
-        // Apply stdin field updates
-        if (stdinParsed?.title) {
+        // Apply JSON field updates
+        if (jsonParsed?.title) {
           updates.push('title = ?');
-          args.push(stdinParsed.title);
+          args.push(jsonParsed.title);
         }
-        if (stdinParsed?.intent) {
+        if (jsonParsed?.intent) {
           updates.push('intent = ?');
-          args.push(stdinParsed.intent);
+          args.push(jsonParsed.intent);
         }
-        if (stdinParsed?.type && VALID_TICKET_TYPES.includes(stdinParsed.type as TicketType)) {
+        if (jsonParsed?.type && VALID_TICKET_TYPES.includes(jsonParsed.type as TicketType)) {
           updates.push('type = ?');
-          args.push(stdinParsed.type);
+          args.push(jsonParsed.type);
         }
-        if (stdinParsed?.constraints?.use) {
+        if (jsonParsed?.constraints?.use) {
           updates.push('constraints_use = ?');
-          args.push(JSON.stringify(stdinParsed.constraints.use));
+          args.push(JSON.stringify(jsonParsed.constraints.use));
         }
-        if (stdinParsed?.constraints?.avoid) {
+        if (jsonParsed?.constraints?.avoid) {
           updates.push('constraints_avoid = ?');
-          args.push(JSON.stringify(stdinParsed.constraints.avoid));
+          args.push(JSON.stringify(jsonParsed.constraints.avoid));
         }
-        if (stdinParsed?.assumptions) {
+        if (jsonParsed?.assumptions) {
           updates.push('assumptions = ?');
-          args.push(JSON.stringify(stdinParsed.assumptions));
+          args.push(JSON.stringify(jsonParsed.assumptions));
         }
-        if (stdinParsed?.changeClass && VALID_CHANGE_CLASSES.includes(stdinParsed.changeClass)) {
+        if (jsonParsed?.changeClass && VALID_CHANGE_CLASSES.includes(jsonParsed.changeClass)) {
           updates.push('change_class = ?');
-          args.push(stdinParsed.changeClass);
+          args.push(jsonParsed.changeClass);
         }
-        if (stdinParsed?.changeClassReason) {
+        if (jsonParsed?.changeClassReason) {
           updates.push('change_class_reason = ?');
-          args.push(stdinParsed.changeClassReason);
+          args.push(jsonParsed.changeClassReason);
         }
 
-        if (options.context || stdinParsed?.context) {
+        if (options.context || jsonParsed?.context) {
           updates.push('context = ?');
-          args.push(options.context || stdinParsed!.context!);
+          args.push(options.context || jsonParsed!.context!);
         }
 
         if (options.comment) {
           const commentId = generateId('COMMENT');
-          const author = options.author || stdinParsed?.author || getGitUsername();
+          const author = options.author || jsonParsed?.author || getGitUsername();
           await client.execute({
             sql: `INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)`,
             args: [commentId, 'ticket', id, author, options.comment],
