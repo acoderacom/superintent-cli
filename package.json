@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsc && npm run build:css && npm run setup:grammars",
     "build:css": "npx @tailwindcss/cli -i src/ui/styles/main.css -o dist/ui/styles.css --minify",
-    "setup:grammars": "mkdir -p grammars && cp node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-typescript.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-tsx.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-javascript.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-php.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-go.wasm grammars/ && cp node_modules/web-tree-sitter/web-tree-sitter.wasm grammars/tree-sitter.wasm",
+    "setup:grammars": "mkdir -p grammars && cp node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-typescript.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-tsx.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-javascript.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-php.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-go.wasm node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-css.wasm node_modules/tree-sitter-html/tree-sitter-html.wasm grammars/ && cp node_modules/web-tree-sitter/web-tree-sitter.wasm grammars/tree-sitter.wasm",
     "dev": "tsx src/index.ts",
     "prepublishOnly": "npm run build"
   },
@@ -38,6 +38,7 @@
     "@vscode/tree-sitter-wasm": "^0.3.0",
     "eslint": "^10.0.0",
     "tailwindcss": "^4.1.18",
+    "tree-sitter-html": "^0.23.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.0"

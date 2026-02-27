@@ -51,7 +51,7 @@ export interface ASTImport {
 export interface ASTFileResult {
   path: string;
   relativePath: string;
-  language: 'typescript' | 'javascript' | 'tsx' | 'jsx' | 'php' | 'go';
+  language: 'typescript' | 'javascript' | 'tsx' | 'jsx' | 'php' | 'go' | 'html' | 'css';
   lines: number;
   functions: ASTFunction[];
   classes: ASTClass[];
@@ -91,6 +91,9 @@ const GRAMMAR_MAP: Record<string, string> = {
   '.jsx': 'tree-sitter-javascript.wasm',
   '.php': 'tree-sitter-php.wasm',
   '.go': 'tree-sitter-go.wasm',
+  '.html': 'tree-sitter-html.wasm',
+  '.htm': 'tree-sitter-html.wasm',
+  '.css': 'tree-sitter-css.wasm',
 };
 
 const LANG_MAP: Record<string, ASTFileResult['language']> = {
@@ -100,6 +103,9 @@ const LANG_MAP: Record<string, ASTFileResult['language']> = {
   '.jsx': 'jsx',
   '.php': 'php',
   '.go': 'go',
+  '.html': 'html',
+  '.htm': 'html',
+  '.css': 'css',
 };
 
 function getGrammarsDir(): string {
@@ -203,6 +209,8 @@ function checkAsync(node: SyntaxNode): boolean {
 
 function extractFunctions(rootNode: SyntaxNode, lang: string): ASTFunction[] {
   const functions: ASTFunction[] = [];
+
+  if (lang === 'html' || lang === 'css') return functions;
 
   if (lang === 'php') {
     // PHP: function_definition for top-level functions
@@ -346,6 +354,8 @@ function extractMethods(classBody: SyntaxNode, lang: string): ASTFunction[] {
 function extractClasses(rootNode: SyntaxNode, lang: string): ASTClass[] {
   const classes: ASTClass[] = [];
 
+  if (lang === 'html' || lang === 'css') return classes;
+
   if (lang === 'go') {
     // Go: type_spec with struct_type (type Foo struct { ... })
     const typeSpecs = rootNode.descendantsOfType('type_spec');
@@ -390,8 +400,10 @@ function extractClasses(rootNode: SyntaxNode, lang: string): ASTClass[] {
 function extractVariables(rootNode: SyntaxNode, lang: string): ASTVariable[] {
   const variables: ASTVariable[] = [];
 
-  // Variables only apply to JS/TS
-  if (lang === 'php' || lang === 'go') return variables;
+  // Variables only apply to JS/TS and CSS (custom properties)
+  if (lang === 'php' || lang === 'go' || lang === 'html') return variables;
+
+  if (lang === 'css') return extractCssCustomProperties(rootNode);
 
   const lexDecls = rootNode.descendantsOfType('lexical_declaration');
   const varDecls = rootNode.descendantsOfType('variable_declaration');
@@ -444,6 +456,8 @@ function extractVariables(rootNode: SyntaxNode, lang: string): ASTVariable[] {
 
 function extractInterfaces(rootNode: SyntaxNode, lang: string): ASTInterface[] {
   const interfaces: ASTInterface[] = [];
+
+  if (lang === 'html' || lang === 'css') return interfaces;
 
   if (lang === 'go') {
     // Go: type_spec with interface_type
@@ -519,8 +533,114 @@ function extractInterfaces(rootNode: SyntaxNode, lang: string): ASTInterface[] {
   return interfaces;
 }
 
+function extractCssCustomProperties(rootNode: SyntaxNode): ASTVariable[] {
+  const variables: ASTVariable[] = [];
+  const declarations = rootNode.descendantsOfType('declaration');
+  for (const decl of declarations) {
+    const propNode = decl.descendantsOfType('property_name')[0];
+    if (!propNode || !propNode.text.startsWith('--')) continue;
+    variables.push({
+      name: propNode.text,
+      line: decl.startPosition.row + 1,
+      kind: 'const',
+      isExported: false,
+    });
+  }
+  return variables;
+}
+
+function extractHtmlImports(rootNode: SyntaxNode): ASTImport[] {
+  const imports: ASTImport[] = [];
+
+  // <script src="...">
+  const scriptElements = rootNode.descendantsOfType('script_element');
+  for (const el of scriptElements) {
+    const startTag = el.descendantsOfType('start_tag')[0];
+    if (!startTag) continue;
+    const src = getAttrValue(startTag, 'src');
+    if (src) {
+      imports.push({
+        source: src,
+        specifiers: ['script'],
+        line: el.startPosition.row + 1,
+        isTypeOnly: false,
+      });
+    }
+  }
+
+  // <link href="..."> (stylesheets, icons, etc.)
+  // link is a self_closing_tag or element with tag_name "link"
+  const allElements = [
+    ...rootNode.descendantsOfType('element'),
+    ...rootNode.descendantsOfType('self_closing_tag'),
+  ];
+  for (const el of allElements) {
+    const tag = el.type === 'self_closing_tag' ? el : el.descendantsOfType('start_tag')[0];
+    if (!tag) continue;
+    const tagName = tag.descendantsOfType('tag_name')[0];
+    if (!tagName || tagName.text !== 'link') continue;
+    const href = getAttrValue(tag, 'href');
+    if (href) {
+      const rel = getAttrValue(tag, 'rel') || 'link';
+      imports.push({
+        source: href,
+        specifiers: [rel],
+        line: el.startPosition.row + 1,
+        isTypeOnly: false,
+      });
+    }
+  }
+
+  return imports;
+}
+
+function extractCssImports(rootNode: SyntaxNode): ASTImport[] {
+  const imports: ASTImport[] = [];
+  const importStmts = rootNode.descendantsOfType('import_statement');
+  for (const node of importStmts) {
+    // @import can have a string_value or call_expression (url(...))
+    const strVal = node.descendantsOfType('string_value')[0];
+    const callExpr = node.descendantsOfType('call_expression')[0];
+    let source = '';
+    if (strVal) {
+      source = strVal.text.replace(/['"]/g, '');
+    } else if (callExpr) {
+      const args = callExpr.descendantsOfType('string_value')[0];
+      source = args ? args.text.replace(/['"]/g, '') : callExpr.text;
+    }
+    if (source) {
+      imports.push({
+        source,
+        specifiers: ['@import'],
+        line: node.startPosition.row + 1,
+        isTypeOnly: false,
+      });
+    }
+  }
+  return imports;
+}
+
+function getAttrValue(tag: SyntaxNode, attrName: string): string | null {
+  const attrs = tag.descendantsOfType('attribute');
+  for (const attr of attrs) {
+    const nameNode = attr.descendantsOfType('attribute_name')[0];
+    if (!nameNode || nameNode.text !== attrName) continue;
+    const quoted = attr.descendantsOfType('quoted_attribute_value')[0];
+    if (quoted) {
+      const val = quoted.descendantsOfType('attribute_value')[0];
+      return val ? val.text : null;
+    }
+    const unquoted = attr.descendantsOfType('attribute_value')[0];
+    return unquoted ? unquoted.text : null;
+  }
+  return null;
+}
+
 function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
   const imports: ASTImport[] = [];
+
+  if (lang === 'html') return extractHtmlImports(rootNode);
+  if (lang === 'css') return extractCssImports(rootNode);
 
   if (lang === 'go') {
     // Go: import_declaration with import_spec

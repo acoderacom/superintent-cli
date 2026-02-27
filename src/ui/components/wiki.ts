@@ -152,6 +152,8 @@ function getLangIcon(lang: string): string {
     case 'jsx': return '<span class="text-yellow-400 dark:text-yellow-300 font-mono text-[10px] font-bold">JX</span>';
     case 'php': return '<span class="text-indigo-500 dark:text-indigo-400 font-mono text-[10px] font-bold">PH</span>';
     case 'go': return '<span class="text-teal-500 dark:text-teal-400 font-mono text-[10px] font-bold">GO</span>';
+    case 'html': return '<span class="text-orange-500 dark:text-orange-400 font-mono text-[10px] font-bold">HT</span>';
+    case 'css': return '<span class="text-pink-500 dark:text-pink-400 font-mono text-[10px] font-bold">CS</span>';
     default: return '';
   }
 }
@@ -258,6 +260,8 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
     jsx: 'orange',
     php: 'indigo',
     go: 'teal',
+    html: 'orange',
+    css: 'pink',
   };
 
   return `
@@ -601,7 +605,7 @@ function renderVariablesTable(variables: ASTVariable[]): string {
                 </div>
               </td>
               <td class="px-3 py-2">
-                <span class="text-[10px] px-1 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded">${v.kind}</span>
+                <span class="text-[10px] px-1 py-0.5 ${v.kind === 'const' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'} rounded">${v.kind}</span>
               </td>
               <td class="px-3 py-2 text-right text-xs text-gray-400 dark:text-gray-500">L${v.line}</td>
             </tr>

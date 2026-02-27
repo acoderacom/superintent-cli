@@ -20,16 +20,16 @@
  * Templates build class names via template literals like `bg-${color}-50`
  * which Tailwind's static scanner can't detect.
  *
- * Colors used: gray, yellow, blue, green, red, orange, purple, slate, cyan, emerald, indigo
+ * Colors used: gray, yellow, blue, green, red, orange, purple, slate, cyan, emerald, indigo, pink
  */
-@source inline("bg-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{50,100,500}");
-@source inline("text-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{500,600,700}");
-@source inline("border-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{200}");
+@source inline("bg-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo,pink}-{50,100,500}");
+@source inline("text-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo,pink}-{500,600,700}");
+@source inline("border-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo,pink}-{200}");
 
 /* Dark mode safelist for dynamically-constructed badge classes */
-@source inline("dark:bg-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-900/{20,30}");
-@source inline("dark:text-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{300,400}");
-@source inline("dark:border-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo}-{700}");
+@source inline("dark:bg-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo,pink}-900/{20,30}");
+@source inline("dark:text-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo,pink}-{300,400}");
+@source inline("dark:border-{gray,yellow,blue,green,red,orange,purple,slate,cyan,emerald,indigo,pink}-{700}");
 
 /* Drag & drop */
 .drag-over { outline: 2px dashed var(--color-blue-500); background: var(--color-blue-50); }
