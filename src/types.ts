@@ -26,7 +26,7 @@ export interface Ticket {
   id: string;
   type?: TicketType;
   title?: string;
-  status: 'Backlog' | 'In Progress' | 'In Review' | 'Done' | 'Blocked' | 'Paused' | 'Abandoned' | 'Superseded';
+  status: 'Backlog' | 'In Progress' | 'In Review' | 'Done' | 'Blocked' | 'Abandoned' | 'Superseded';
   intent: string;
   context?: string;
   constraints_use?: string[];

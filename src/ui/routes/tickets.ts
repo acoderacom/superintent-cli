@@ -74,7 +74,7 @@ export function registerTicketRoutes(app: Hono) {
       const body = await c.req.parseBody();
       const newStatus = body.status as string;
 
-      const validStatuses = ['Backlog', 'In Progress', 'In Review', 'Done', 'Blocked', 'Paused', 'Abandoned', 'Superseded'];
+      const validStatuses = ['Backlog', 'In Progress', 'In Review', 'Done', 'Blocked', 'Abandoned', 'Superseded'];
       if (!validStatuses.includes(newStatus)) {
         return c.json({ success: false, error: 'Invalid status' }, 400);
       }
@@ -215,7 +215,7 @@ export function registerTicketRoutes(app: Hono) {
 
       // Return refreshed kanban columns
       const statuses = ['Backlog', 'In Progress', 'In Review', 'Done'];
-      const archiveStatuses = ['Blocked', 'Paused', 'Abandoned', 'Superseded'];
+      const archiveStatuses = ['Blocked', 'Abandoned', 'Superseded'];
       const limit = 12;
       const columnData = await Promise.all(
         statuses.map(async (status) => {
@@ -233,7 +233,7 @@ export function registerTicketRoutes(app: Hono) {
       // Add Archived column
       const archiveResult = await client.execute({
         sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
-              FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
+              FROM tickets WHERE status IN (?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
         args: [...archiveStatuses, limit + 1],
       });
       const archiveHasMore = archiveResult.rows.length > limit;
@@ -333,7 +333,7 @@ export function registerTicketRoutes(app: Hono) {
     try {
       const client = await getClient();
       const statuses = ['Backlog', 'In Progress', 'In Review', 'Done'];
-      const archiveStatuses = ['Blocked', 'Paused', 'Abandoned', 'Superseded'];
+      const archiveStatuses = ['Blocked', 'Abandoned', 'Superseded'];
       const limit = 12;
 
       const columnData = await Promise.all(
@@ -349,10 +349,10 @@ export function registerTicketRoutes(app: Hono) {
         })
       );
 
-      // Add Archived column (Blocked, Paused, Abandoned, Superseded)
+      // Add Archived column (Blocked, Abandoned, Superseded)
       const archiveResult = await client.execute({
         sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
-              FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
+              FROM tickets WHERE status IN (?, ?, ?) ORDER BY created_at DESC LIMIT ?`,
         args: [...archiveStatuses, limit + 1],
       });
       const archiveHasMore = archiveResult.rows.length > limit;
@@ -377,10 +377,10 @@ export function registerTicketRoutes(app: Hono) {
 
       // Handle Archived column specially (multiple statuses)
       if (status === 'Archived') {
-        const archiveStatuses = ['Blocked', 'Paused', 'Abandoned', 'Superseded'];
+        const archiveStatuses = ['Blocked', 'Abandoned', 'Superseded'];
         result = await client.execute({
           sql: `SELECT id, type, title, status, intent, change_class, change_class_reason, plan
-                FROM tickets WHERE status IN (?, ?, ?, ?) ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+                FROM tickets WHERE status IN (?, ?, ?) ORDER BY created_at DESC LIMIT ? OFFSET ?`,
           args: [...archiveStatuses, limit + 1, offset],
         });
       } else {

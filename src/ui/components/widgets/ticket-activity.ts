@@ -42,9 +42,9 @@ function renderTicketActivity(data: DashboardData): string {
           <div class="text-sm font-semibold text-green-700 dark:text-green-300">${done}</div>
           <div class="text-[10px] text-green-500 dark:text-green-400">Done</div>
         </div>
-        <div class="text-center p-2 bg-gray-50 dark:bg-gray-700/30 rounded">
-          <div class="text-sm font-semibold text-gray-600 dark:text-gray-300">${archived}</div>
-          <div class="text-[10px] text-gray-500 dark:text-gray-400">Archived</div>
+        <div class="text-center p-2 bg-red-50 dark:bg-red-900/20 rounded">
+          <div class="text-sm font-semibold text-red-700 dark:text-red-300">${archived}</div>
+          <div class="text-[10px] text-red-500 dark:text-red-400">Archived</div>
         </div>
         <div class="text-center p-2 bg-gray-100 dark:bg-gray-700/50 rounded">
           <div class="text-sm font-semibold text-gray-800 dark:text-gray-200">${backlog}</div>

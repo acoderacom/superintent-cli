@@ -101,7 +101,6 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
     'In Review': { color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/20', badgeBg: 'bg-blue-100 dark:bg-blue-900/30', badgeText: 'text-blue-600 dark:text-blue-300', headingText: 'text-blue-700 dark:text-blue-300' },
     'Done': { color: 'green', bg: 'bg-green-50 dark:bg-green-900/20', badgeBg: 'bg-green-100 dark:bg-green-900/30', badgeText: 'text-green-600 dark:text-green-300', headingText: 'text-green-700 dark:text-green-300' },
     'Blocked': { color: 'red', bg: 'bg-red-50 dark:bg-red-900/20', badgeBg: 'bg-red-100 dark:bg-red-900/30', badgeText: 'text-red-600 dark:text-red-300' },
-    'Paused': { color: 'orange', bg: 'bg-orange-50 dark:bg-orange-900/20', badgeBg: 'bg-orange-100 dark:bg-orange-900/30', badgeText: 'text-orange-600 dark:text-orange-300' },
     'Abandoned': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', headingText: 'text-gray-700 dark:text-gray-200' },
     'Superseded': { color: 'purple', bg: 'bg-purple-50 dark:bg-purple-900/20', badgeBg: 'bg-purple-100 dark:bg-purple-900/30', badgeText: 'text-purple-600 dark:text-purple-300' },
     'Archived': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', badgeBg: 'bg-gray-200 dark:bg-gray-600', badgeText: 'text-gray-600 dark:text-gray-300', headingText: 'text-gray-700 dark:text-gray-200' },
@@ -218,7 +217,6 @@ export function renderTicketModal(ticket: {
     'In Review': 'blue',
     'Done': 'green',
     'Blocked': 'red',
-    'Paused': 'orange',
     'Abandoned': 'gray',
     'Superseded': 'purple',
   };
@@ -458,7 +456,6 @@ export function renderTicketModal(ticket: {
           </optgroup>
           <optgroup label="Exception States">
             <option value="Blocked" ${ticket.status === 'Blocked' ? 'selected' : ''}>Blocked</option>
-            <option value="Paused" ${ticket.status === 'Paused' ? 'selected' : ''}>Paused</option>
             <option value="Abandoned" ${ticket.status === 'Abandoned' ? 'selected' : ''}>Abandoned</option>
             <option value="Superseded" ${ticket.status === 'Superseded' ? 'selected' : ''}>Superseded</option>
           </optgroup>
@@ -467,7 +464,7 @@ export function renderTicketModal(ticket: {
           function updateStatusColor(el) {
             const colors = {
               'Backlog': 'gray', 'In Progress': 'yellow', 'In Review': 'blue', 'Done': 'green',
-              'Blocked': 'red', 'Paused': 'orange', 'Abandoned': 'gray', 'Superseded': 'purple'
+              'Blocked': 'red', 'Abandoned': 'gray', 'Superseded': 'purple'
             };
             const c = colors[el.value] || 'gray';
             el.className = el.className.replace(/bg-[a-z]+-50/g, 'bg-' + c + '-50')
