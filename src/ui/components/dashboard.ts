@@ -2,6 +2,7 @@
 import { escapeHtml } from './utils.js';
 import { knowledgeHealthSummaryWidget } from './widgets/knowledge-health-summary.js';
 import { wikiCoverageWidget } from './widgets/wiki-coverage.js';
+import { ticketActivityWidget } from './widgets/ticket-activity.js';
 
 // ============ Widget Architecture ============
 
@@ -50,9 +51,16 @@ export interface WikiCoverageData {
   lastIndexedAt: string | null;
 }
 
+export interface TicketActivityData {
+  total: number;
+  byStatus: Record<string, number>;
+  recentCount: number; // created in last 7 days
+}
+
 export interface DashboardData {
   knowledgeHealth: KnowledgeHealthData;
   wikiCoverage?: WikiCoverageData;
+  ticketActivity?: TicketActivityData;
 }
 
 // Size → CSS grid span mapping (responsive)
@@ -69,6 +77,7 @@ const sizeToGridClasses: Record<WidgetSize, string> = {
 const widgetRegistry: WidgetDefinition[] = [
   knowledgeHealthSummaryWidget,
   wikiCoverageWidget,
+  ticketActivityWidget,
 ];
 
 // ============ Dashboard View (HTMX shell) ============

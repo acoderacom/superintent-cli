@@ -2,7 +2,7 @@ import type { Hono } from 'hono';
 import { getClient, closeClient } from '../../db/client.js';
 import { classifyHealth } from './shared.js';
 import { getCoverageStats } from '../../wiki/indexer.js';
-import type { DashboardData, KnowledgeHealthData, WikiCoverageData } from '../components/dashboard.js';
+import type { DashboardData, KnowledgeHealthData, WikiCoverageData, TicketActivityData } from '../components/dashboard.js';
 import {
   renderDashboardView,
   renderDashboardGrid,
@@ -88,7 +88,34 @@ export function registerDashboardRoutes(app: Hono) {
           // Wiki tables may not exist yet
         }
 
-        const dashboardData: DashboardData = { knowledgeHealth, wikiCoverage };
+        // Ticket activity data (best-effort)
+        let ticketActivity: TicketActivityData | undefined;
+        try {
+          const ticketTotalResult = await client.execute(
+            `SELECT COUNT(*) as total FROM tickets`
+          );
+          const ticketTotal = Number((ticketTotalResult.rows[0] as Record<string, unknown>).total ?? 0);
+
+          const ticketStatusResult = await client.execute(
+            `SELECT status, COUNT(*) as cnt FROM tickets GROUP BY status`
+          );
+          const byStatus: Record<string, number> = {};
+          for (const row of ticketStatusResult.rows) {
+            const r = row as Record<string, unknown>;
+            byStatus[String(r.status ?? 'Unknown')] = Number(r.cnt ?? 0);
+          }
+
+          const ticketRecentResult = await client.execute(
+            `SELECT COUNT(*) as cnt FROM tickets WHERE created_at >= datetime('now', '-7 days')`
+          );
+          const ticketRecentCount = Number((ticketRecentResult.rows[0] as Record<string, unknown>).cnt ?? 0);
+
+          ticketActivity = { total: ticketTotal, byStatus, recentCount: ticketRecentCount };
+        } catch {
+          // Tickets table may not exist yet
+        }
+
+        const dashboardData: DashboardData = { knowledgeHealth, wikiCoverage, ticketActivity };
         return c.html(renderDashboardGrid(dashboardData));
       } finally {
         await closeClient();
