@@ -838,6 +838,7 @@ knowledgeCommand
   .option('--all', 'Validate all active entries with citations')
   .option('--main', 'Validate main branch entries with citations')
   .option('--dry-run', 'Preview only, no side effects')
+  .option('--heal', 'Auto-fix changed citation hashes (entries with no missing citations)')
   .action(async (id: string | undefined, options: Record<string, unknown>) => {
     try {
       if (!id && !options.all && !options.main) {
@@ -895,6 +896,7 @@ knowledgeCommand
           valid: number;
           changed: number;
           missing: number;
+          healed: boolean;
           details: { path: string; status: string; currentFileHash?: string }[];
         }[] = [];
         let uncited = 0;
@@ -927,19 +929,44 @@ knowledgeCommand
             valid,
             changed,
             missing,
+            healed: false,
             details,
           });
+        }
+
+        // --heal: auto-fix changed citation hashes (no missing citations)
+        let healed = 0;
+        if (options.heal && !options.dryRun) {
+          for (const entry of entries) {
+            if (entry.changed > 0 && entry.missing === 0) {
+              const updatedCitations = entry.details.map((d) => ({
+                path: d.path,
+                fileHash: d.currentFileHash!,
+              }));
+              await client.execute({
+                sql: 'UPDATE knowledge SET citations = ?, updated_at = datetime(?) WHERE id = ?',
+                args: [JSON.stringify(updatedCitations), new Date().toISOString(), entry.id],
+              });
+              healed++;
+              entry.healed = true;
+              // Update entry counts to reflect healed state
+              entry.valid += entry.changed;
+              entry.changed = 0;
+            }
+          }
         }
 
         const response: CliResponse<{
           validated: number;
           uncited: number;
+          healed: number;
           entries: typeof entries;
         }> = {
           success: true,
           data: {
             validated: entries.length,
             uncited,
+            healed,
             entries,
           },
         };
