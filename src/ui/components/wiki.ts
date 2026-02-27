@@ -266,7 +266,7 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
 
   return `
     <div>
-      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Wiki</h1>
+      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-1">Code Wiki</h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Codebase overview &middot; Scanned ${escapeHtml(new Date(scan.scannedAt).toLocaleString())}</p>
 
       <!-- Stats Grid -->
