@@ -109,7 +109,7 @@ export function renderDashboardView(): string {
       </style>
       <div id="dashboard-grid"
            hx-get="/partials/dashboard-grid"
-           hx-trigger="load, refresh"
+           hx-trigger="load, refresh, refreshDashboard from:body"
            hx-swap="innerHTML settle:300ms">
         <div class="flex flex-col justify-center items-center gap-3" style="height: calc(100dvh - 160px);">
           <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>

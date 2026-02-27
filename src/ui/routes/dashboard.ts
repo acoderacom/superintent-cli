@@ -166,6 +166,7 @@ export function registerDashboardRoutes(app: Hono) {
       try {
         const { byCitationHealth } = await classifyHealth(client);
         citationHealthCache = byCitationHealth;
+        c.header('HX-Trigger', 'refreshDashboard');
         return c.html(renderCitationHealthSection(byCitationHealth));
       } finally {
         await closeClient();
