@@ -1,12 +1,16 @@
 import type { Hono } from 'hono';
 import { getClient, closeClient } from '../../db/client.js';
 import { classifyHealth } from './shared.js';
+import { renderCitationHealthSection } from '../components/widgets/knowledge-health-summary.js';
 import { getCoverageStats } from '../../wiki/indexer.js';
-import type { DashboardData, KnowledgeHealthData, WikiCoverageData, TicketActivityData } from '../components/dashboard.js';
+import type { DashboardData, KnowledgeHealthData, WikiCoverageData, TicketActivityData, CitationHealth } from '../components/dashboard.js';
 import {
   renderDashboardView,
   renderDashboardGrid,
 } from '../components/index.js';
+
+// In-memory cache for citation health results (survives refreshes, resets on server restart)
+let citationHealthCache: Record<CitationHealth, number> | null = null;
 
 export function registerDashboardRoutes(app: Hono) {
 
@@ -45,8 +49,31 @@ export function registerDashboardRoutes(app: Hono) {
           byCategory[String(r.category ?? 'unknown')] = Number(r.cnt ?? 0);
         }
 
-        // Health classification — usage + citation dimensions
-        const { byUsageHealth, byCitationHealth } = await classifyHealth(client);
+        // Usage health (lightweight — DB only, no file I/O)
+        // Citation health uses cached results if available, otherwise shows placeholder
+        const byUsageHealth = { rising: 0, stable: 0, decaying: 0 };
+        const byCitationHealth = citationHealthCache ?? { needsValidation: 0, missing: 0 };
+
+        // Compute usage health from DB
+        const usageResult = await client.execute(
+          `SELECT usage_count,
+                  CAST((julianday('now') - julianday(created_at)) AS REAL) as age_days,
+                  CAST((julianday('now') - julianday(last_used_at)) AS REAL) as quiet_days
+           FROM knowledge WHERE active = 1 AND branch = 'main'`
+        );
+        for (const row of usageResult.rows) {
+          const r = row as Record<string, unknown>;
+          const usageCount = Number(r.usage_count ?? 0);
+          const ageDays = Number(r.age_days ?? 0);
+          const quietDays = Number(r.quiet_days ?? 0);
+          if (usageCount > 0 && quietDays > 7) {
+            byUsageHealth.decaying++;
+          } else if (ageDays >= 1 && ageDays > 0 && (usageCount / ageDays) > 2.0 && usageCount >= 3) {
+            byUsageHealth.rising++;
+          } else {
+            byUsageHealth.stable++;
+          }
+        }
 
         // Recent entries (last 7 days)
         const recentResult = await client.execute(
@@ -67,6 +94,7 @@ export function registerDashboardRoutes(app: Hono) {
           byCategory,
           byUsageHealth,
           byCitationHealth,
+          citationHealthValidated: citationHealthCache !== null,
           recentCount,
           lastIndexedAt: knowledgeLastIndexedAt,
         };
@@ -127,6 +155,24 @@ export function registerDashboardRoutes(app: Hono) {
           <p class="text-sm">Failed to load dashboard data</p>
         </div>
       `);
+    }
+  });
+
+  // On-demand citation health validation (expensive — reads files + SHA-256)
+  // Results are cached in memory so subsequent dashboard refreshes show last known state
+  app.get('/partials/dashboard-citation-health', async (c) => {
+    try {
+      const client = await getClient();
+      try {
+        const { byCitationHealth } = await classifyHealth(client);
+        citationHealthCache = byCitationHealth;
+        return c.html(renderCitationHealthSection(byCitationHealth));
+      } finally {
+        await closeClient();
+      }
+    } catch (err) {
+      console.error('Citation health error:', err);
+      return c.html(`<p class="text-xs text-red-400">Failed to validate citations</p>`);
     }
   });
 }

@@ -19,9 +19,9 @@ function renderTicketActivity(data: DashboardData): string {
       </div>`;
   }
 
-  const inProgress = (ta.byStatus['In Progress'] ?? 0);
+  const inReview = (ta.byStatus['In Review'] ?? 0);
   const done = (ta.byStatus['Done'] ?? 0);
-  const blocked = (ta.byStatus['Blocked'] ?? 0);
+  const archived = (ta.byStatus['Abandoned'] ?? 0) + (ta.byStatus['Superseded'] ?? 0) + (ta.byStatus['Blocked'] ?? 0);
   const backlog = (ta.byStatus['Backlog'] ?? 0);
 
   return `
@@ -34,17 +34,17 @@ function renderTicketActivity(data: DashboardData): string {
 
       <!-- Status grid -->
       <div class="grid grid-cols-2 gap-2">
-        <div class="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-          <div class="text-sm font-semibold text-blue-700 dark:text-blue-300">${inProgress}</div>
-          <div class="text-[10px] text-blue-500 dark:text-blue-400">In Progress</div>
+        <div class="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
+          <div class="text-sm font-semibold text-purple-700 dark:text-purple-300">${inReview}</div>
+          <div class="text-[10px] text-purple-500 dark:text-purple-400">In Review</div>
         </div>
         <div class="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
           <div class="text-sm font-semibold text-green-700 dark:text-green-300">${done}</div>
           <div class="text-[10px] text-green-500 dark:text-green-400">Done</div>
         </div>
-        <div class="text-center p-2 bg-red-50 dark:bg-red-900/20 rounded">
-          <div class="text-sm font-semibold text-red-700 dark:text-red-300">${blocked}</div>
-          <div class="text-[10px] text-red-500 dark:text-red-400">Blocked</div>
+        <div class="text-center p-2 bg-gray-50 dark:bg-gray-700/30 rounded">
+          <div class="text-sm font-semibold text-gray-600 dark:text-gray-300">${archived}</div>
+          <div class="text-[10px] text-gray-500 dark:text-gray-400">Archived</div>
         </div>
         <div class="text-center p-2 bg-gray-100 dark:bg-gray-700/50 rounded">
           <div class="text-sm font-semibold text-gray-800 dark:text-gray-200">${backlog}</div>
@@ -61,9 +61,23 @@ function renderTicketActivity(data: DashboardData): string {
     </div>`;
 }
 
+function renderQuickAddAction(): string {
+  return `
+    <button type="button"
+            hx-get="/partials/new-ticket-modal"
+            hx-target="#modal-content"
+            hx-trigger="click"
+            onclick="showModal()"
+            class="text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+            title="Create a new ticket">
+      + Add
+    </button>`;
+}
+
 export const ticketActivityWidget: WidgetDefinition = {
   id: 'ticket-activity',
   title: 'Ticket Activity',
   size: 'S',
   render: renderTicketActivity,
+  renderHeaderActions: renderQuickAddAction,
 };

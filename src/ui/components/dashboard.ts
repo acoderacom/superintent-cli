@@ -38,6 +38,7 @@ export interface KnowledgeHealthData {
   byCategory: Record<string, number>;
   byUsageHealth: Record<UsageHealth, number>;
   byCitationHealth: Record<CitationHealth, number>;
+  citationHealthValidated: boolean; // true if citation health has been validated at least once
   recentCount: number; // entries created in last 7 days
   lastIndexedAt: string | null;
 }

@@ -64,9 +64,12 @@ function renderHealthBars<T extends string>(
 function renderKnowledgeHealthSummary(data: DashboardData): string {
   const kh = data.knowledgeHealth;
 
-  // Health score: weighted formula
+  // Health score: weighted formula (includes citation health when validated)
   const activeRatio = kh.total > 0 ? kh.active / kh.total : 0;
-  const issueCount = (kh.byCitationHealth.missing || 0) + (kh.byCitationHealth.needsValidation || 0) + (kh.byUsageHealth.decaying || 0);
+  const citationIssues = kh.citationHealthValidated
+    ? (kh.byCitationHealth.missing || 0) + (kh.byCitationHealth.needsValidation || 0)
+    : 0;
+  const issueCount = (kh.byUsageHealth.decaying || 0) + citationIssues;
   const noIssuesRatio = kh.active > 0 ? Math.max(0, (kh.active - issueCount) / kh.active) : 0;
   const recentRatio = kh.active > 0 ? Math.min(kh.recentCount / kh.active, 1) : 0;
   const healthScore = Math.round(
@@ -88,8 +91,6 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
 
   // Health status breakdowns by group
   const usageBars = renderHealthBars(usageLabels, kh.byUsageHealth, kh.active);
-  const citationTotal = (kh.byCitationHealth.needsValidation || 0) + (kh.byCitationHealth.missing || 0);
-  const citationBars = citationTotal > 0 ? renderHealthBars(citationLabels, kh.byCitationHealth, citationTotal, false) : '';
 
   // Empty state
   if (kh.total === 0) {
@@ -143,13 +144,8 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
           </div>
         </div>
 
-        <!-- Citation Health -->
-        <div>
-          <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Citation Health</h4>
-          <div class="flex flex-col gap-1.5">
-            ${citationBars || '<p class="text-xs text-gray-400 dark:text-gray-500">All citations valid</p>'}
-          </div>
-        </div>
+        <!-- Citation Health (cached from last Validate, or placeholder) -->
+        ${renderCitationHealthInline(kh.byCitationHealth, kh.citationHealthValidated)}
 
         <!-- Footer: Last updated date + Open Knowledge Tab -->
         <div class="mt-auto pt-2 flex items-center justify-between">
@@ -161,11 +157,52 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
     </div>`;
 }
 
+/** Render citation health inline — shows cached results or placeholder */
+function renderCitationHealthInline(byCitationHealth: Record<CitationHealth, number>, validated: boolean): string {
+  if (validated) {
+    return renderCitationHealthSection(byCitationHealth);
+  }
+
+  return `
+    <div id="citation-health-section">
+      <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Citation Health</h4>
+      <p class="text-xs text-gray-400 dark:text-gray-500">Click <span class="font-medium">Re-Validate</span> to check citations</p>
+    </div>`;
+}
+
+/** Render citation health results — returned by the on-demand validation endpoint */
+export function renderCitationHealthSection(byCitationHealth: Record<CitationHealth, number>): string {
+  const citationTotal = (byCitationHealth.needsValidation || 0) + (byCitationHealth.missing || 0);
+  const citationBars = citationTotal > 0 ? renderHealthBars(citationLabels, byCitationHealth, citationTotal, false) : '';
+
+  return `
+    <div id="citation-health-section">
+      <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Citation Health</h4>
+      <div class="flex flex-col gap-1.5">
+        ${citationBars || '<p class="text-xs text-gray-400 dark:text-gray-500">All citations valid</p>'}
+      </div>
+    </div>`;
+}
+
+function renderValidateAction(): string {
+  return `
+    <button type="button"
+            hx-get="/partials/dashboard-citation-health"
+            hx-target="#citation-health-section"
+            hx-swap="outerHTML"
+            hx-disabled-elt="this"
+            class="text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Re-validate citations against filesystem (reads files)">
+      Re-Validate
+    </button>`;
+}
+
 export const knowledgeHealthSummaryWidget: WidgetDefinition = {
   id: 'knowledge-health-summary',
   title: 'Knowledge Health (Main Branch)',
   size: 'M',
   render: renderKnowledgeHealthSummary,
+  renderHeaderActions: renderValidateAction,
 };
 
 // Modal listing entries for a given health status
