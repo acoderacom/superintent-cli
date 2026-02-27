@@ -1174,15 +1174,11 @@ knowledgeCommand
   .action(async (ticketId: string, options: Record<string, string>) => {
     try {
       const client = await getClient();
-      let result;
       try {
-        result = await client.execute({
-          sql: 'SELECT * FROM tickets WHERE id = ?',
-          args: [ticketId],
-        });
-      } finally {
-        closeClient();
-      }
+      const result = await client.execute({
+        sql: 'SELECT * FROM tickets WHERE id = ?',
+        args: [ticketId],
+      });
 
       if (result.rows.length === 0) {
         const response: CliResponse = {
@@ -1205,7 +1201,7 @@ knowledgeCommand
       }
 
       const namespace = options.namespace || getProjectNamespace();
-      const suggestions: KnowledgeInput[] = generateExtractProposals(ticket, namespace);
+      const suggestions: KnowledgeInput[] = await generateExtractProposals(ticket, namespace, client);
 
       const proposal: ExtractProposal = {
         action: 'propose',
@@ -1227,6 +1223,9 @@ knowledgeCommand
         data: proposal,
       };
       console.log(JSON.stringify(response));
+      } finally {
+        closeClient();
+      }
     } catch (error) {
       const response: CliResponse = {
         success: false,

@@ -9,6 +9,9 @@ import { getGitUsername } from '../utils/git.js';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { computeContentHash } from '../utils/hash.js';
+import type { Client } from '@libsql/client';
+import { embed } from '../embed/model.js';
+import { performVectorSearch } from '../db/search.js';
 import type { Ticket, CliResponse, KnowledgeInput, TicketPlan, TicketType, Citation } from '../types.js';
 
 /**
@@ -345,76 +348,11 @@ function collectTicketCitations(ticket: Ticket, cwd: string): Citation[] {
 }
 
 // Generate knowledge extraction proposals from a completed ticket
-export function generateExtractProposals(ticket: Ticket, namespace: string): KnowledgeInput[] {
+export async function generateExtractProposals(ticket: Ticket, namespace: string, client?: Client): Promise<KnowledgeInput[]> {
   const suggestions: KnowledgeInput[] = [];
-  const ticketType = ticket.type;  // Pass to all suggestions
+  const ticketType = ticket.type;
   const cwd = process.cwd();
   const citations = collectTicketCitations(ticket, cwd);
-
-  // Pattern from intent + context
-  if (ticket.intent && ticket.context) {
-    suggestions.push({
-      namespace,
-      title: ticket.intent.slice(0, 100),
-      content: `Why:\n${ticket.context}\n\nWhen:\n[AI: Describe when to apply this pattern]\n\nPattern:\n${ticket.intent}`,
-      category: 'pattern',
-      source: 'ticket',
-      originTicketId: ticket.id,
-      originTicketType: ticketType,
-      confidence: 0.75,
-      decisionScope: 'new-only',
-    });
-  }
-
-  // Truths from validated assumptions
-  if (ticket.assumptions && ticket.assumptions.length > 0) {
-    for (const assumption of ticket.assumptions) {
-      suggestions.push({
-        namespace,
-        title: `Validated: ${assumption.slice(0, 80)}`,
-        content: `Fact:\n${assumption}\n\nVerified:\nValidated during ticket ${ticket.id}`,
-        category: 'truth',
-        source: 'ticket',
-        originTicketId: ticket.id,
-        originTicketType: ticketType,
-        confidence: 0.9,
-        decisionScope: 'global',
-      });
-    }
-  }
-
-  // Principles from constraints
-  if (ticket.constraints_use && ticket.constraints_use.length > 0) {
-    for (const constraint of ticket.constraints_use) {
-      suggestions.push({
-        namespace,
-        title: `Use: ${constraint.slice(0, 80)}`,
-        content: `Rule:\n${constraint}\n\nWhy:\n[AI: Explain rationale]\n\nApplies:\nNew code only`,
-        category: 'principle',
-        source: 'ticket',
-        originTicketId: ticket.id,
-        originTicketType: ticketType,
-        confidence: 0.8,
-        decisionScope: 'new-only',
-      });
-    }
-  }
-
-  if (ticket.constraints_avoid && ticket.constraints_avoid.length > 0) {
-    for (const constraint of ticket.constraints_avoid) {
-      suggestions.push({
-        namespace,
-        title: `Avoid: ${constraint.slice(0, 80)}`,
-        content: `Avoid:\n${constraint}\n\nWhy:\n[AI: Explain why this is problematic]\n\nApplies:\nNew code only`,
-        category: 'principle',
-        source: 'ticket',
-        originTicketId: ticket.id,
-        originTicketType: ticketType,
-        confidence: 0.8,
-        decisionScope: 'new-only',
-      });
-    }
-  }
 
   // Decisions from plan (high-value knowledge)
   if (ticket.plan?.decisions && ticket.plan.decisions.length > 0) {
@@ -428,7 +366,7 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
         source: 'ticket',
         originTicketId: ticket.id,
         originTicketType: ticketType,
-        confidence: 0.85, // Decisions are deliberate choices, higher confidence
+        confidence: 0.85,
         decisionScope: 'new-only',
       });
     }
@@ -446,27 +384,7 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
         source: 'ticket',
         originTicketId: ticket.id,
         originTicketType: ticketType,
-        confidence: 0.8, // Trade-offs are deliberate rejections
-        decisionScope: 'new-only',
-      });
-    }
-  }
-
-  // DoD → Verification patterns (validated criteria)
-  if (ticket.plan?.dodVerification && ticket.plan.dodVerification.length > 0) {
-    for (const dv of ticket.plan.dodVerification) {
-      if (!dv.dod) continue;
-      suggestions.push({
-        namespace,
-        title: `Verify: ${dv.dod.slice(0, 70)}`,
-        content: dv.verify
-          ? `Criterion:\n${dv.dod}\n\nVerification:\n${dv.verify}\n\nValidated:\nTicket ${ticket.id}`
-          : `Criterion:\n${dv.dod}\n\nValidated:\nTicket ${ticket.id}`,
-        category: 'pattern',
-        source: 'ticket',
-        originTicketId: ticket.id,
-        originTicketType: ticketType,
-        confidence: 0.8, // Verified criteria are reliable patterns
+        confidence: 0.8,
         decisionScope: 'new-only',
       });
     }
@@ -506,26 +424,34 @@ export function generateExtractProposals(ticket: Ticket, namespace: string): Kno
     }
   }
 
-  // Rollback strategy from plan → pattern (reusable recovery approach)
-  if (ticket.plan?.rollback && ticket.plan.rollback.steps.length > 0) {
-    suggestions.push({
-      namespace,
-      title: `Rollback: ${ticket.title || ticket.intent.slice(0, 70)}`,
-      content: `Why:\nRecovery strategy for ${ticket.change_class ? `Class ${ticket.change_class}` : 'this type of'} change\n\nWhen:\nSimilar changes that modify ${ticket.plan.files?.join(', ') || 'related files'}\n\nPattern:\nReversibility: ${ticket.plan.rollback.reversibility}\nSteps:\n${ticket.plan.rollback.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
-      category: 'pattern',
-      source: 'ticket',
-      originTicketId: ticket.id,
-      originTicketType: ticketType,
-      confidence: 0.8,
-      decisionScope: 'backward-compatible',
-    });
-  }
-
   // Attach collected citations to all suggestions
   if (citations.length > 0) {
     for (const suggestion of suggestions) {
       suggestion.citations = citations;
     }
+  }
+
+  // Vector dedup: filter out proposals that are similar to existing knowledge
+  if (client && suggestions.length > 0) {
+    const novel: KnowledgeInput[] = [];
+    for (const suggestion of suggestions) {
+      try {
+        const queryEmbedding = await embed(suggestion.title, true);
+        const duplicates = await performVectorSearch(client, queryEmbedding, {
+          namespace,
+          limit: 1,
+          minScore: 0.7,
+          trackUsage: false,
+        });
+        if (duplicates.length === 0) {
+          novel.push(suggestion);
+        }
+      } catch {
+        // If dedup fails, keep the proposal
+        novel.push(suggestion);
+      }
+    }
+    return novel;
   }
 
   return suggestions;
@@ -1021,7 +947,7 @@ ticketCommand
           if (updatedResult.rows.length > 0) {
             const updatedTicket = parseTicketRow(updatedResult.rows[0] as Record<string, unknown>);
             const namespace = getProjectNamespace();
-            extractProposals = generateExtractProposals(updatedTicket, namespace);
+            extractProposals = await generateExtractProposals(updatedTicket, namespace, client);
           }
         }
 
