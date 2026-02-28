@@ -1,6 +1,6 @@
 {
   "name": "superintent",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "CLI companion for the Superintent Claude Code plugin",
   "author": "Acodera",
   "repository": {
