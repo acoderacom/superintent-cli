@@ -27,21 +27,21 @@
     "@huggingface/transformers": "^3.8.1",
     "@libsql/client": "^0.17.0",
     "commander": "^14.0.3",
-    "hono": "^4.11.9",
+    "hono": "^4.12.3",
     "open": "^11.0.0",
-    "web-tree-sitter": "^0.26.5"
+    "web-tree-sitter": "^0.26.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@tailwindcss/cli": "^4.1.18",
-    "@types/node": "^25.2.3",
+    "@tailwindcss/cli": "^4.2.1",
+    "@types/node": "^25.3.2",
     "@vscode/tree-sitter-wasm": "^0.3.0",
-    "eslint": "^10.0.0",
-    "tailwindcss": "^4.1.18",
+    "eslint": "^10.0.2",
+    "tailwindcss": "^4.2.1",
     "tree-sitter-html": "^0.23.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.0"
+    "typescript-eslint": "^8.56.1"
   },
   "engines": {
     "node": ">=18.0.0"
