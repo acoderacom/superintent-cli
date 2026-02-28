@@ -3,5 +3,7 @@ dist
 .DS_Store
 .superintent/.env
 .superintent/*.db
+.superintent/*.db-shm
+.superintent/*.db-wal
 .claude/settings.local.json
 grammars/
