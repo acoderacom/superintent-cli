@@ -8,7 +8,7 @@ Always search knowledge before exploring the codebase — it is the primary sour
 <!-- superintent:knowledge:start -->
 
 ### Key Facts
-- **CLI Commands Reference** — 8 commands: init, status, ticket, knowledge, spec, search, extract, dashboard; all output JSON via `CliResponse<T>` (`KNOWLEDGE-20260215-113719412`)
+- **CLI Commands Reference** — 6 root commands: init, status, ticket, knowledge, spec, dashboard; `search` and `extract` are subcommands of `knowledge`; all output JSON via `CliResponse<T>` (`KNOWLEDGE-20260215-113719412`)
 - **Database Schema and Configuration** — 4 tables (tickets, knowledge w/ F32_BLOB vectors, specs, comments); config via .superintent/.env with TURSO_URL/TURSO_AUTH_TOKEN (`KNOWLEDGE-20260215-113629621`)
 - **All CLI Commands Use JSON Flag** — All create/update via `--json <data>` accepting inline JSON; replaced markdown parsers (`KNOWLEDGE-20260215-165720482`)
 
