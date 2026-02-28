@@ -14,6 +14,11 @@ export async function getClient(): Promise<Client> {
     ...(config.authToken && { authToken: config.authToken }),
   });
 
+  // Enable WAL mode for better concurrent read/write performance (local files only)
+  if (config.url.startsWith('file:')) {
+    await client.execute('PRAGMA journal_mode=WAL');
+  }
+
   return client;
 }
 
