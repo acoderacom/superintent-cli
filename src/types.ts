@@ -147,6 +147,32 @@ export interface Spec {
   updated_at?: string;
 }
 
+// ── Validate --content ──────────────────────────────────────────────
+// LLM-powered content verification for knowledge validation.
+
+export interface DoctorConfig {
+  model: string;       // e.g. "anthropic:claude-sonnet-4-5-20250929"
+  baseUrl?: string;    // Override provider endpoint for proxy/self-hosted
+  apiKey?: string;     // Override provider-specific key
+}
+
+export type ContentVerdict = 'accurate' | 'drifted' | 'wrong';
+
+export interface ContentVerdictResult {
+  verdict: ContentVerdict;
+  reason: string;
+  suggestedContent?: string;
+}
+
+// Category confidence defaults for reset on drift correction.
+export const CATEGORY_CONFIDENCE_DEFAULTS: Record<string, number> = {
+  truth: 0.9,
+  architecture: 0.85,
+  gotcha: 0.8,
+  pattern: 0.8,
+  principle: 0.75,
+};
+
 // ── CLI Response ────────────────────────────────────────────────────
 // Uniform JSON envelope for all CLI command output.
 

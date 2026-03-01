@@ -5,13 +5,14 @@ import { performVectorSearch } from '../db/search.js';
 import { embed } from '../embed/model.js';
 
 import { generateId } from '../utils/id.js';
-import { getProjectNamespace } from '../utils/config.js';
+import { getProjectNamespace, loadDoctorConfig } from '../utils/config.js';
 import { getGitUsername, getGitBranch } from '../utils/git.js';
 import { validateCitation, computeContentHash } from '../utils/hash.js';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { generateExtractProposals } from './ticket.js';
-import type { Knowledge, SearchResult, KnowledgeInput, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType, TicketPlan, Citation } from '../types.js';
+import type { Knowledge, SearchResult, KnowledgeInput, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType, TicketPlan, Citation, ContentVerdictResult } from '../types.js';
+import { CATEGORY_CONFIDENCE_DEFAULTS } from '../types.js';
 
 function clampConfidence(value: number): number {
   if (isNaN(value)) return 0.8;
@@ -838,7 +839,10 @@ knowledgeCommand
   .option('--all', 'Validate all active entries with citations')
   .option('--main', 'Validate main branch entries with citations')
   .option('--dry-run', 'Preview only, no side effects')
-  .option('--heal', 'Auto-fix changed citation hashes (entries with no missing citations)')
+  .option('--heal', 'Enable healing (requires --hash and/or --content)')
+  .option('--hash', 'Heal changed citation hashes')
+  .option('--content', 'LLM-powered content verification (requires DOCTOR_MODEL in .superintent/.env)')
+  .option('--auto', 'Headless mode: skip interactive prompts, log flagged entries (requires --content)')
   .action(async (id: string | undefined, options: Record<string, unknown>) => {
     try {
       if (!id && !options.all && !options.main) {
@@ -850,6 +854,37 @@ knowledgeCommand
         process.exit(1);
       }
 
+      // Flag validation
+      if (options.heal && !options.hash && !options.content) {
+        const response: CliResponse = { success: false, error: '--heal requires --hash and/or --content' };
+        console.log(JSON.stringify(response));
+        process.exit(1);
+      }
+      if (options.auto && !options.content) {
+        const response: CliResponse = { success: false, error: '--auto requires --content' };
+        console.log(JSON.stringify(response));
+        process.exit(1);
+      }
+      if (options.content && !options.heal) {
+        const response: CliResponse = { success: false, error: '--content requires --heal' };
+        console.log(JSON.stringify(response));
+        process.exit(1);
+      }
+
+      // Load LLM config if --content
+      let doctorConfig: { model: string; baseUrl?: string; apiKey?: string } | null = null;
+      if (options.content) {
+        doctorConfig = loadDoctorConfig();
+        if (!doctorConfig) {
+          const response: CliResponse = {
+            success: false,
+            error: '--content requires DOCTOR_MODEL in .superintent/.env (e.g. DOCTOR_MODEL="anthropic:claude-sonnet-4-5-20250929")',
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+      }
+
       const client = await getClient();
       try {
         let rows;
@@ -857,7 +892,7 @@ knowledgeCommand
           const ids = id.split(',').map((s) => s.trim()).filter(Boolean);
           const placeholders = ids.map(() => '?').join(', ');
           const result = await client.execute({
-            sql: `SELECT id, title, citations FROM knowledge WHERE id IN (${placeholders})`,
+            sql: `SELECT id, title, content, category, confidence, citations FROM knowledge WHERE id IN (${placeholders})`,
             args: ids,
           });
           if (result.rows.length === 0) {
@@ -881,8 +916,8 @@ knowledgeCommand
           rows = result.rows;
         } else {
           const sql = options.main
-            ? "SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL AND branch = 'main'"
-            : 'SELECT id, title, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL';
+            ? "SELECT id, title, content, category, confidence, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL AND branch = 'main'"
+            : 'SELECT id, title, content, category, confidence, citations FROM knowledge WHERE active = 1 AND citations IS NOT NULL';
           const result = await client.execute({ sql, args: [] });
           rows = result.rows;
         }
@@ -892,6 +927,9 @@ knowledgeCommand
         const entries: {
           id: string;
           title: string;
+          content: string;
+          category: string | null;
+          confidence: number;
           total: number;
           valid: number;
           changed: number;
@@ -904,6 +942,9 @@ knowledgeCommand
         for (const row of rows) {
           const entryId = row.id as string;
           const title = row.title as string;
+          const content = row.content as string;
+          const category = row.category as string | null;
+          const confidence = row.confidence as number;
           const citationsRaw = row.citations as string | null;
 
           if (!citationsRaw) {
@@ -925,6 +966,9 @@ knowledgeCommand
           entries.push({
             id: entryId,
             title: title.slice(0, 60),
+            content,
+            category,
+            confidence,
             total: citations.length,
             valid,
             changed,
@@ -934,9 +978,9 @@ knowledgeCommand
           });
         }
 
-        // --heal: auto-fix changed citation hashes (no missing citations)
+        // --heal --hash: auto-fix changed citation hashes (no missing citations)
         let healed = 0;
-        if (options.heal && !options.dryRun) {
+        if (options.heal && options.hash && !options.dryRun) {
           for (const entry of entries) {
             if (entry.changed > 0 && entry.missing === 0) {
               const updatedCitations = entry.details.map((d) => ({
@@ -956,20 +1000,286 @@ knowledgeCommand
           }
         }
 
+        // --content: LLM-powered content verification + missing resolution + user decisions
+        let contentVerified = 0;
+        let contentUpdated = 0;
+        let deactivated = 0;
+        let keptAsIs = 0;
+        let skipped = 0;
+
+        if (options.content && doctorConfig && !options.dryRun) {
+          const { createDoctorModel } = await import('../utils/llm.js');
+          const { generateObject } = await import('ai');
+          const { z } = await import('zod');
+
+          const model = await createDoctorModel(doctorConfig);
+
+          const verdictSchema = z.object({
+            verdict: z.enum(['accurate', 'drifted', 'wrong']),
+            reason: z.string(),
+            suggestedContent: z.string().nullable(),
+          });
+
+          // Step 2: Verify healed entries' content via LLM
+          const healedEntries = entries.filter((e) => e.healed);
+          const flagged: { entry: typeof entries[0]; reason: string }[] = [];
+
+          if (healedEntries.length > 0) {
+            // Group healed entries by citation files and read file contents
+            const fileContents = new Map<string, string>();
+            for (const entry of healedEntries) {
+              for (const d of entry.details) {
+                const filePath = d.path.includes(':') ? d.path.slice(0, d.path.lastIndexOf(':')) : d.path;
+                if (!fileContents.has(filePath)) {
+                  try {
+                    fileContents.set(filePath, readFileSync(resolve(cwd, filePath), 'utf-8'));
+                  } catch {
+                    // File may have been deleted between validation and read
+                  }
+                }
+              }
+            }
+
+            // Batch entries (~5 per call) for LLM verification
+            const batchSize = 5;
+            for (let i = 0; i < healedEntries.length; i += batchSize) {
+              const batch = healedEntries.slice(i, i + batchSize);
+
+              const results = await Promise.all(
+                batch.map(async (entry) => {
+                  // Collect cited file contents for this entry
+                  const citedFiles: string[] = [];
+                  for (const d of entry.details) {
+                    const filePath = d.path.includes(':') ? d.path.slice(0, d.path.lastIndexOf(':')) : d.path;
+                    const content = fileContents.get(filePath);
+                    if (content) {
+                      citedFiles.push(`--- ${filePath} ---\n${content.slice(0, 8000)}`);
+                    }
+                  }
+
+                  try {
+                    const { object } = await generateObject({
+                      model,
+                      schema: verdictSchema,
+                      prompt: `You are verifying whether a knowledge entry's content still accurately reflects the current source code files.
+
+Knowledge entry title: ${entry.title}
+Knowledge entry content:
+${entry.content}
+
+Current source file(s):
+${citedFiles.join('\n\n')}
+
+Compare the knowledge content against the current source files. Return:
+- "accurate" if the knowledge content still correctly describes the source code
+- "drifted" if the knowledge is partially correct but some details have changed (include suggestedContent with corrected version)
+- "wrong" if the knowledge no longer applies to the current code`,
+                    });
+                    return { entry, verdict: object as ContentVerdictResult };
+                  } catch (err) {
+                    // LLM call failed — treat as needing review
+                    console.error(`LLM error for ${entry.id}: ${(err as Error).message}`);
+                    return { entry, verdict: { verdict: 'wrong' as const, reason: 'LLM verification failed' } };
+                  }
+                }),
+              );
+
+              // Apply verdicts
+              for (const { entry, verdict } of results) {
+                if (verdict.verdict === 'accurate') {
+                  contentVerified++;
+                  // Boost confidence +0.05, cap at 0.95
+                  const newConf = Math.min(entry.confidence + 0.05, 0.95);
+                  if (Math.abs(newConf - entry.confidence) >= 0.001) {
+                    await client.execute({
+                      sql: 'UPDATE knowledge SET confidence = ? WHERE id = ?',
+                      args: [newConf, entry.id],
+                    });
+                  }
+                } else if (verdict.verdict === 'drifted' && verdict.suggestedContent) {
+                  contentUpdated++;
+                  // Update content, re-embed, reset confidence to category default
+                  const newContent = verdict.suggestedContent;
+                  const tags = ''; // Tags unchanged
+                  const embedding = await embed(`${entry.title} ${newContent}${tags}`);
+                  const catDefault = CATEGORY_CONFIDENCE_DEFAULTS[entry.category || 'pattern'] ?? 0.8;
+
+                  await client.execute({
+                    sql: 'UPDATE knowledge SET content = ?, embedding = vector32(?), confidence = ?, updated_at = datetime(?) WHERE id = ?',
+                    args: [newContent, JSON.stringify(embedding), catDefault, new Date().toISOString(), entry.id],
+                  });
+                  // Add comment
+                  const commentId = generateId('COMMENT');
+                  await client.execute({
+                    sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                    args: [commentId, 'knowledge', entry.id, 'validate', `Content drift corrected: ${verdict.reason}`],
+                  });
+                } else {
+                  // wrong — flag for Step 4
+                  flagged.push({ entry, reason: verdict.reason });
+                }
+              }
+            }
+          }
+
+          // Step 3: Resolve missing citations
+          const missingEntries = entries.filter((e) => e.missing > 0 && !e.healed);
+          for (const entry of missingEntries) {
+            if (entry.valid === 0) {
+              // All citations missing — auto-deactivate
+              await client.execute({
+                sql: 'UPDATE knowledge SET active = 0, updated_at = datetime(?) WHERE id = ?',
+                args: [new Date().toISOString(), entry.id],
+              });
+              const commentId = generateId('COMMENT');
+              await client.execute({
+                sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                args: [commentId, 'knowledge', entry.id, 'validate', `Auto-deactivated: all ${entry.missing} citation source files removed`],
+              });
+              deactivated++;
+            } else {
+              // Some missing, some valid — flag for Step 4
+              flagged.push({ entry, reason: `${entry.missing}/${entry.total} citation files missing` });
+            }
+          }
+
+          // Step 4: User decisions for flagged entries
+          if (flagged.length > 0) {
+            if (options.auto) {
+              // Headless: skip all flagged
+              skipped = flagged.length;
+            } else {
+              // Interactive: prompt for each flagged entry
+              const { select } = await import('@inquirer/prompts');
+
+              for (const { entry, reason } of flagged) {
+                console.error(`\nFlagged: ${entry.id} — ${entry.title}`);
+                console.error(`  Reason: ${reason}`);
+
+                const action = await select({
+                  message: `What should we do with "${entry.title}"?`,
+                  choices: [
+                    { name: 'Update — LLM rewrites content', value: 'update' },
+                    { name: 'Deactivate — no longer relevant', value: 'deactivate' },
+                    { name: 'Keep as-is — conceptually still valid', value: 'keep' },
+                  ],
+                });
+
+                if (action === 'update') {
+                  // Read current file contents for LLM
+                  const citedFiles: string[] = [];
+                  for (const d of entry.details) {
+                    if (d.status !== 'missing') {
+                      const filePath = d.path.includes(':') ? d.path.slice(0, d.path.lastIndexOf(':')) : d.path;
+                      try {
+                        citedFiles.push(`--- ${filePath} ---\n${readFileSync(resolve(cwd, filePath), 'utf-8').slice(0, 8000)}`);
+                      } catch { /* skip unreadable */ }
+                    }
+                  }
+
+                  try {
+                    const { object } = await generateObject({
+                      model,
+                      schema: z.object({ content: z.string() }),
+                      prompt: `Rewrite this knowledge entry to match the current source code.
+
+Original title: ${entry.title}
+Original content:
+${entry.content}
+
+Current source file(s):
+${citedFiles.join('\n\n')}
+
+Write updated content that accurately reflects the current code. Use the same format style as the original.`,
+                    });
+
+                    const newContent = object.content;
+                    const embedding = await embed(`${entry.title} ${newContent}`);
+                    const catDefault = CATEGORY_CONFIDENCE_DEFAULTS[entry.category || 'pattern'] ?? 0.8;
+
+                    // Remove missing citations, keep valid ones with fresh hashes
+                    const validCitations = entry.details
+                      .filter((d) => d.status !== 'missing')
+                      .map((d) => ({ path: d.path, fileHash: d.currentFileHash! }));
+
+                    await client.execute({
+                      sql: 'UPDATE knowledge SET content = ?, citations = ?, embedding = vector32(?), confidence = ?, updated_at = datetime(?) WHERE id = ?',
+                      args: [newContent, JSON.stringify(validCitations), JSON.stringify(embedding), catDefault, new Date().toISOString(), entry.id],
+                    });
+                    const commentId = generateId('COMMENT');
+                    await client.execute({
+                      sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                      args: [commentId, 'knowledge', entry.id, 'validate', `Content updated: ${reason}`],
+                    });
+                    contentUpdated++;
+                  } catch {
+                    console.error(`  LLM rewrite failed for ${entry.id}, skipping`);
+                    skipped++;
+                  }
+                } else if (action === 'deactivate') {
+                  await client.execute({
+                    sql: 'UPDATE knowledge SET active = 0, updated_at = datetime(?) WHERE id = ?',
+                    args: [new Date().toISOString(), entry.id],
+                  });
+                  const commentId = generateId('COMMENT');
+                  await client.execute({
+                    sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                    args: [commentId, 'knowledge', entry.id, 'validate', `User deactivated: ${reason}`],
+                  });
+                  deactivated++;
+                } else {
+                  // keep as-is — reduce confidence
+                  const newConf = Math.max(entry.confidence - 0.10, 0.1);
+                  await client.execute({
+                    sql: 'UPDATE knowledge SET confidence = ?, updated_at = datetime(?) WHERE id = ?',
+                    args: [newConf, new Date().toISOString(), entry.id],
+                  });
+                  const commentId = generateId('COMMENT');
+                  await client.execute({
+                    sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                    args: [commentId, 'knowledge', entry.id, 'validate', `User kept as-is despite changes: ${reason}`],
+                  });
+                  keptAsIs++;
+                }
+              }
+            }
+          }
+        }
+
+        // Strip content from response entries to keep output concise
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const responseEntries = entries.map(({ content: _, ...rest }) => rest);
+
         const response: CliResponse<{
           validated: number;
           uncited: number;
           healed: number;
-          entries: typeof entries;
+          contentVerified: number;
+          contentUpdated: number;
+          deactivated: number;
+          keptAsIs: number;
+          skipped: number;
+          entries: typeof responseEntries;
         }> = {
           success: true,
           data: {
             validated: entries.length,
             uncited,
             healed,
-            entries,
+            contentVerified,
+            contentUpdated,
+            deactivated,
+            keptAsIs,
+            skipped,
+            entries: responseEntries,
           },
         };
+
+        // Suggest /maintain if any entries were modified
+        if (contentUpdated > 0 || deactivated > 0) {
+          console.error('Tip: Run /maintain to refresh CLAUDE.md with updated knowledge');
+        }
+
         console.log(JSON.stringify(response));
       } finally {
         closeClient();

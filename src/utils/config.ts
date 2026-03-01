@@ -128,6 +128,39 @@ export function configExists(): boolean {
 }
 
 /**
+ * Load LLM config for validate --content.
+ * Returns null if DOCTOR_MODEL is not set (shallow mode).
+ */
+export function loadDoctorConfig(): { model: string; baseUrl?: string; apiKey?: string } | null {
+  // Check environment variables first
+  const model = process.env.DOCTOR_MODEL;
+  if (model) {
+    return {
+      model,
+      baseUrl: process.env.DOCTOR_BASE_URL || undefined,
+      apiKey: process.env.DOCTOR_API_KEY || undefined,
+    };
+  }
+
+  // Check .superintent/.env file
+  const envPath = getEnvPath();
+  if (existsSync(envPath)) {
+    const content = readFileSync(envPath, 'utf-8');
+    const env = parseEnvFile(content);
+
+    if (env.DOCTOR_MODEL) {
+      return {
+        model: env.DOCTOR_MODEL,
+        baseUrl: env.DOCTOR_BASE_URL || undefined,
+        apiKey: env.DOCTOR_API_KEY || undefined,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get project namespace from CLAUDE.md "- Namespace:" line.
  * Falls back to current directory basename.
  */
