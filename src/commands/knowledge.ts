@@ -1061,7 +1061,9 @@ ${citedFiles.join('\n\n')}
 Compare the knowledge content against the current source files. Return:
 - "accurate" if the knowledge content still correctly describes the source code
 - "drifted" if the knowledge is partially correct but some details have changed (include suggestedContent with corrected version)
-- "wrong" if the knowledge no longer applies to the current code (include suggestedContent with rewritten version)`,
+- "wrong" if the knowledge no longer applies to the current code (include suggestedContent with rewritten version)
+
+For the "reason" field: be brief — just state what specifically changed or was fixed (e.g. "MAX_CACHE_SIZE changed from 100 to 500"). Do not write a full audit or list what is correct.`,
                     });
                     return { entry, verdict: object as ContentVerdictResult };
                   } catch (err) {
@@ -1073,6 +1075,12 @@ Compare the knowledge content against the current source files. Return:
 
               // Apply verdicts
               for (const { entry, verdict } of results) {
+                // Remove previous validate comment — one heal, one comment
+                await client.execute({
+                  sql: 'DELETE FROM comments WHERE parent_type = ? AND parent_id = ? AND author = ?',
+                  args: ['knowledge', entry.id, 'validate'],
+                });
+
                 if (!verdict) {
                   // LLM failed — track with comment so it's not silently skipped
                   const commentId = generateId('COMMENT');
@@ -1095,7 +1103,7 @@ Compare the knowledge content against the current source files. Return:
                   const commentId = generateId('COMMENT');
                   await client.execute({
                     sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                    args: [commentId, 'knowledge', entry.id, 'validate', `Content verified accurate: ${verdict.reason}`],
+                    args: [commentId, 'knowledge', entry.id, 'validate', `Verified accurate: ${verdict.reason}`],
                   });
                 } else if (verdict.suggestedContent) {
                   // drifted or wrong — LLM provided rewritten content
@@ -1110,7 +1118,7 @@ Compare the knowledge content against the current source files. Return:
                   const commentId = generateId('COMMENT');
                   await client.execute({
                     sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                    args: [commentId, 'knowledge', entry.id, 'validate', `Content ${verdict.verdict}: ${verdict.reason}`],
+                    args: [commentId, 'knowledge', entry.id, 'validate', `Healed (${verdict.verdict}): ${verdict.reason}`],
                   });
                   contentUpdated++;
                 } else {
@@ -1118,7 +1126,7 @@ Compare the knowledge content against the current source files. Return:
                   const commentId = generateId('COMMENT');
                   await client.execute({
                     sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                    args: [commentId, 'knowledge', entry.id, 'validate', `Content ${verdict.verdict} but no suggested fix provided: ${verdict.reason}`],
+                    args: [commentId, 'knowledge', entry.id, 'validate', `Flagged (${verdict.verdict}): ${verdict.reason}`],
                   });
                   contentUpdated++;
                 }
@@ -1133,10 +1141,16 @@ Compare the knowledge content against the current source files. Return:
               sql: 'UPDATE knowledge SET active = 0, updated_at = datetime(?) WHERE id = ?',
               args: [new Date().toISOString(), entry.id],
             });
+            // Remove previous validate comment — one heal, one comment
+            await client.execute({
+              sql: 'DELETE FROM comments WHERE parent_type = ? AND parent_id = ? AND author = ?',
+              args: ['knowledge', entry.id, 'validate'],
+            });
             const commentId = generateId('COMMENT');
+            const missingPaths = entry.details.filter((d) => d.status === 'missing').map((d) => d.path).join(', ');
             const detail = entry.valid === 0
-              ? `Auto-deactivated: all ${entry.missing} citation source files removed`
-              : `Auto-deactivated: ${entry.missing}/${entry.total} citation source files missing`;
+              ? `Auto-deactivated: all citation source files removed — ${missingPaths}`
+              : `Auto-deactivated: ${entry.missing}/${entry.total} citation source files missing — ${missingPaths}`;
             await client.execute({
               sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
               args: [commentId, 'knowledge', entry.id, 'validate', detail],
