@@ -3,10 +3,10 @@ import { resolve } from 'node:path';
 import type { Client, InValue } from '@libsql/client';
 import { Command } from 'commander';
 import { closeClient, getClient } from '../db/client.js';
-import { parseTicketRow } from '../db/parsers.js';
+import { parseCommentRow, parseTicketRow } from '../db/parsers.js';
 import { performVectorSearch } from '../db/search.js';
 import { embed } from '../embed/model.js';
-import type { Citation, CliResponse, KnowledgeInput, Ticket, TicketPlan, TicketType } from '../types.js';
+import type { Citation, CliResponse, Comment, KnowledgeInput, Ticket, TicketPlan, TicketType } from '../types.js';
 import { getProjectNamespace } from '../utils/config.js';
 import { getGitUsername } from '../utils/git.js';
 import { computeContentHash } from '../utils/hash.js';
@@ -617,10 +617,15 @@ ticketCommand
     try {
       const client = await getClient();
       let result;
+      let commentsResult;
       try {
         result = await client.execute({
           sql: 'SELECT * FROM tickets WHERE id = ?',
           args: [id],
+        });
+        commentsResult = await client.execute({
+          sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE parent_type = ? AND parent_id = ? ORDER BY created_at ASC',
+          args: ['ticket', id],
         });
       } finally {
         closeClient();
@@ -636,10 +641,11 @@ ticketCommand
       }
 
       const ticket = parseTicketRow(result.rows[0] as Record<string, unknown>);
+      const comments = commentsResult.rows.map((row) => parseCommentRow(row as Record<string, unknown>));
 
-      const response: CliResponse<Ticket> = {
+      const response: CliResponse<Ticket & { comments: Comment[] }> = {
         success: true,
-        data: ticket,
+        data: { ...ticket, comments },
       };
       console.log(JSON.stringify(response));
     } catch (error) {

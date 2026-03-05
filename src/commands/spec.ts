@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { closeClient, getClient } from '../db/client.js';
-import { parseSpecRow } from '../db/parsers.js';
-import type { CliResponse, Spec } from '../types.js';
+import { parseCommentRow, parseSpecRow } from '../db/parsers.js';
+import type { CliResponse, Comment, Spec } from '../types.js';
 import { getGitUsername } from '../utils/git.js';
 import { generateId } from '../utils/id.js';
 
@@ -131,10 +131,15 @@ specCommand
     try {
       const client = await getClient();
       let result;
+      let commentsResult;
       try {
         result = await client.execute({
           sql: 'SELECT * FROM specs WHERE id = ?',
           args: [id],
+        });
+        commentsResult = await client.execute({
+          sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE parent_type = ? AND parent_id = ? ORDER BY created_at ASC',
+          args: ['spec', id],
         });
       } finally {
         closeClient();
@@ -150,10 +155,11 @@ specCommand
       }
 
       const spec = parseSpecRow(result.rows[0] as Record<string, unknown>);
+      const comments = commentsResult.rows.map((row) => parseCommentRow(row as Record<string, unknown>));
 
-      const response: CliResponse<Spec> = {
+      const response: CliResponse<Spec & { comments: Comment[] }> = {
         success: true,
-        data: spec,
+        data: { ...spec, comments },
       };
       console.log(JSON.stringify(response));
     } catch (error) {

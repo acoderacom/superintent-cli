@@ -2,12 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { closeClient, getClient } from '../db/client.js';
-import { parseKnowledgeRow, parseTicketRow } from '../db/parsers.js';
+import { parseCommentRow, parseKnowledgeRow, parseTicketRow } from '../db/parsers.js';
 import { performVectorSearch } from '../db/search.js';
 import { embed } from '../embed/model.js';
 import type {
   Citation,
   CliResponse,
+  Comment,
   ContentVerdictResult,
   DecisionScope,
   Knowledge,
@@ -371,6 +372,7 @@ knowledgeCommand
     try {
       const client = await getClient();
       let result;
+      let commentsResult;
       try {
         result = await client.execute({
           sql: `SELECT id, namespace, chunk_index, title, content,
@@ -378,6 +380,10 @@ knowledgeCommand
                 usage_count, last_used_at, author, branch, created_at
                 FROM knowledge WHERE id = ?`,
           args: [id],
+        });
+        commentsResult = await client.execute({
+          sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE parent_type = ? AND parent_id = ? ORDER BY created_at ASC',
+          args: ['knowledge', id],
         });
       } finally {
         closeClient();
@@ -393,10 +399,11 @@ knowledgeCommand
       }
 
       const knowledge = parseKnowledgeRow(result.rows[0] as Record<string, unknown>);
+      const comments = commentsResult.rows.map((row) => parseCommentRow(row as Record<string, unknown>));
 
-      const response: CliResponse<Knowledge> = {
+      const response: CliResponse<Knowledge & { comments: Comment[] }> = {
         success: true,
-        data: knowledge,
+        data: { ...knowledge, comments },
       };
       console.log(JSON.stringify(response));
     } catch (error) {
@@ -1067,13 +1074,24 @@ knowledgeCommand
                   if (verbose) {
                     process.stderr.write(`\n→ [${++processed}/${healedEntries.length}] ${entry.id} "${entry.title}"\n`);
                   }
-                  // Build cited file context
+                  // Build cited file context — use line-anchored excerpts when citation has a line number
+                  const EXCERPT_WINDOW = 200;
                   const citedFiles: string[] = [];
                   for (const d of entry.details) {
-                    const filePath = d.path.includes(':') ? d.path.slice(0, d.path.lastIndexOf(':')) : d.path;
+                    const colonIdx = d.path.lastIndexOf(':');
+                    const hasLine = colonIdx > 0 && /^\d+$/.test(d.path.slice(colonIdx + 1));
+                    const filePath = hasLine ? d.path.slice(0, colonIdx) : d.path;
                     const content = fileContents.get(filePath);
                     if (content) {
-                      citedFiles.push(`--- ${filePath} ---\n${content.slice(0, 8000)}`);
+                      if (hasLine) {
+                        const lineNum = parseInt(d.path.slice(colonIdx + 1), 10);
+                        const lines = content.split('\n');
+                        const start = Math.max(0, lineNum - EXCERPT_WINDOW / 2);
+                        const end = Math.min(lines.length, lineNum + EXCERPT_WINDOW / 2);
+                        citedFiles.push(`--- ${filePath} (lines ${start + 1}-${end}) ---\n${lines.slice(start, end).join('\n')}`);
+                      } else {
+                        citedFiles.push(`--- ${filePath} ---\n${content.slice(0, 8000)}`);
+                      }
                     }
                   }
 
