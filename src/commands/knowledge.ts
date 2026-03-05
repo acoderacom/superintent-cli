@@ -842,6 +842,7 @@ knowledgeCommand
   .option('--heal', 'Enable healing (requires --hash and/or --content)')
   .option('--hash', 'Heal changed citation hashes')
   .option('--content', 'LLM-powered content verification (requires DOCTOR_MODEL in .superintent/.env)')
+  .option('--verbose', 'Show detailed progress during LLM content verification')
   .action(async (id: string | undefined, options: Record<string, unknown>) => {
     try {
       if (!id && !options.all && !options.main) {
@@ -1033,10 +1034,19 @@ knowledgeCommand
             const LLM_CONCURRENCY = 3;
             const pLimit = (await import('p-limit')).default;
             const limit = pLimit(LLM_CONCURRENCY);
+            const verbose = !!options.verbose;
+            let processed = 0;
+
+            if (verbose) {
+              process.stderr.write(`\n* LLM content verification: ${healedEntries.length} entries, concurrency ${LLM_CONCURRENCY}\n`);
+            }
 
             await Promise.all(
               healedEntries.map((entry) =>
                 limit(async () => {
+                  if (verbose) {
+                    process.stderr.write(`\n→ [${++processed}/${healedEntries.length}] ${entry.id} "${entry.title}"\n`);
+                  }
                   // Build cited file context
                   const citedFiles: string[] = [];
                   for (const d of entry.details) {
@@ -1048,6 +1058,9 @@ knowledgeCommand
                   }
 
                   // LLM call
+                  if (verbose) {
+                    process.stderr.write(`  ⟳ Calling LLM (${citedFiles.length} file(s))...\n`);
+                  }
                   let verdict: ContentVerdictResult | null = null;
                   try {
                     const { object } = await generateObject({
@@ -1070,7 +1083,13 @@ Compare the knowledge content against the current source files. Return:
 For the "reason" field: be brief — just state what specifically changed or was fixed (e.g. "MAX_CACHE_SIZE changed from 100 to 500"). Do not write a full audit or list what is correct.`,
                     });
                     verdict = object as ContentVerdictResult;
+                    if (verbose) {
+                      process.stderr.write(`  ✓ Verdict: ${verdict.verdict} — ${verdict.reason}\n`);
+                    }
                   } catch (err) {
+                    if (verbose) {
+                      process.stderr.write(`  ✗ LLM failed: ${(err as Error).message}\n`);
+                    }
                     console.error(`LLM error for ${entry.id}: ${(err as Error).message}`);
                   }
 
@@ -1098,6 +1117,9 @@ For the "reason" field: be brief — just state what specifically changed or was
                         args: [newConf, entry.id],
                       });
                     }
+                    if (verbose) {
+                      process.stderr.write(`  → Confidence: ${entry.confidence} → ${newConf}\n`);
+                    }
                     const commentId = generateId('COMMENT');
                     await client.execute({
                       sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
@@ -1105,6 +1127,9 @@ For the "reason" field: be brief — just state what specifically changed or was
                     });
                   } else if (verdict.suggestedContent) {
                     const newContent = verdict.suggestedContent;
+                    if (verbose) {
+                      process.stderr.write(`  → Healing content (${verdict.verdict}), re-embedding...\n`);
+                    }
                     const embedding = await embed(`${entry.title} ${newContent}`);
                     const catDefault = CATEGORY_CONFIDENCE_DEFAULTS[entry.category || 'pattern'] ?? 0.8;
 
@@ -1112,6 +1137,9 @@ For the "reason" field: be brief — just state what specifically changed or was
                       sql: 'UPDATE knowledge SET content = ?, embedding = vector32(?), confidence = ?, updated_at = datetime(?) WHERE id = ?',
                       args: [newContent, JSON.stringify(embedding), catDefault, new Date().toISOString(), entry.id],
                     });
+                    if (verbose) {
+                      process.stderr.write(`  → Confidence reset: ${entry.confidence} → ${catDefault}\n`);
+                    }
                     const commentId = generateId('COMMENT');
                     await client.execute({
                       sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
@@ -1132,8 +1160,16 @@ For the "reason" field: be brief — just state what specifically changed or was
           }
 
           // Step 3: Resolve missing citations — any missing = deactivate
+          const verbose = !!options.verbose;
           const missingEntries = entries.filter((e) => e.missing > 0 && !e.healed);
+          if (verbose && missingEntries.length > 0) {
+            process.stderr.write(`\n* Deactivating ${missingEntries.length} entries with missing citations\n`);
+          }
           for (const entry of missingEntries) {
+            if (verbose) {
+              const missingPaths = entry.details.filter((d: { status: string }) => d.status === 'missing').map((d: { path: string }) => d.path).join(', ');
+              process.stderr.write(`  ✗ ${entry.id} — missing: ${missingPaths}\n`);
+            }
             await client.execute({
               sql: 'UPDATE knowledge SET active = 0, updated_at = datetime(?) WHERE id = ?',
               args: [new Date().toISOString(), entry.id],
