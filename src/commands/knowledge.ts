@@ -1084,7 +1084,14 @@ For the "reason" field: be brief — just state what specifically changed or was
                     });
                     verdict = object as ContentVerdictResult;
                     if (verbose) {
-                      process.stderr.write(`  ✓ Verdict: ${verdict.verdict} — ${verdict.reason}\n`);
+                      process.stderr.write(`  ✓ Verdict: ${verdict.verdict}\n`);
+                      process.stderr.write(`  │ Reason: ${verdict.reason}\n`);
+                      if (verdict.suggestedContent) {
+                        process.stderr.write(`  │ Suggested content:\n`);
+                        for (const line of verdict.suggestedContent.split('\n')) {
+                          process.stderr.write(`  │   ${line}\n`);
+                        }
+                      }
                     }
                   } catch (err) {
                     if (verbose) {
