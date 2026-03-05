@@ -1029,13 +1029,15 @@ knowledgeCommand
               }
             }
 
-            // Batch entries (~5 per call) for LLM verification
-            const batchSize = 5;
-            for (let i = 0; i < healedEntries.length; i += batchSize) {
-              const batch = healedEntries.slice(i, i + batchSize);
+            // Sliding-window concurrency for LLM verification
+            const LLM_CONCURRENCY = 3;
+            const pLimit = (await import('p-limit')).default;
+            const limit = pLimit(LLM_CONCURRENCY);
 
-              const results = await Promise.all(
-                batch.map(async (entry) => {
+            await Promise.all(
+              healedEntries.map((entry) =>
+                limit(async () => {
+                  // Build cited file context
                   const citedFiles: string[] = [];
                   for (const d of entry.details) {
                     const filePath = d.path.includes(':') ? d.path.slice(0, d.path.lastIndexOf(':')) : d.path;
@@ -1045,6 +1047,8 @@ knowledgeCommand
                     }
                   }
 
+                  // LLM call
+                  let verdict: ContentVerdictResult | null = null;
                   try {
                     const { object } = await generateObject({
                       model,
@@ -1065,73 +1069,66 @@ Compare the knowledge content against the current source files. Return:
 
 For the "reason" field: be brief — just state what specifically changed or was fixed (e.g. "MAX_CACHE_SIZE changed from 100 to 500"). Do not write a full audit or list what is correct.`,
                     });
-                    return { entry, verdict: object as ContentVerdictResult };
+                    verdict = object as ContentVerdictResult;
                   } catch (err) {
                     console.error(`LLM error for ${entry.id}: ${(err as Error).message}`);
-                    return { entry, verdict: null };
+                  }
+
+                  // Apply verdict — DB writes inside the limited function
+                  await client.execute({
+                    sql: 'DELETE FROM comments WHERE parent_type = ? AND parent_id = ? AND author = ?',
+                    args: ['knowledge', entry.id, 'validate'],
+                  });
+
+                  if (!verdict) {
+                    const commentId = generateId('COMMENT');
+                    await client.execute({
+                      sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                      args: [commentId, 'knowledge', entry.id, 'validate', `Content verification skipped: LLM call failed`],
+                    });
+                    return;
+                  }
+
+                  if (verdict.verdict === 'accurate') {
+                    contentVerified++;
+                    const newConf = Math.min(entry.confidence + 0.05, 0.95);
+                    if (Math.abs(newConf - entry.confidence) >= 0.001) {
+                      await client.execute({
+                        sql: 'UPDATE knowledge SET confidence = ? WHERE id = ?',
+                        args: [newConf, entry.id],
+                      });
+                    }
+                    const commentId = generateId('COMMENT');
+                    await client.execute({
+                      sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                      args: [commentId, 'knowledge', entry.id, 'validate', `Verified accurate: ${verdict.reason}`],
+                    });
+                  } else if (verdict.suggestedContent) {
+                    const newContent = verdict.suggestedContent;
+                    const embedding = await embed(`${entry.title} ${newContent}`);
+                    const catDefault = CATEGORY_CONFIDENCE_DEFAULTS[entry.category || 'pattern'] ?? 0.8;
+
+                    await client.execute({
+                      sql: 'UPDATE knowledge SET content = ?, embedding = vector32(?), confidence = ?, updated_at = datetime(?) WHERE id = ?',
+                      args: [newContent, JSON.stringify(embedding), catDefault, new Date().toISOString(), entry.id],
+                    });
+                    const commentId = generateId('COMMENT');
+                    await client.execute({
+                      sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                      args: [commentId, 'knowledge', entry.id, 'validate', `Healed (${verdict.verdict}): ${verdict.reason}`],
+                    });
+                    contentUpdated++;
+                  } else {
+                    const commentId = generateId('COMMENT');
+                    await client.execute({
+                      sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
+                      args: [commentId, 'knowledge', entry.id, 'validate', `Flagged (${verdict.verdict}): ${verdict.reason}`],
+                    });
+                    contentUpdated++;
                   }
                 }),
-              );
-
-              // Apply verdicts
-              for (const { entry, verdict } of results) {
-                // Remove previous validate comment — one heal, one comment
-                await client.execute({
-                  sql: 'DELETE FROM comments WHERE parent_type = ? AND parent_id = ? AND author = ?',
-                  args: ['knowledge', entry.id, 'validate'],
-                });
-
-                if (!verdict) {
-                  // LLM failed — track with comment so it's not silently skipped
-                  const commentId = generateId('COMMENT');
-                  await client.execute({
-                    sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                    args: [commentId, 'knowledge', entry.id, 'validate', `Content verification skipped: LLM call failed`],
-                  });
-                  continue;
-                }
-
-                if (verdict.verdict === 'accurate') {
-                  contentVerified++;
-                  const newConf = Math.min(entry.confidence + 0.05, 0.95);
-                  if (Math.abs(newConf - entry.confidence) >= 0.001) {
-                    await client.execute({
-                      sql: 'UPDATE knowledge SET confidence = ? WHERE id = ?',
-                      args: [newConf, entry.id],
-                    });
-                  }
-                  const commentId = generateId('COMMENT');
-                  await client.execute({
-                    sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                    args: [commentId, 'knowledge', entry.id, 'validate', `Verified accurate: ${verdict.reason}`],
-                  });
-                } else if (verdict.suggestedContent) {
-                  // drifted or wrong — LLM provided rewritten content
-                  const newContent = verdict.suggestedContent;
-                  const embedding = await embed(`${entry.title} ${newContent}`);
-                  const catDefault = CATEGORY_CONFIDENCE_DEFAULTS[entry.category || 'pattern'] ?? 0.8;
-
-                  await client.execute({
-                    sql: 'UPDATE knowledge SET content = ?, embedding = vector32(?), confidence = ?, updated_at = datetime(?) WHERE id = ?',
-                    args: [newContent, JSON.stringify(embedding), catDefault, new Date().toISOString(), entry.id],
-                  });
-                  const commentId = generateId('COMMENT');
-                  await client.execute({
-                    sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                    args: [commentId, 'knowledge', entry.id, 'validate', `Healed (${verdict.verdict}): ${verdict.reason}`],
-                  });
-                  contentUpdated++;
-                } else {
-                  // drifted/wrong but LLM didn't provide suggested content
-                  const commentId = generateId('COMMENT');
-                  await client.execute({
-                    sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                    args: [commentId, 'knowledge', entry.id, 'validate', `Flagged (${verdict.verdict}): ${verdict.reason}`],
-                  });
-                  contentUpdated++;
-                }
-              }
-            }
+              ),
+            );
           }
 
           // Step 3: Resolve missing citations — any missing = deactivate
