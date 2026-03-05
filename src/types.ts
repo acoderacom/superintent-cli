@@ -151,9 +151,9 @@ export interface Spec {
 // LLM-powered content verification for knowledge validation.
 
 export interface DoctorConfig {
-  model: string;       // e.g. "anthropic:claude-sonnet-4-5-20250929"
-  baseUrl?: string;    // Override provider endpoint for proxy/self-hosted
-  apiKey?: string;     // Override provider-specific key
+  model: string; // e.g. "anthropic:claude-sonnet-4-5-20250929"
+  baseUrl?: string; // Override provider endpoint for proxy/self-hosted
+  apiKey?: string; // Override provider-specific key
 }
 
 export type ContentVerdict = 'accurate' | 'drifted' | 'wrong';

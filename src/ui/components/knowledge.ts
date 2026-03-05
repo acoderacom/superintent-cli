@@ -1,7 +1,8 @@
 // Knowledge-related UI components
-import { escapeHtml } from './utils.js';
-import { renderCommentsSection } from './comments.js';
+
 import type { Comment } from '../../types.js';
+import { renderCommentsSection } from './comments.js';
+import { escapeHtml } from './utils.js';
 
 // Helper to render knowledge view
 export function renderKnowledgeView(): string {
@@ -191,7 +192,16 @@ function renderKnowledgeCard(k: KnowledgeItem): string {
 }
 
 // Build query params string for knowledge filters (used in load-more URLs)
-function buildKnowledgeFilterParams(filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string; sort?: string }): string {
+function buildKnowledgeFilterParams(filters?: {
+  status?: string;
+  category?: string;
+  namespace?: string;
+  scope?: string;
+  source?: string;
+  author?: string;
+  branch?: string;
+  sort?: string;
+}): string {
   if (!filters) return '';
   const params = new URLSearchParams();
   if (filters.status) params.set('k-status', filters.status);
@@ -207,7 +217,20 @@ function buildKnowledgeFilterParams(filters?: { status?: string; category?: stri
 }
 
 // Helper to render knowledge list with optional load-more
-export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string; sort?: string }): string {
+export function renderKnowledgeList(
+  items: KnowledgeItem[],
+  hasMore?: boolean,
+  filters?: {
+    status?: string;
+    category?: string;
+    namespace?: string;
+    scope?: string;
+    source?: string;
+    author?: string;
+    branch?: string;
+    sort?: string;
+  },
+): string {
   if (items.length === 0) {
     return '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No knowledge entries found</p>';
   }
@@ -216,21 +239,39 @@ export function renderKnowledgeList(items: KnowledgeItem[], hasMore?: boolean, f
 
   return `
     <div class="space-y-3">
-      ${items.map(k => renderKnowledgeCard(k)).join('')}
-      ${hasMore ? `
+      ${items.map((k) => renderKnowledgeCard(k)).join('')}
+      ${
+        hasMore
+          ? `
         <button class="block mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors cursor-pointer"
                 hx-get="/partials/knowledge-more?offset=12${filterParams}"
                 hx-swap="outerHTML">
           Load More
         </button>
-      ` : ''}
+      `
+          : ''
+      }
     </div>
   `;
 }
 
 // Helper to render more knowledge items (pagination)
-export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, hasMore: boolean, filters?: { status?: string; category?: string; namespace?: string; scope?: string; source?: string; author?: string; branch?: string; sort?: string }): string {
-  const cards = items.map(k => renderKnowledgeCard(k)).join('');
+export function renderKnowledgeMore(
+  items: KnowledgeItem[],
+  nextOffset: number,
+  hasMore: boolean,
+  filters?: {
+    status?: string;
+    category?: string;
+    namespace?: string;
+    scope?: string;
+    source?: string;
+    author?: string;
+    branch?: string;
+    sort?: string;
+  },
+): string {
+  const cards = items.map((k) => renderKnowledgeCard(k)).join('');
 
   if (!hasMore) {
     return cards;
@@ -249,27 +290,30 @@ export function renderKnowledgeMore(items: KnowledgeItem[], nextOffset: number, 
 }
 
 // Helper to render knowledge modal
-export function renderKnowledgeModal(knowledge: {
-  id: string;
-  namespace: string;
-  title: string;
-  content: string;
-  category?: string;
-  tags?: string[];
-  citations?: { path: string; fileHash: string }[];
-  source: string;
-  origin_ticket_id?: string;
-  origin_ticket_type?: string;
-  confidence: number;
-  active: boolean;
-  decision_scope: string;
-  usage_count?: number;
-  last_used_at?: string;
-  author?: string;
-  branch?: string;
-  created_at?: string;
-  updated_at?: string;
-}, comments?: Comment[]): string {
+export function renderKnowledgeModal(
+  knowledge: {
+    id: string;
+    namespace: string;
+    title: string;
+    content: string;
+    category?: string;
+    tags?: string[];
+    citations?: { path: string; fileHash: string }[];
+    source: string;
+    origin_ticket_id?: string;
+    origin_ticket_type?: string;
+    confidence: number;
+    active: boolean;
+    decision_scope: string;
+    usage_count?: number;
+    last_used_at?: string;
+    author?: string;
+    branch?: string;
+    created_at?: string;
+    updated_at?: string;
+  },
+  comments?: Comment[],
+): string {
   const categoryColors: Record<string, string> = {
     pattern: 'purple',
     truth: 'green',
@@ -316,7 +360,7 @@ export function renderKnowledgeModal(knowledge: {
         <div class="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3">
           <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Usage</div>
           <div class="text-xl font-semibold text-gray-700 dark:text-gray-200">${knowledge.usage_count || 0} <span class="text-sm font-normal text-gray-500 dark:text-gray-400">times</span></div>
-          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">${knowledge.last_used_at ? 'Last used ' + knowledge.last_used_at.split('T')[0] : 'Never used'}</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">${knowledge.last_used_at ? `Last used ${knowledge.last_used_at.split('T')[0]}` : 'Never used'}</div>
         </div>
       </div>
 
@@ -338,7 +382,9 @@ export function renderKnowledgeModal(knowledge: {
         </div>
       </div>
 
-      ${knowledge.origin_ticket_id ? `
+      ${
+        knowledge.origin_ticket_id
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Origin Ticket</h3>
           <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 cursor-pointer font-mono font-medium"
@@ -351,23 +397,33 @@ export function renderKnowledgeModal(knowledge: {
             ${escapeHtml(knowledge.origin_ticket_id)}
           </span>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Tags -->
-      ${knowledge.tags?.length ? `
+      ${
+        knowledge.tags?.length
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Tags</h3>
           <div class="flex flex-wrap gap-2">
-            ${knowledge.tags.map(t => `<span class="px-3 py-1 text-sm rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">${escapeHtml(t)}</span>`).join('')}
+            ${knowledge.tags.map((t) => `<span class="px-3 py-1 text-sm rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">${escapeHtml(t)}</span>`).join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${knowledge.citations?.length ? `
+      ${
+        knowledge.citations?.length
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Citations</h3>
           <div class="space-y-1">
-            ${knowledge.citations.map(c => `
+            ${knowledge.citations
+              .map(
+                (c) => `
               <div class="flex items-center gap-2 text-sm font-mono">
                 <svg class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
@@ -375,10 +431,14 @@ export function renderKnowledgeModal(knowledge: {
                 <span class="text-blue-600 dark:text-blue-400">${escapeHtml(c.path)}</span>
                 <span class="text-xs text-gray-400 dark:text-gray-500" title="File hash">#${escapeHtml((c.fileHash || '—').slice(0, 8))}</span>
               </div>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       ${renderCommentsSection(comments || [], 'knowledge', knowledge.id)}
 

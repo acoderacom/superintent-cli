@@ -22,10 +22,13 @@ export function emitSSE(type: SSEEventType): void {
   const existing = pendingEvents.get(type);
   if (existing) clearTimeout(existing);
 
-  pendingEvents.set(type, setTimeout(() => {
-    pendingEvents.delete(type);
-    eventBus.emit('sse', type);
-  }, DEBOUNCE_MS));
+  pendingEvents.set(
+    type,
+    setTimeout(() => {
+      pendingEvents.delete(type);
+      eventBus.emit('sse', type);
+    }, DEBOUNCE_MS),
+  );
 }
 
 export function createSSEStream(): ReadableStream {
@@ -70,7 +73,7 @@ export function createSSEStream(): ReadableStream {
 }
 
 function removeClient(id: number): void {
-  const index = clients.findIndex(c => c.id === id);
+  const index = clients.findIndex((c) => c.id === id);
   if (index === -1) return;
 
   const client = clients[index];

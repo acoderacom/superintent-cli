@@ -47,8 +47,6 @@ export async function createDoctorModel(config: DoctorConfig) {
     }
 
     default:
-      throw new Error(
-        `Unsupported provider "${provider}" in DOCTOR_MODEL. Supported: anthropic, openai, compatible`,
-      );
+      throw new Error(`Unsupported provider "${provider}" in DOCTOR_MODEL. Supported: anthropic, openai, compatible`);
   }
 }

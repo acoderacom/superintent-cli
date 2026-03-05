@@ -2,10 +2,10 @@
 // Three-tier strategy: tag match → content match → vector match (cheapest first)
 
 import type { Client } from '@libsql/client';
-import type { ASTFileResult, ASTFunction, ASTClass } from './scanner.js';
-import { embed } from '../embed/model.js';
 import { performVectorSearch } from '../db/search.js';
+import { embed } from '../embed/model.js';
 import { generateId } from '../utils/id.js';
+import type { ASTClass, ASTFileResult, ASTFunction } from './scanner.js';
 
 export interface WikiCitation {
   id: string;
@@ -34,10 +34,11 @@ export function buildCodeElementSummary(file: ASTFileResult, element: ASTFunctio
 // Tokenize text into significant tokens (>3 chars, lowercase)
 function tokenize(text: string): Set<string> {
   return new Set(
-    text.toLowerCase()
+    text
+      .toLowerCase()
       .replace(/[^a-z0-9_]/g, ' ')
       .split(/\s+/)
-      .filter(t => t.length > 3)
+      .filter((t) => t.length > 3),
   );
 }
 
@@ -48,31 +49,38 @@ async function loadKnowledgeEntries(client: Client): Promise<KnowledgeEntry[]> {
     args: [],
   });
 
-  return result.rows.map(row => ({
+  return result.rows.map((row) => ({
     id: row.id as string,
     title: row.title as string,
     content: row.content as string,
-    tags: row.tags ? (row.tags as string).split(',').map(t => t.trim()).filter(Boolean) : [],
+    tags: row.tags
+      ? (row.tags as string)
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : [],
   }));
 }
 
 // Tier 1: Tag match — compare knowledge tags against element name (case-insensitive)
 function tagMatch(elementName: string, entries: KnowledgeEntry[]): KnowledgeEntry[] {
   const nameLC = elementName.toLowerCase();
-  return entries.filter(entry =>
-    entry.tags.some(tag => tag.toLowerCase() === nameLC)
-  );
+  return entries.filter((entry) => entry.tags.some((tag) => tag.toLowerCase() === nameLC));
 }
 
 // Tier 2: Content match — compare overlap with pre-computed entry token sets
-function contentMatch(elementName: string, entries: KnowledgeEntry[], entryTokenCache: Map<string, Set<string>>): KnowledgeEntry[] {
+function contentMatch(
+  elementName: string,
+  entries: KnowledgeEntry[],
+  entryTokenCache: Map<string, Set<string>>,
+): KnowledgeEntry[] {
   const nameTokens = tokenize(elementName);
   if (nameTokens.size === 0) return [];
 
-  return entries.filter(entry => {
+  return entries.filter((entry) => {
     let tokens = entryTokenCache.get(entry.id);
     if (!tokens) {
-      tokens = tokenize(entry.title + ' ' + entry.content);
+      tokens = tokenize(`${entry.title} ${entry.content}`);
       entryTokenCache.set(entry.id, tokens);
     }
     let overlap = 0;
@@ -98,7 +106,12 @@ export async function matchKnowledgeToFile(
   // Variables and interfaces are excluded — their names are too generic
   // and produce many false-positive matches against knowledge entries.
   type ElementKind = 'function' | 'class';
-  interface CodeElement { name: string; line: number; endLine: number; elementKind: ElementKind }
+  interface CodeElement {
+    name: string;
+    line: number;
+    endLine: number;
+    elementKind: ElementKind;
+  }
   const elements: CodeElement[] = [];
 
   for (const fn of file.functions) {
@@ -148,8 +161,8 @@ export async function matchKnowledgeToFile(
     // Tier 3: Vector match (expensive — only for unmatched elements)
     try {
       let source: ASTFunction | ASTClass | undefined;
-      if (el.elementKind === 'class') source = file.classes.find(c => c.name === el.name && c.line === el.line);
-      else source = file.functions.find(f => f.name === el.name && f.line === el.line);
+      if (el.elementKind === 'class') source = file.classes.find((c) => c.name === el.name && c.line === el.line);
+      else source = file.functions.find((f) => f.name === el.name && f.line === el.line);
       if (!source) continue;
       const summary = buildCodeElementSummary(file, source);
       const queryEmbedding = await embed(summary, true);

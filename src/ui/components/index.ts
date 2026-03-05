@@ -1,72 +1,64 @@
 // Barrel export for UI components
 
-// Utils
-export { escapeHtml, ColumnData, renderMarkdownEditor } from './utils.js';
-
-// Layout
-export { getHtml } from './layout.js';
-
-// Ticket components
-export {
-  renderTicketCard,
-  renderKanbanView,
-  renderKanbanColumns,
-  renderColumnMore,
-  renderTicketModal,
-  renderNewTicketModal,
-  renderEditTicketModal,
-} from './ticket.js';
-
-// Knowledge components
-export {
-  renderKnowledgeView,
-  renderKnowledgeList,
-  renderKnowledgeMore,
-  renderKnowledgeModal,
-} from './knowledge.js';
-
-// Search components
-export {
-  renderSearchView,
-  renderSearchResults,
-} from './search.js';
-
 // Comment components
 export {
   renderCommentsSection,
   renderEditCommentForm,
 } from './comments.js';
-
-// Graph components
-export {
-  renderGraphView,
-  getGraphScript,
-} from './graph.js';
-
-// Spec components
-export {
-  renderSpecView,
-  renderSpecList,
-  renderSpecMore,
-  renderSpecCard,
-  renderSpecModal,
-  renderNewSpecModal,
-  renderEditSpecModal,
-} from './spec.js';
-
 // Dashboard components
 export {
-  renderDashboardView,
   renderDashboardGrid,
+  renderDashboardView,
 } from './dashboard.js';
+// Graph components
+export {
+  getGraphScript,
+  renderGraphView,
+} from './graph.js';
 
+// Knowledge components
+export {
+  renderKnowledgeList,
+  renderKnowledgeModal,
+  renderKnowledgeMore,
+  renderKnowledgeView,
+} from './knowledge.js';
+// Layout
+export { getHtml } from './layout.js';
+// Search components
+export {
+  renderSearchResults,
+  renderSearchView,
+} from './search.js';
+// Spec components
+export {
+  renderEditSpecModal,
+  renderNewSpecModal,
+  renderSpecCard,
+  renderSpecList,
+  renderSpecModal,
+  renderSpecMore,
+  renderSpecView,
+} from './spec.js';
+// Ticket components
+export {
+  renderColumnMore,
+  renderEditTicketModal,
+  renderKanbanColumns,
+  renderKanbanView,
+  renderNewTicketModal,
+  renderTicketCard,
+  renderTicketModal,
+} from './ticket.js';
+// Utils
+export { ColumnData, escapeHtml, renderMarkdownEditor } from './utils.js';
+export type { WikiSearchHit } from './wiki.js';
 // Wiki components
 export {
-  renderWikiView,
-  renderWikiTree,
-  renderWikiOverview,
   renderWikiDirectory,
   renderWikiFile,
+  renderWikiOverview,
   renderWikiSearchResults,
+  renderWikiTree,
+  renderWikiView,
 } from './wiki.js';
-export type { WikiSearchHit } from './wiki.js';

@@ -1,6 +1,7 @@
 // Main layout component for Superintent Web UI
-import { escapeHtml } from './utils.js';
+
 import { getGraphScript } from './graph.js';
+import { escapeHtml } from './utils.js';
 
 // Main HTML shell with sidebar navigation, header, and JavaScript
 export function getHtml(namespace: string, version: string): string {

@@ -1,7 +1,8 @@
 // Spec-related UI components
-import { escapeHtml, renderMarkdownEditor } from './utils.js';
+
+import type { Comment, Spec } from '../../types.js';
 import { renderCommentsSection } from './comments.js';
-import type { Spec, Comment } from '../../types.js';
+import { escapeHtml, renderMarkdownEditor } from './utils.js';
 
 // Helper to render spec view
 export function renderSpecView(): string {
@@ -32,7 +33,7 @@ export function renderSpecList(specs: Spec[], ticketCounts?: Record<string, numb
 
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      ${specs.map(s => renderSpecCard(s, ticketCounts?.[s.id] || 0)).join('')}
+      ${specs.map((s) => renderSpecCard(s, ticketCounts?.[s.id] || 0)).join('')}
       <button class="col-span-full mx-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors cursor-pointer ${hasMore ? '' : 'hidden'}"
               hx-get="/partials/spec-more?offset=12"
               hx-swap="outerHTML">
@@ -43,8 +44,13 @@ export function renderSpecList(specs: Spec[], ticketCounts?: Record<string, numb
 }
 
 // Helper to render more specs (pagination)
-export function renderSpecMore(specs: Spec[], ticketCounts: Record<string, number>, nextOffset: number, hasMore: boolean): string {
-  const cards = specs.map(s => renderSpecCard(s, ticketCounts[s.id] || 0)).join('');
+export function renderSpecMore(
+  specs: Spec[],
+  ticketCounts: Record<string, number>,
+  nextOffset: number,
+  hasMore: boolean,
+): string {
+  const cards = specs.map((s) => renderSpecCard(s, ticketCounts[s.id] || 0)).join('');
 
   if (!hasMore) {
     return cards;
@@ -94,21 +100,29 @@ export function renderSpecCard(spec: Spec, ticketCount: number = 0): string {
         </div>
         <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-2">${escapeHtml(spec.title)}</div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-3 flex-1">${escapeHtml(spec.content.slice(0, 150))}${spec.content.length > 150 ? '...' : ''}</p>
-        ${ticketCount > 0 ? `
+        ${
+          ticketCount > 0
+            ? `
           <div class="mt-2 text-xs text-gray-400 dark:text-gray-500 inline-flex items-center gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
             </svg>
             ${ticketCount} ticket${ticketCount !== 1 ? 's' : ''}
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     </div>
   `;
 }
 
 // Helper to render spec modal
-export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title?: string; status: string }[], comments?: Comment[]): string {
+export function renderSpecModal(
+  spec: Spec,
+  relatedTickets?: { id: string; title?: string; status: string }[],
+  comments?: Comment[],
+): string {
   return `
     <div class="p-6">
       <div class="flex items-start justify-between mb-4">
@@ -139,32 +153,48 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
       </div>
 
       <!-- Metadata -->
-      ${spec.author ? `
+      ${
+        spec.author
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Metadata</h3>
           <div class="text-sm text-gray-700 dark:text-gray-200 space-y-1">
             <div><span class="text-gray-400 dark:text-gray-500">Author:</span> ${escapeHtml(spec.author)}</div>
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${relatedTickets?.length ? `
+      ${
+        relatedTickets?.length
+          ? `
         <!-- Derived Tickets -->
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Derived Tickets</h3>
           <div class="flex flex-wrap gap-2">
-            ${relatedTickets.map(t => {
-              const statusColors: Record<string, { bg: string; text: string }> = {
-                'Backlog': { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' },
-                'In Progress': { bg: 'bg-yellow-50 dark:bg-yellow-900/20', text: 'text-yellow-700 dark:text-yellow-300' },
-                'In Review': { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300' },
-                'Done': { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300' },
-                'Blocked': { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-300' },
-                'Abandoned': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400' },
-                'Superseded': { bg: 'bg-purple-50 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300' },
-              };
-              const style = statusColors[t.status] || { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' };
-              return `
+            ${relatedTickets
+              .map((t) => {
+                const statusColors: Record<string, { bg: string; text: string }> = {
+                  Backlog: { bg: 'bg-gray-50 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' },
+                  'In Progress': {
+                    bg: 'bg-yellow-50 dark:bg-yellow-900/20',
+                    text: 'text-yellow-700 dark:text-yellow-300',
+                  },
+                  'In Review': { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300' },
+                  Done: { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300' },
+                  Blocked: { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-300' },
+                  Abandoned: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400' },
+                  Superseded: {
+                    bg: 'bg-purple-50 dark:bg-purple-900/20',
+                    text: 'text-purple-700 dark:text-purple-300',
+                  },
+                };
+                const style = statusColors[t.status] || {
+                  bg: 'bg-gray-50 dark:bg-gray-700',
+                  text: 'text-gray-700 dark:text-gray-300',
+                };
+                return `
                 <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg ${style.bg} ${style.text} hover:opacity-80 cursor-pointer font-mono font-medium"
                       hx-get="/partials/ticket-modal/${encodeURIComponent(t.id)}"
                       hx-target="#modal-content"
@@ -175,10 +205,13 @@ export function renderSpecModal(spec: Spec, relatedTickets?: { id: string; title
                   ${escapeHtml(t.id)}
                 </span>
               `;
-            }).join('')}
+              })
+              .join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       ${renderCommentsSection(comments || [], 'spec', spec.id)}
 

@@ -65,22 +65,24 @@ export function renderSearchView(): string {
 }
 
 // Helper to render search results
-export function renderSearchResults(results: {
-  id: string;
-  title: string;
-  content: string;
-  category?: string;
-  namespace: string;
-  source?: string;
-  origin_ticket_type?: string;
-  decision_scope: string;
-  tags?: string[];
-  score: number;
-  confidence: number;
-  active: boolean;
-  author?: string;
-  branch?: string;
-}[]): string {
+export function renderSearchResults(
+  results: {
+    id: string;
+    title: string;
+    content: string;
+    category?: string;
+    namespace: string;
+    source?: string;
+    origin_ticket_type?: string;
+    decision_scope: string;
+    tags?: string[];
+    score: number;
+    confidence: number;
+    active: boolean;
+    author?: string;
+    branch?: string;
+  }[],
+): string {
   if (results.length === 0) {
     return '<p class="text-gray-500 dark:text-gray-400 text-center py-8">No results found</p>';
   }
@@ -95,11 +97,12 @@ export function renderSearchResults(results: {
 
   return `
     <div class="space-y-4">
-      ${results.map(r => {
-        const color = categoryColors[r.category || ''] || 'gray';
-        const scorePercent = Math.round(r.score * 100);
-        const inactiveClass = !r.active ? 'opacity-60 border-dashed' : '';
-        return `
+      ${results
+        .map((r) => {
+          const color = categoryColors[r.category || ''] || 'gray';
+          const scorePercent = Math.round(r.score * 100);
+          const inactiveClass = !r.active ? 'opacity-60 border-dashed' : '';
+          return `
           <div class="bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border shadow-2xs rounded-md p-4 hover:shadow-md transition cursor-pointer ${inactiveClass}"
                hx-get="/partials/knowledge-modal/${encodeURIComponent(r.id)}"
                hx-target="#modal-content"
@@ -125,7 +128,14 @@ export function renderSearchResults(results: {
               <span><span class="text-gray-400 dark:text-gray-500">Scope:</span> ${r.decision_scope}</span>
               ${r.author ? `<span><span class="text-gray-400 dark:text-gray-500">Author:</span> ${escapeHtml(r.author)}</span>` : ''}
               ${r.branch ? `<span><span class="text-gray-400 dark:text-gray-500">Branch:</span> ${r.branch !== 'main' ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium">${escapeHtml(r.branch)}</span>` : 'main'}</span>` : ''}
-              ${(r.tags || []).length > 0 ? `<span><span class="text-gray-400 dark:text-gray-500">Tags:</span> ${(r.tags || []).slice(0, 3).map(t => escapeHtml(t)).join(', ')}</span>` : ''}
+              ${
+                (r.tags || []).length > 0
+                  ? `<span><span class="text-gray-400 dark:text-gray-500">Tags:</span> ${(r.tags || [])
+                      .slice(0, 3)
+                      .map((t) => escapeHtml(t))
+                      .join(', ')}</span>`
+                  : ''
+              }
             </div>
             <div class="mt-2">
               <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1">
@@ -134,7 +144,8 @@ export function renderSearchResults(results: {
             </div>
           </div>
         `;
-      }).join('')}
+        })
+        .join('')}
     </div>
   `;
 }

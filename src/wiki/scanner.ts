@@ -1,9 +1,9 @@
 // web-tree-sitter AST pipeline for scanning TypeScript/JavaScript files
 
-import { Parser, Language, type Node as SyntaxNode } from 'web-tree-sitter';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, extname, dirname } from 'node:path';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Language, Parser, type Node as SyntaxNode } from 'web-tree-sitter';
 import { scanCache } from './cache.js';
 
 // ============ Types ============
@@ -172,7 +172,7 @@ function extractParams(node: SyntaxNode, lang: string): string[] {
         if (nameNode) params.push(nameNode.text);
       } else if (child.type === 'variadic_parameter') {
         const nameNode = child.childForFieldName('name');
-        if (nameNode) params.push('...' + nameNode.text);
+        if (nameNode) params.push(`...${nameNode.text}`);
       }
     } else if (lang === 'go') {
       if (child.type === 'parameter_declaration') {
@@ -180,7 +180,7 @@ function extractParams(node: SyntaxNode, lang: string): string[] {
         if (nameNode) params.push(nameNode.text);
       } else if (child.type === 'variadic_parameter_declaration') {
         const nameNode = child.childForFieldName('name');
-        if (nameNode) params.push('...' + nameNode.text);
+        if (nameNode) params.push(`...${nameNode.text}`);
       }
     } else {
       if (child.type === 'required_parameter' || child.type === 'optional_parameter') {
@@ -189,7 +189,7 @@ function extractParams(node: SyntaxNode, lang: string): string[] {
       } else if (child.type === 'identifier') {
         params.push(child.text);
       } else if (child.type === 'rest_pattern') {
-        params.push('...' + (child.namedChildren[0]?.text || ''));
+        params.push(`...${child.namedChildren[0]?.text || ''}`);
       } else if (child.type === 'assignment_pattern') {
         const left = child.childForFieldName('left');
         if (left) params.push(left.text);
@@ -220,7 +220,10 @@ function extractFunctions(rootNode: SyntaxNode, lang: string): ASTFunction[] {
       let parent = node.parent;
       let insideClass = false;
       while (parent) {
-        if (parent.type === 'declaration_list') { insideClass = true; break; }
+        if (parent.type === 'declaration_list') {
+          insideClass = true;
+          break;
+        }
         parent = parent.parent;
       }
       if (insideClass) continue;
@@ -306,7 +309,10 @@ function extractFunctions(rootNode: SyntaxNode, lang: string): ASTFunction[] {
     let parent = declarator.parent;
     let insideClass = false;
     while (parent) {
-      if (parent.type === 'class_body') { insideClass = true; break; }
+      if (parent.type === 'class_body') {
+        insideClass = true;
+        break;
+      }
       parent = parent.parent;
     }
     if (insideClass) continue;
@@ -413,9 +419,14 @@ function extractVariables(rootNode: SyntaxNode, lang: string): ASTVariable[] {
     let parent = node.parent;
     let nested = false;
     while (parent) {
-      if (parent.type === 'function_declaration' || parent.type === 'arrow_function' ||
-          parent.type === 'method_definition' || parent.type === 'class_body' ||
-          parent.type === 'function' || parent.type === 'statement_block') {
+      if (
+        parent.type === 'function_declaration' ||
+        parent.type === 'arrow_function' ||
+        parent.type === 'method_definition' ||
+        parent.type === 'class_body' ||
+        parent.type === 'function' ||
+        parent.type === 'statement_block'
+      ) {
         // Allow export_statement → lexical_declaration at top level
         if (parent.type === 'statement_block' && parent.parent?.type !== 'program') {
           nested = true;
@@ -570,10 +581,7 @@ function extractHtmlImports(rootNode: SyntaxNode): ASTImport[] {
 
   // <link href="..."> (stylesheets, icons, etc.)
   // link is a self_closing_tag or element with tag_name "link"
-  const allElements = [
-    ...rootNode.descendantsOfType('element'),
-    ...rootNode.descendantsOfType('self_closing_tag'),
-  ];
+  const allElements = [...rootNode.descendantsOfType('element'), ...rootNode.descendantsOfType('self_closing_tag')];
   for (const el of allElements) {
     const tag = el.type === 'self_closing_tag' ? el : el.descendantsOfType('start_tag')[0];
     if (!tag) continue;
@@ -671,8 +679,7 @@ function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
     for (const node of useDecls) {
       const clauses = node.descendantsOfType('namespace_use_clause');
       for (const clause of clauses) {
-        const qualifiedName = clause.descendantsOfType('qualified_name')[0]
-          || clause.descendantsOfType('name')[0];
+        const qualifiedName = clause.descendantsOfType('qualified_name')[0] || clause.descendantsOfType('name')[0];
         if (!qualifiedName) continue;
 
         const source = qualifiedName.text;
@@ -689,8 +696,7 @@ function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
       }
       // If no clauses found, try the node itself
       if (clauses.length === 0) {
-        const qualifiedName = node.descendantsOfType('qualified_name')[0]
-          || node.descendantsOfType('name')[0];
+        const qualifiedName = node.descendantsOfType('qualified_name')[0] || node.descendantsOfType('name')[0];
         if (qualifiedName) {
           const source = qualifiedName.text;
           const parts = source.split('\\');
@@ -726,13 +732,10 @@ function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
     }
 
     // Extract specifiers from import clause
-    const importClause = node.children.find(c =>
-      c.type === 'import_clause' || c.type === 'named_imports'
-    );
+    const importClause = node.children.find((c) => c.type === 'import_clause' || c.type === 'named_imports');
     if (importClause) {
-      const namedImports = importClause.type === 'named_imports'
-        ? importClause
-        : importClause.descendantsOfType('named_imports')[0];
+      const namedImports =
+        importClause.type === 'named_imports' ? importClause : importClause.descendantsOfType('named_imports')[0];
       if (namedImports) {
         for (const spec of namedImports.namedChildren) {
           if (spec.type === 'import_specifier') {
@@ -743,7 +746,7 @@ function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
         }
       }
       // Default import
-      const defaultImport = importClause.children?.find(c => c.type === 'identifier');
+      const defaultImport = importClause.children?.find((c) => c.type === 'identifier');
       if (defaultImport) {
         specifiers.unshift(defaultImport.text);
       }
@@ -768,8 +771,16 @@ function extractImports(rootNode: SyntaxNode, lang: string): ASTImport[] {
 // ============ File & Project Scanning ============
 
 const SKIP_DIRS = new Set([
-  'node_modules', '.git', '.superintent', 'dist', '.next',
-  '.nuxt', '.svelte-kit', 'coverage', '.turbo', '.cache',
+  'node_modules',
+  '.git',
+  '.superintent',
+  'dist',
+  '.next',
+  '.nuxt',
+  '.svelte-kit',
+  'coverage',
+  '.turbo',
+  '.cache',
   'vendor',
 ]);
 
@@ -823,7 +834,11 @@ function collectFiles(dir: string): string[] {
 
   let entries: { name: string; isDirectory(): boolean; isFile(): boolean }[];
   try {
-    entries = readdirSync(dir, { withFileTypes: true }) as { name: string; isDirectory(): boolean; isFile(): boolean }[];
+    entries = readdirSync(dir, { withFileTypes: true }) as {
+      name: string;
+      isDirectory(): boolean;
+      isFile(): boolean;
+    }[];
   } catch {
     return files;
   }
@@ -887,12 +902,14 @@ export function getMtimeForFile(filePath: string): number | null {
 export function buildScanResult(rootPath: string, files: ASTFileResult[]): WikiScanResult {
   files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 
-  const totalFunctions = files.reduce((sum, f) =>
-    sum + f.functions.length + f.classes.reduce((s, c) => s + c.methods.length, 0), 0);
+  const totalFunctions = files.reduce(
+    (sum, f) => sum + f.functions.length + f.classes.reduce((s, c) => s + c.methods.length, 0),
+    0,
+  );
   const totalClasses = files.reduce((sum, f) => sum + f.classes.length, 0);
-  const allVars = files.flatMap(f => f.variables || []);
-  const totalConstants = allVars.filter(v => v.kind === 'const').length;
-  const totalVariables = allVars.filter(v => v.kind !== 'const').length;
+  const allVars = files.flatMap((f) => f.variables || []);
+  const totalConstants = allVars.filter((v) => v.kind === 'const').length;
+  const totalVariables = allVars.filter((v) => v.kind !== 'const').length;
   const totalInterfaces = files.reduce((sum, f) => sum + (f.interfaces?.length || 0), 0);
   const totalImports = files.reduce((sum, f) => sum + f.imports.length, 0);
 
@@ -918,9 +935,7 @@ export async function scanProject(rootPath: string): Promise<WikiScanResult> {
       // Sample up to 10 files and compare mtimes
       const paths = Object.keys(cachedMtimes);
       const sampleSize = Math.min(10, paths.length);
-      const sampled = paths.length <= sampleSize
-        ? paths
-        : paths.sort(() => Math.random() - 0.5).slice(0, sampleSize);
+      const sampled = paths.length <= sampleSize ? paths : paths.sort(() => Math.random() - 0.5).slice(0, sampleSize);
 
       let allMatch = true;
       for (const relPath of sampled) {

@@ -1,21 +1,20 @@
-import type { Hono } from 'hono';
 import type { InValue } from '@libsql/client';
+import type { Hono } from 'hono';
 import { getClient } from '../../db/client.js';
 import { parseTicketRow } from '../../db/parsers.js';
-import { emitSSE } from '../sse.js';
 import { getGitUsername } from '../../utils/git.js';
-import { fetchComments } from './shared.js';
 import {
-  renderKanbanView,
-  renderKanbanColumns,
   renderColumnMore,
-  renderTicketModal,
-  renderNewTicketModal,
   renderEditTicketModal,
+  renderKanbanColumns,
+  renderKanbanView,
+  renderNewTicketModal,
+  renderTicketModal,
 } from '../components/index.js';
+import { emitSSE } from '../sse.js';
+import { fetchComments } from './shared.js';
 
 export function registerTicketRoutes(app: Hono) {
-
   // ── API Routes ──────────────────────────────────────────────────
 
   // List all tickets
@@ -94,7 +93,10 @@ export function registerTicketRoutes(app: Hono) {
 
           if (plan) {
             plan.taskSteps = (plan.taskSteps || []).map((ts: Record<string, unknown>) => ({ ...ts, done: true }));
-            plan.dodVerification = (plan.dodVerification || []).map((dv: Record<string, unknown>) => ({ ...dv, done: true }));
+            plan.dodVerification = (plan.dodVerification || []).map((dv: Record<string, unknown>) => ({
+              ...dv,
+              done: true,
+            }));
 
             await client.execute({
               sql: `UPDATE tickets SET status = ?, plan = ?, updated_at = datetime('now') WHERE id = ?`,
@@ -227,7 +229,7 @@ export function registerTicketRoutes(app: Hono) {
           const hasMore = result.rows.length > limit;
           const tickets = result.rows.slice(0, limit).map((row) => parseTicketRow(row as Record<string, unknown>));
           return { status, tickets, hasMore };
-        })
+        }),
       );
 
       // Add Archived column
@@ -237,7 +239,9 @@ export function registerTicketRoutes(app: Hono) {
         args: [...archiveStatuses, limit + 1],
       });
       const archiveHasMore = archiveResult.rows.length > limit;
-      const archiveTickets = archiveResult.rows.slice(0, limit).map((row) => parseTicketRow(row as Record<string, unknown>));
+      const archiveTickets = archiveResult.rows
+        .slice(0, limit)
+        .map((row) => parseTicketRow(row as Record<string, unknown>));
       columnData.push({ status: 'Archived', tickets: archiveTickets, hasMore: archiveHasMore });
 
       emitSSE('ticket-updated');
@@ -346,7 +350,7 @@ export function registerTicketRoutes(app: Hono) {
           const hasMore = result.rows.length > limit;
           const tickets = result.rows.slice(0, limit).map((row) => parseTicketRow(row as Record<string, unknown>));
           return { status, tickets, hasMore };
-        })
+        }),
       );
 
       // Add Archived column (Blocked, Abandoned, Superseded)
@@ -356,7 +360,9 @@ export function registerTicketRoutes(app: Hono) {
         args: [...archiveStatuses, limit + 1],
       });
       const archiveHasMore = archiveResult.rows.length > limit;
-      const archiveTickets = archiveResult.rows.slice(0, limit).map((row) => parseTicketRow(row as Record<string, unknown>));
+      const archiveTickets = archiveResult.rows
+        .slice(0, limit)
+        .map((row) => parseTicketRow(row as Record<string, unknown>));
       columnData.push({ status: 'Archived', tickets: archiveTickets, hasMore: archiveHasMore });
 
       return c.html(renderKanbanColumns(columnData));

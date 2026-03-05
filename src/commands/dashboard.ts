@@ -1,12 +1,12 @@
 import type http from 'node:http';
-import { Command } from 'commander';
 import { serve } from '@hono/node-server';
+import { Command } from 'commander';
 import open from 'open';
-import { getClient, closeClient } from '../db/client.js';
-import { loadConfig, getProjectNamespace } from '../utils/config.js';
+import { closeClient, getClient } from '../db/client.js';
 import { disposeEmbedder } from '../embed/model.js';
-import { closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
 import { createApp } from '../ui/server.js';
+import { closeAllSSEClients, startChangeWatcher } from '../ui/sse.js';
+import { getProjectNamespace, loadConfig } from '../utils/config.js';
 
 export const dashboardCommand = new Command('dashboard')
   .aliases(['dash'])
@@ -43,7 +43,7 @@ export const dashboardCommand = new Command('dashboard')
     });
 
     // Start DB change watcher for external mutations (CLI, other clients)
-    getClient().then(client => startChangeWatcher(client));
+    getClient().then((client) => startChangeWatcher(client));
 
     if (options.open) {
       setTimeout(() => {

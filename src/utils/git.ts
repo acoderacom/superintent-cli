@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 
 let cachedUsername: string | null = null;
 let cachedBranch: string | null = null;
@@ -25,7 +25,7 @@ export function getGitBranch(): string {
   if (cachedBranch !== null) return cachedBranch;
   try {
     const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-    cachedBranch = (branch && branch !== 'HEAD') ? branch : 'main';
+    cachedBranch = branch && branch !== 'HEAD' ? branch : 'main';
   } catch {
     cachedBranch = 'main';
   }

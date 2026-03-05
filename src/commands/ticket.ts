@@ -1,18 +1,16 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { Client, InValue } from '@libsql/client';
 import { Command } from 'commander';
-import type { InValue } from '@libsql/client';
-import { getClient, closeClient } from '../db/client.js';
+import { closeClient, getClient } from '../db/client.js';
 import { parseTicketRow } from '../db/parsers.js';
-import { getProjectNamespace } from '../utils/config.js';
-
-import { generateId } from '../utils/id.js';
-import { getGitUsername } from '../utils/git.js';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
-import { computeContentHash } from '../utils/hash.js';
-import type { Client } from '@libsql/client';
-import { embed } from '../embed/model.js';
 import { performVectorSearch } from '../db/search.js';
-import type { Ticket, CliResponse, KnowledgeInput, TicketPlan, TicketType, Citation } from '../types.js';
+import { embed } from '../embed/model.js';
+import type { Citation, CliResponse, KnowledgeInput, Ticket, TicketPlan, TicketType } from '../types.js';
+import { getProjectNamespace } from '../utils/config.js';
+import { getGitUsername } from '../utils/git.js';
+import { computeContentHash } from '../utils/hash.js';
+import { generateId } from '../utils/id.js';
 
 /**
  * Infer ticket type from intent keywords
@@ -102,13 +100,19 @@ function parseJsonTicket(raw: string): TicketJsonInput {
       }
       result.constraints = {};
       if (parsed.constraints.use !== undefined) {
-        if (!Array.isArray(parsed.constraints.use) || !parsed.constraints.use.every((s: unknown) => typeof s === 'string')) {
+        if (
+          !Array.isArray(parsed.constraints.use) ||
+          !parsed.constraints.use.every((s: unknown) => typeof s === 'string')
+        ) {
           throw new Error('constraints.use must be an array of strings');
         }
         result.constraints.use = parsed.constraints.use.map((s: string) => s.trim()).filter(Boolean);
       }
       if (parsed.constraints.avoid !== undefined) {
-        if (!Array.isArray(parsed.constraints.avoid) || !parsed.constraints.avoid.every((s: unknown) => typeof s === 'string')) {
+        if (
+          !Array.isArray(parsed.constraints.avoid) ||
+          !parsed.constraints.avoid.every((s: unknown) => typeof s === 'string')
+        ) {
           throw new Error('constraints.avoid must be an array of strings');
         }
         result.constraints.avoid = parsed.constraints.avoid.map((s: string) => s.trim()).filter(Boolean);
@@ -182,7 +186,10 @@ function validatePlanJson(plan: unknown): TicketPlan {
       const ts = p.taskSteps[i] as Record<string, unknown>;
       if (typeof ts !== 'object' || ts === null) throw new Error(`plan.taskSteps[${i}] must be an object`);
       if (typeof ts.task !== 'string') throw new Error(`plan.taskSteps[${i}].task must be a string`);
-      if (ts.steps !== undefined && (!Array.isArray(ts.steps) || !ts.steps.every((s: unknown) => typeof s === 'string'))) {
+      if (
+        ts.steps !== undefined &&
+        (!Array.isArray(ts.steps) || !ts.steps.every((s: unknown) => typeof s === 'string'))
+      ) {
         throw new Error(`plan.taskSteps[${i}].steps must be an array of strings`);
       }
       result.taskSteps.push({
@@ -239,7 +246,8 @@ function validatePlanJson(plan: unknown): TicketPlan {
     }
     const rb = p.rollback as Record<string, unknown>;
     const rev = typeof rb.reversibility === 'string' ? rb.reversibility : 'full';
-    if (!['full', 'partial', 'none'].includes(rev)) throw new Error("plan.rollback.reversibility must be 'full', 'partial', or 'none'");
+    if (!['full', 'partial', 'none'].includes(rev))
+      throw new Error("plan.rollback.reversibility must be 'full', 'partial', or 'none'");
     result.rollback = {
       steps: Array.isArray(rb.steps) ? (rb.steps as string[]) : [],
       reversibility: rev as 'full' | 'partial' | 'none',
@@ -348,7 +356,11 @@ function collectTicketCitations(ticket: Ticket, cwd: string): Citation[] {
 }
 
 // Generate knowledge extraction proposals from a completed ticket
-export async function generateExtractProposals(ticket: Ticket, namespace: string, client?: Client): Promise<KnowledgeInput[]> {
+export async function generateExtractProposals(
+  ticket: Ticket,
+  namespace: string,
+  client?: Client,
+): Promise<KnowledgeInput[]> {
   const suggestions: KnowledgeInput[] = [];
   const ticketType = ticket.type;
   const cwd = process.cwd();
@@ -457,8 +469,7 @@ export async function generateExtractProposals(ticket: Ticket, namespace: string
   return suggestions;
 }
 
-export const ticketCommand = new Command('ticket')
-  .description('Manage tickets');
+export const ticketCommand = new Command('ticket').description('Manage tickets');
 
 // Create subcommand
 ticketCommand
@@ -681,7 +692,9 @@ ticketCommand
           for (const a of t.assumptions) lines.push(`- ${a}`);
         }
         if (t.change_class) {
-          lines.push(`**Change Class:** ${t.change_class}${t.change_class_reason ? ' - ' + t.change_class_reason : ''}`);
+          lines.push(
+            `**Change Class:** ${t.change_class}${t.change_class_reason ? ` - ${t.change_class_reason}` : ''}`,
+          );
         }
 
         if (t.plan) {
@@ -699,21 +712,21 @@ ticketCommand
           if (t.plan.dodVerification.length > 0) {
             lines.push('**DoD → Verification:**');
             for (const dv of t.plan.dodVerification) {
-              lines.push(`- ${dv.dod}${dv.verify ? ' → ' + dv.verify : ''}${dv.done ? ' ✓' : ''}`);
+              lines.push(`- ${dv.dod}${dv.verify ? ` → ${dv.verify}` : ''}${dv.done ? ' ✓' : ''}`);
             }
             lines.push('');
           }
           if (t.plan.decisions.length > 0) {
             lines.push('**Decisions:**');
             for (const d of t.plan.decisions) {
-              lines.push(`- ${d.choice}${d.reason ? ' — ' + d.reason : ''}`);
+              lines.push(`- ${d.choice}${d.reason ? ` — ${d.reason}` : ''}`);
             }
             lines.push('');
           }
           if (t.plan.tradeOffs.length > 0) {
             lines.push('**Trade-offs:**');
             for (const to of t.plan.tradeOffs) {
-              lines.push(`- considered: ${to.considered}${to.rejected ? ' | rejected: ' + to.rejected : ''}`);
+              lines.push(`- considered: ${to.considered}${to.rejected ? ` | rejected: ${to.rejected}` : ''}`);
             }
             lines.push('');
           }
@@ -810,18 +823,20 @@ ticketCommand
         // Handle --complete-all flag (highest priority for completion)
         if (options.completeAll && plan) {
           if (plan.taskSteps.length > 0) {
-            plan.taskSteps = plan.taskSteps.map(ts => ({ ...ts, done: true }));
+            plan.taskSteps = plan.taskSteps.map((ts) => ({ ...ts, done: true }));
             planModified = true;
           }
           if (plan.dodVerification.length > 0) {
-            plan.dodVerification = plan.dodVerification.map(dv => ({ ...dv, done: true }));
+            plan.dodVerification = plan.dodVerification.map((dv) => ({ ...dv, done: true }));
             planModified = true;
           }
         }
 
         // Handle --complete-task with comma-separated indices
         if (options.completeTask !== undefined && !options.completeAll && plan) {
-          const indices = String(options.completeTask).split(',').map(s => parseInt(s.trim(), 10));
+          const indices = String(options.completeTask)
+            .split(',')
+            .map((s) => parseInt(s.trim(), 10));
           for (const idx of indices) {
             if (plan.taskSteps[idx]) {
               plan.taskSteps[idx] = { ...plan.taskSteps[idx], done: true };
@@ -832,7 +847,9 @@ ticketCommand
 
         // Handle --complete-dod with comma-separated indices
         if (options.completeDod !== undefined && !options.completeAll && plan) {
-          const indices = String(options.completeDod).split(',').map(s => parseInt(s.trim(), 10));
+          const indices = String(options.completeDod)
+            .split(',')
+            .map((s) => parseInt(s.trim(), 10));
           for (const idx of indices) {
             if (plan.dodVerification[idx]) {
               plan.dodVerification[idx] = { ...plan.dodVerification[idx], done: true };
@@ -848,11 +865,11 @@ ticketCommand
           // Auto-complete all tasks and DoD when status is "Done"
           if (options.status === 'Done' && !options.completeAll && plan) {
             if (plan.taskSteps.length > 0) {
-              plan.taskSteps = plan.taskSteps.map(ts => ({ ...ts, done: true }));
+              plan.taskSteps = plan.taskSteps.map((ts) => ({ ...ts, done: true }));
               planModified = true;
             }
             if (plan.dodVerification.length > 0) {
-              plan.dodVerification = plan.dodVerification.map(dv => ({ ...dv, done: true }));
+              plan.dodVerification = plan.dodVerification.map((dv) => ({ ...dv, done: true }));
               planModified = true;
             }
           }
@@ -1002,9 +1019,7 @@ ticketCommand
 
         const result = await client.execute({ sql, args });
 
-        const tickets = result.rows.map((row) =>
-          parseTicketRow(row as Record<string, unknown>)
-        );
+        const tickets = result.rows.map((row) => parseTicketRow(row as Record<string, unknown>));
 
         const response: CliResponse<Ticket[]> = {
           success: true,

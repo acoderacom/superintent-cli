@@ -1,8 +1,15 @@
 // Wiki UI components — pure functions returning HTML strings
 
+import type { CitationWithKnowledge, CoverageStats } from '../../wiki/indexer.js';
+import type {
+  ASTClass,
+  ASTFileResult,
+  ASTFunction,
+  ASTInterface,
+  ASTVariable,
+  WikiScanResult,
+} from '../../wiki/scanner.js';
 import { escapeHtml } from './utils.js';
-import type { ASTFileResult, ASTClass, ASTFunction, ASTVariable, ASTInterface, WikiScanResult } from '../../wiki/scanner.js';
-import type { CoverageStats, CitationWithKnowledge } from '../../wiki/indexer.js';
 
 // ============ Types ============
 
@@ -146,15 +153,24 @@ function buildTree(files: ASTFileResult[]): DirNode {
 
 function getLangIcon(lang: string): string {
   switch (lang) {
-    case 'typescript': return '<span class="text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold">TS</span>';
-    case 'tsx': return '<span class="text-blue-400 dark:text-blue-300 font-mono text-[10px] font-bold">TX</span>';
-    case 'javascript': return '<span class="text-yellow-500 dark:text-yellow-400 font-mono text-[10px] font-bold">JS</span>';
-    case 'jsx': return '<span class="text-yellow-400 dark:text-yellow-300 font-mono text-[10px] font-bold">JX</span>';
-    case 'php': return '<span class="text-indigo-500 dark:text-indigo-400 font-mono text-[10px] font-bold">PH</span>';
-    case 'go': return '<span class="text-teal-500 dark:text-teal-400 font-mono text-[10px] font-bold">GO</span>';
-    case 'html': return '<span class="text-orange-500 dark:text-orange-400 font-mono text-[10px] font-bold">HT</span>';
-    case 'css': return '<span class="text-pink-500 dark:text-pink-400 font-mono text-[10px] font-bold">CS</span>';
-    default: return '';
+    case 'typescript':
+      return '<span class="text-blue-500 dark:text-blue-400 font-mono text-[10px] font-bold">TS</span>';
+    case 'tsx':
+      return '<span class="text-blue-400 dark:text-blue-300 font-mono text-[10px] font-bold">TX</span>';
+    case 'javascript':
+      return '<span class="text-yellow-500 dark:text-yellow-400 font-mono text-[10px] font-bold">JS</span>';
+    case 'jsx':
+      return '<span class="text-yellow-400 dark:text-yellow-300 font-mono text-[10px] font-bold">JX</span>';
+    case 'php':
+      return '<span class="text-indigo-500 dark:text-indigo-400 font-mono text-[10px] font-bold">PH</span>';
+    case 'go':
+      return '<span class="text-teal-500 dark:text-teal-400 font-mono text-[10px] font-bold">GO</span>';
+    case 'html':
+      return '<span class="text-orange-500 dark:text-orange-400 font-mono text-[10px] font-bold">HT</span>';
+    case 'css':
+      return '<span class="text-pink-500 dark:text-pink-400 font-mono text-[10px] font-bold">CS</span>';
+    default:
+      return '';
   }
 }
 
@@ -281,7 +297,9 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
         ${renderStatCard('Functions', String(scan.totalFunctions), 'green')}
       </div>
 
-      ${coverageStats ? `
+      ${
+        coverageStats
+          ? `
       <!-- Knowledge Coverage -->
       <div class="mb-6">
         <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Knowledge Coverage</h2>
@@ -298,16 +316,20 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
           </div>
         </div>
       </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Language Breakdown -->
       <div class="mb-6">
         <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Languages</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          ${Object.entries(langCounts).sort((a, b) => b[1].files - a[1].files).map(([lang, data]) => {
-            const color = langColors[lang] || 'gray';
-            const pct = scan.totalFiles > 0 ? Math.round(data.files / scan.totalFiles * 100) : 0;
-            return `
+          ${Object.entries(langCounts)
+            .sort((a, b) => b[1].files - a[1].files)
+            .map(([lang, data]) => {
+              const color = langColors[lang] || 'gray';
+              const pct = scan.totalFiles > 0 ? Math.round((data.files / scan.totalFiles) * 100) : 0;
+              return `
               <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-md">
                 ${getLangIcon(lang)}
                 <div class="flex-1 min-w-0">
@@ -320,16 +342,22 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
                   </div>
                 </div>
               </div>`;
-          }).join('')}
+            })
+            .join('')}
         </div>
       </div>
 
       <!-- Top Directories -->
-      ${topDirs.size > 0 ? `
+      ${
+        topDirs.size > 0
+          ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Directories</h2>
           <div class="space-y-1">
-            ${Array.from(topDirs.entries()).sort((a, b) => b[1].files - a[1].files).map(([dir, data]) => `
+            ${Array.from(topDirs.entries())
+              .sort((a, b) => b[1].files - a[1].files)
+              .map(
+                ([dir, data]) => `
               <a hx-get="/partials/wiki-dir/${encodeURIComponent(dir)}"
                  hx-target="#wiki-content"
                  hx-swap="innerHTML"
@@ -342,10 +370,14 @@ export function renderWikiOverview(scan: WikiScanResult, coverageStats?: Coverag
                 </div>
                 <span class="text-xs text-gray-400 dark:text-gray-500">${data.files} files &middot; ${data.lines.toLocaleString()} lines</span>
               </a>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Exports Summary -->
       <div class="text-xs text-gray-400 dark:text-gray-500 mt-4">
@@ -375,11 +407,16 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">${files.length} file${files.length !== 1 ? 's' : ''}${subdirs.length > 0 ? ` &middot; ${subdirs.length} subdirector${subdirs.length !== 1 ? 'ies' : 'y'}` : ''}</p>
 
       <!-- Subdirectories -->
-      ${subdirs.length > 0 ? `
+      ${
+        subdirs.length > 0
+          ? `
         <div class="mb-4">
           <div class="space-y-1">
-            ${subdirs.sort().map(sub => `
-              <a hx-get="/partials/wiki-dir/${encodeURIComponent(dirPath + '/' + sub)}"
+            ${subdirs
+              .sort()
+              .map(
+                (sub) => `
+              <a hx-get="/partials/wiki-dir/${encodeURIComponent(`${dirPath}/${sub}`)}"
                  hx-target="#wiki-content"
                  hx-swap="innerHTML"
                  class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-dark-hover rounded-md cursor-pointer">
@@ -388,13 +425,19 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
                 </svg>
                 <span class="text-sm text-gray-700 dark:text-gray-200">${escapeHtml(sub)}/</span>
               </a>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Files Table -->
-      ${files.length > 0 ? `
+      ${
+        files.length > 0
+          ? `
         <table class="w-full text-sm">
           <thead>
             <tr class="text-left text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-dark-border">
@@ -409,13 +452,15 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
             </tr>
           </thead>
           <tbody>
-            ${files.sort((a, b) => {
-              const aName = a.relativePath.split('/').pop() || '';
-              const bName = b.relativePath.split('/').pop() || '';
-              return aName.localeCompare(bName);
-            }).map(file => {
-              const fileName = file.relativePath.split('/').pop() || '';
-              return `
+            ${files
+              .sort((a, b) => {
+                const aName = a.relativePath.split('/').pop() || '';
+                const bName = b.relativePath.split('/').pop() || '';
+                return aName.localeCompare(bName);
+              })
+              .map((file) => {
+                const fileName = file.relativePath.split('/').pop() || '';
+                return `
                 <tr class="border-b border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-dark-hover cursor-pointer"
                     hx-get="/partials/wiki-file/${encodeURIComponent(file.relativePath)}"
                     hx-target="#wiki-content"
@@ -427,15 +472,18 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
                   <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.lines}</td>
                   <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.imports.length}</td>
                   <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.interfaces || []).length}</td>
-                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.variables || []).filter(v => v.kind === 'const').length}</td>
-                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.variables || []).filter(v => v.kind !== 'const').length}</td>
+                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.variables || []).filter((v) => v.kind === 'const').length}</td>
+                  <td class="py-2 text-right text-gray-500 dark:text-gray-400">${(file.variables || []).filter((v) => v.kind !== 'const').length}</td>
                   <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.classes.length}</td>
                   <td class="py-2 text-right text-gray-500 dark:text-gray-400">${file.functions.length}</td>
                 </tr>`;
-            }).join('')}
+              })
+              .join('')}
           </tbody>
         </table>
-      ` : '<p class="text-sm text-gray-400 dark:text-gray-500">No files in this directory.</p>'}
+      `
+          : '<p class="text-sm text-gray-400 dark:text-gray-500">No files in this directory.</p>'
+      }
     </div>
   `;
 }
@@ -444,8 +492,8 @@ export function renderWikiDirectory(dirPath: string, files: ASTFileResult[], sub
 
 export function renderWikiFile(file: ASTFileResult, citations?: CitationWithKnowledge[]): string {
   const fileName = file.relativePath.split('/').pop() || '';
-  const consts = (file.variables || []).filter(v => v.kind === 'const');
-  const vars = (file.variables || []).filter(v => v.kind !== 'const');
+  const consts = (file.variables || []).filter((v) => v.kind === 'const');
+  const vars = (file.variables || []).filter((v) => v.kind !== 'const');
   // Build lookup: function_name → citations for that function
   const citationsByFn = new Map<string, CitationWithKnowledge[]>();
   if (citations) {
@@ -499,11 +547,15 @@ export function renderWikiFile(file: ASTFileResult, citations?: CitationWithKnow
       </div>
 
       <!-- Imports -->
-      ${file.imports.length > 0 ? `
+      ${
+        file.imports.length > 0
+          ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Imports</h2>
           <div class="space-y-1">
-            ${file.imports.map(imp => `
+            ${file.imports
+              .map(
+                (imp) => `
               <div class="flex items-start gap-2 py-1.5 px-2.5 text-sm rounded-md bg-gray-50 dark:bg-gray-800/50">
                 <span class="text-gray-400 dark:text-gray-500 shrink-0 text-xs mt-0.5">L${imp.line}</span>
                 ${imp.isTypeOnly ? '<span class="text-[10px] px-1 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded shrink-0">type</span>' : ''}
@@ -511,52 +563,76 @@ export function renderWikiFile(file: ASTFileResult, citations?: CitationWithKnow
                 <span class="text-gray-400 dark:text-gray-500 text-xs">from</span>
                 <code class="text-blue-600 dark:text-blue-400 text-xs break-all">${escapeHtml(imp.source)}</code>
               </div>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Types -->
-      ${(file.interfaces || []).length > 0 ? `
+      ${
+        (file.interfaces || []).length > 0
+          ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Types</h2>
           ${renderInterfacesTable(file.interfaces || [])}
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Constants -->
-      ${consts.length > 0 ? `
+      ${
+        consts.length > 0
+          ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Constants</h2>
           ${renderVariablesTable(consts)}
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Variables -->
-      ${vars.length > 0 ? `
+      ${
+        vars.length > 0
+          ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Variables</h2>
           ${renderVariablesTable(vars)}
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Classes -->
-      ${file.classes.length > 0 ? `
+      ${
+        file.classes.length > 0
+          ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Classes</h2>
           <div class="space-y-3">
-            ${file.classes.map(cls => renderClassDetail(cls, citationsByFn)).join('')}
+            ${file.classes.map((cls) => renderClassDetail(cls, citationsByFn)).join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Functions -->
-      ${file.functions.length > 0 ? `
+      ${
+        file.functions.length > 0
+          ? `
         <div class="mb-6">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Functions</h2>
           ${renderFunctionsTable(file.functions, citationsByFn)}
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Linked Knowledge -->
       ${citations && citations.length > 0 ? renderLinkedKnowledge(citations) : ''}
@@ -575,11 +651,15 @@ function renderClassDetail(cls: ASTClass, citationsByFn?: Map<string, CitationWi
         ${classCitations ? `<span class="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded" title="${classCitations.length} linked knowledge">${classCitations.length} linked</span>` : ''}
         <span class="text-xs text-gray-400 dark:text-gray-500 ml-auto">L${cls.line}-${cls.endLine}</span>
       </div>
-      ${cls.methods.length > 0 ? `
+      ${
+        cls.methods.length > 0
+          ? `
         <div class="px-3 py-2">
           ${renderFunctionsTable(cls.methods, citationsByFn)}
         </div>
-      ` : '<div class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">No methods</div>'}
+      `
+          : '<div class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">No methods</div>'
+      }
     </div>
   `;
 }
@@ -596,7 +676,9 @@ function renderVariablesTable(variables: ASTVariable[]): string {
           </tr>
         </thead>
         <tbody>
-          ${variables.map(v => `
+          ${variables
+            .map(
+              (v) => `
             <tr class="border-t border-gray-200 dark:border-dark-border">
               <td class="px-3 py-2">
                 <div class="flex items-center gap-1.5">
@@ -609,7 +691,9 @@ function renderVariablesTable(variables: ASTVariable[]): string {
               </td>
               <td class="px-3 py-2 text-right text-xs text-gray-400 dark:text-gray-500">L${v.line}</td>
             </tr>
-          `).join('')}
+          `,
+            )
+            .join('')}
         </tbody>
       </table>
     </div>`;
@@ -627,7 +711,9 @@ function renderInterfacesTable(interfaces: ASTInterface[]): string {
           </tr>
         </thead>
         <tbody>
-          ${interfaces.map(iface => `
+          ${interfaces
+            .map(
+              (iface) => `
             <tr class="border-t border-gray-200 dark:border-dark-border">
               <td class="px-3 py-2">
                 <div class="flex items-center gap-1.5">
@@ -641,7 +727,9 @@ function renderInterfacesTable(interfaces: ASTInterface[]): string {
               </td>
               <td class="px-3 py-2 text-right text-xs text-gray-400 dark:text-gray-500">L${iface.line}-${iface.endLine}</td>
             </tr>
-          `).join('')}
+          `,
+            )
+            .join('')}
         </tbody>
       </table>
     </div>`;
@@ -658,15 +746,28 @@ function renderFunctionsTable(functions: ASTFunction[], citationsByFn?: Map<stri
         </tr>
       </thead>
       <tbody>
-        ${functions.map(fn => {
-          const badges: string[] = [];
-          if (fn.isExported) badges.push('<span class="text-[10px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">export</span>');
-          if (fn.isAsync) badges.push('<span class="text-[10px] px-1 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded">async</span>');
-          if (fn.kind === 'arrow') badges.push('<span class="text-[10px] px-1 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">=&gt;</span>');
-          const fnCitations = citationsByFn?.get(fn.name);
-          if (fnCitations) badges.push(`<span class="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded" title="${fnCitations.length} linked knowledge">${fnCitations.length} linked</span>`);
+        ${functions
+          .map((fn) => {
+            const badges: string[] = [];
+            if (fn.isExported)
+              badges.push(
+                '<span class="text-[10px] px-1 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">export</span>',
+              );
+            if (fn.isAsync)
+              badges.push(
+                '<span class="text-[10px] px-1 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded">async</span>',
+              );
+            if (fn.kind === 'arrow')
+              badges.push(
+                '<span class="text-[10px] px-1 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">=&gt;</span>',
+              );
+            const fnCitations = citationsByFn?.get(fn.name);
+            if (fnCitations)
+              badges.push(
+                `<span class="text-[10px] px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded" title="${fnCitations.length} linked knowledge">${fnCitations.length} linked</span>`,
+              );
 
-          return `
+            return `
             <tr class="border-b border-gray-200 dark:border-dark-border last:border-0">
               <td class="py-1.5">
                 <div class="flex items-center gap-1.5 flex-wrap">
@@ -681,7 +782,8 @@ function renderFunctionsTable(functions: ASTFunction[], citationsByFn?: Map<stri
                 L${fn.line}-${fn.endLine}
               </td>
             </tr>`;
-        }).join('')}
+          })
+          .join('')}
       </tbody>
     </table>
   `;
@@ -690,17 +792,27 @@ function renderFunctionsTable(functions: ASTFunction[], citationsByFn?: Map<stri
 // ============ Linked Knowledge Section ============
 
 function categoryBadge(category: string): string {
-  const colors: Record<string, string> = { pattern: 'purple', truth: 'green', principle: 'orange', architecture: 'blue', gotcha: 'red' };
+  const colors: Record<string, string> = {
+    pattern: 'purple',
+    truth: 'green',
+    principle: 'orange',
+    architecture: 'blue',
+    gotcha: 'red',
+  };
   const c = colors[category] || 'gray';
   return `<span class="text-[10px] px-1.5 py-0.5 bg-${c}-100 dark:bg-${c}-900/30 text-${c}-600 dark:text-${c}-400 rounded">${escapeHtml(category)}</span>`;
 }
 
 function matchTypeBadge(matchType: string): string {
   switch (matchType) {
-    case 'tag': return '<span class="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">tag</span>';
-    case 'content': return '<span class="text-[10px] px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded">content</span>';
-    case 'vector': return '<span class="text-[10px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">vector</span>';
-    default: return '';
+    case 'tag':
+      return '<span class="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded">tag</span>';
+    case 'content':
+      return '<span class="text-[10px] px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded">content</span>';
+    case 'vector':
+      return '<span class="text-[10px] px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded">vector</span>';
+    default:
+      return '';
   }
 }
 
@@ -709,7 +821,9 @@ function renderLinkedKnowledge(citations: CitationWithKnowledge[]): string {
     <div class="mb-6">
       <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Linked Knowledge</h2>
       <div class="space-y-1.5">
-        ${citations.map(c => `
+        ${citations
+          .map(
+            (c) => `
           <div class="flex items-center gap-2 py-2 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-md">
             <div class="flex-1 min-w-0">
               <a hx-get="/partials/knowledge-modal/${encodeURIComponent(c.knowledge_id)}"
@@ -725,7 +839,9 @@ function renderLinkedKnowledge(citations: CitationWithKnowledge[]): string {
               </div>
             </div>
           </div>
-        `).join('')}
+        `,
+          )
+          .join('')}
       </div>
     </div>
   `;
@@ -790,9 +906,10 @@ export function renderWikiSearchResults(hits: WikiSearchHit[]): string {
 
   return `
     <div class="space-y-0.5 max-h-[300px] overflow-y-auto">
-      ${hits.map(hit => {
-        const lineInfo = hit.line ? `L${hit.line}${hit.endLine ? '-' + hit.endLine : ''}` : '';
-        return `
+      ${hits
+        .map((hit) => {
+          const lineInfo = hit.line ? `L${hit.line}${hit.endLine ? `-${hit.endLine}` : ''}` : '';
+          return `
           <a hx-get="/partials/wiki-file/${encodeURIComponent(hit.filePath)}"
              hx-target="#wiki-content"
              hx-swap="innerHTML"
@@ -810,6 +927,7 @@ export function renderWikiSearchResults(hits: WikiSearchHit[]): string {
               ${hit.detail ? `<div class="text-[10px] text-gray-400 dark:text-gray-500 truncate">${escapeHtml(hit.detail)}</div>` : ''}
             </div>
           </a>`;
-      }).join('')}
+        })
+        .join('')}
     </div>`;
 }

@@ -1,5 +1,5 @@
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 export interface TursoConfig {
   url: string;
@@ -28,8 +28,7 @@ function parseEnvFile(content: string): Record<string, string> {
     let value = trimmed.substring(eqIndex + 1).trim();
 
     // Remove quotes if present
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
 
@@ -74,9 +73,7 @@ export function loadConfig(): TursoConfig {
     }
   }
 
-  throw new Error(
-    'Turso config not found. Create .superintent/.env with TURSO_URL (and TURSO_AUTH_TOKEN for cloud)'
-  );
+  throw new Error('Turso config not found. Create .superintent/.env with TURSO_URL (and TURSO_AUTH_TOKEN for cloud)');
 }
 
 export function saveConfig(config: TursoConfig): void {

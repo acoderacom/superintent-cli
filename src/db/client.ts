@@ -1,4 +1,4 @@
-import { createClient, Client } from '@libsql/client';
+import { type Client, createClient } from '@libsql/client';
 import { loadConfig } from '../utils/config.js';
 
 let client: Client | null = null;

@@ -121,4 +121,3 @@ CREATE TABLE IF NOT EXISTS wiki_citations (
 export const CREATE_WIKI_CITATIONS_INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_wiki_citations_page ON wiki_citations(wiki_page_id);
 CREATE INDEX IF NOT EXISTS idx_wiki_citations_knowledge ON wiki_citations(knowledge_id)`;
-

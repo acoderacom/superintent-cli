@@ -1,11 +1,16 @@
 import type { Client } from '@libsql/client';
 import { getClient } from '../../db/client.js';
 import { parseCommentRow } from '../../db/parsers.js';
+import type { Citation, Comment } from '../../types.js';
 import { validateCitationAsync } from '../../utils/hash.js';
-import type { Comment, Citation } from '../../types.js';
-import type { HealthStatus, UsageHealth, CitationHealth } from '../components/dashboard.js';
+import type { CitationHealth, HealthStatus, UsageHealth } from '../components/dashboard.js';
 
-export interface HealthCacheEntry { id: string; title: string; category: string; confidence: number }
+export interface HealthCacheEntry {
+  id: string;
+  title: string;
+  category: string;
+  confidence: number;
+}
 
 export async function fetchComments(parentType: string, parentId: string): Promise<Comment[]> {
   const client = await getClient();
@@ -13,7 +18,7 @@ export async function fetchComments(parentType: string, parentId: string): Promi
     sql: 'SELECT id, parent_type, parent_id, author, text, created_at, updated_at FROM comments WHERE parent_type = ? AND parent_id = ? ORDER BY created_at ASC',
     args: [parentType, parentId],
   });
-  return result.rows.map(row => parseCommentRow(row as Record<string, unknown>));
+  return result.rows.map((row) => parseCommentRow(row as Record<string, unknown>));
 }
 
 export async function classifyHealth(client: Client): Promise<{
@@ -21,7 +26,6 @@ export async function classifyHealth(client: Client): Promise<{
   byCitationHealth: Record<CitationHealth, number>;
   entries: Record<HealthStatus, HealthCacheEntry[]>;
 }> {
-
   const DECAY_QUIET_DAYS = 7;
   const RISING_VELOCITY = 2.0;
   const RISING_MIN_USES = 3;
@@ -31,13 +35,17 @@ export async function classifyHealth(client: Client): Promise<{
     `SELECT id, title, category, confidence, usage_count, citations,
             CAST((julianday('now') - julianday(created_at)) AS REAL) as age_days,
             CAST((julianday('now') - julianday(last_used_at)) AS REAL) as quiet_days
-     FROM knowledge WHERE active = 1 AND branch = 'main'`
+     FROM knowledge WHERE active = 1 AND branch = 'main'`,
   );
 
   const byUsageHealth: Record<UsageHealth, number> = { rising: 0, stable: 0, decaying: 0 };
   const byCitationHealth: Record<CitationHealth, number> = { needsValidation: 0, missing: 0 };
   const entries: Record<HealthStatus, HealthCacheEntry[]> = {
-    rising: [], stable: [], decaying: [], needsValidation: [], missing: [],
+    rising: [],
+    stable: [],
+    decaying: [],
+    needsValidation: [],
+    missing: [],
   };
 
   const cwd = process.cwd();
@@ -68,7 +76,9 @@ export async function classifyHealth(client: Client): Promise<{
           if (result.status === 'missing') hasMissing = true;
           else if (result.status === 'changed') hasChanged = true;
         }
-      } catch { /* malformed citations → skip */ }
+      } catch {
+        /* malformed citations → skip */
+      }
     }
 
     // Citation health: only track issues
@@ -84,7 +94,12 @@ export async function classifyHealth(client: Client): Promise<{
     let usageStatus: UsageHealth;
     if (usageCount > 0 && quietDays > DECAY_QUIET_DAYS) {
       usageStatus = 'decaying';
-    } else if (ageDays >= RISING_MIN_AGE_DAYS && ageDays > 0 && (usageCount / ageDays) > RISING_VELOCITY && usageCount >= RISING_MIN_USES) {
+    } else if (
+      ageDays >= RISING_MIN_AGE_DAYS &&
+      ageDays > 0 &&
+      usageCount / ageDays > RISING_VELOCITY &&
+      usageCount >= RISING_MIN_USES
+    ) {
       usageStatus = 'rising';
     } else {
       usageStatus = 'stable';

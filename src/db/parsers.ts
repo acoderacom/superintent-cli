@@ -3,7 +3,7 @@
  * Consolidates duplicated parsing logic from command files.
  */
 
-import type { Ticket, Knowledge, SearchResult, Spec, Comment, TicketType } from '../types.js';
+import type { Comment, Knowledge, SearchResult, Spec, Ticket, TicketType } from '../types.js';
 
 /**
  * Parse a database row into a Ticket object.

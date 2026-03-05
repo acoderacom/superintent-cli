@@ -1,13 +1,13 @@
-import { pipeline, env, type ProgressInfo } from '@huggingface/transformers';
-import { existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { env, type ProgressInfo, pipeline } from '@huggingface/transformers';
 
 // Suppress model loading warnings
 env.allowLocalModels = true;
 env.allowRemoteModels = true;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: dynamic pipeline type
 let extractor: any = null;
 
 const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
@@ -17,14 +17,23 @@ const QUERY_PREFIX = 'Represent this sentence for searching relevant passages: '
  * Get or initialize the embedding pipeline.
  * First call downloads the model (~67MB), subsequent calls use cache.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: dynamic pipeline type
 async function getEmbedder(): Promise<any> {
   if (extractor) {
     return extractor;
   }
 
   // Check if model is already cached
-  const cacheDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_modules', '@huggingface', 'transformers', '.cache', ...MODEL_NAME.split('/'));
+  const cacheDir = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'node_modules',
+    '@huggingface',
+    'transformers',
+    '.cache',
+    ...MODEL_NAME.split('/'),
+  );
   const isCached = existsSync(join(cacheDir, 'onnx', 'model_quantized.onnx'));
 
   let downloading = false;
@@ -33,23 +42,31 @@ async function getEmbedder(): Promise<any> {
   extractor = await pipeline('feature-extraction', MODEL_NAME, {
     dtype: 'fp32',
     model_file_name: 'model_quantized',
-    progress_callback: !isCached ? (info: ProgressInfo) => {
-      if (info.status === 'download' && !downloading) {
-        downloading = true;
-        console.warn = () => {};
-        process.stderr.write('* Downloading embedding model...\n');
-      }
-      if (info.status === 'progress' && downloading && 'loaded' in info && info.file?.includes('onnx') && info.loaded > 0) {
-        const mb = (info.loaded / 1024 / 1024).toFixed(1);
-        process.stderr.write(`\r* Downloading... ${mb} MB`);
-      }
-      if (info.status === 'ready') {
-        console.warn = origWarn;
-        if (downloading) {
-          process.stderr.write('\r* Model ready.              \n');
+    progress_callback: !isCached
+      ? (info: ProgressInfo) => {
+          if (info.status === 'download' && !downloading) {
+            downloading = true;
+            console.warn = () => {};
+            process.stderr.write('* Downloading embedding model...\n');
+          }
+          if (
+            info.status === 'progress' &&
+            downloading &&
+            'loaded' in info &&
+            info.file?.includes('onnx') &&
+            info.loaded > 0
+          ) {
+            const mb = (info.loaded / 1024 / 1024).toFixed(1);
+            process.stderr.write(`\r* Downloading... ${mb} MB`);
+          }
+          if (info.status === 'ready') {
+            console.warn = origWarn;
+            if (downloading) {
+              process.stderr.write('\r* Model ready.              \n');
+            }
+          }
         }
-      }
-    } : undefined,
+      : undefined,
   });
   return extractor;
 }

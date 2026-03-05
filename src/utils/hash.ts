@@ -1,7 +1,7 @@
-import { createHash } from 'crypto';
-import { readFileSync } from 'fs';
-import { readFile } from 'fs/promises';
-import { resolve } from 'path';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import type { Citation } from '../types.js';
 
 /**
@@ -9,10 +9,7 @@ import type { Citation } from '../types.js';
  * Returns SHA-256 truncated to 16 hex chars.
  */
 export function computeContentHash(content: string): string {
-  return createHash('sha256')
-    .update(content.trim())
-    .digest('hex')
-    .slice(0, 16);
+  return createHash('sha256').update(content.trim()).digest('hex').slice(0, 16);
 }
 
 export interface CitationValidationResult {

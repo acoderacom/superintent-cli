@@ -1,5 +1,5 @@
 // Ticket Activity widget — shows ticket status distribution at a glance
-import type { WidgetDefinition, DashboardData } from '../dashboard.js';
+import type { DashboardData, WidgetDefinition } from '../dashboard.js';
 
 function renderTicketActivity(data: DashboardData): string {
   const ta = data.ticketActivity;
@@ -19,10 +19,10 @@ function renderTicketActivity(data: DashboardData): string {
       </div>`;
   }
 
-  const inReview = (ta.byStatus['In Review'] ?? 0);
-  const done = (ta.byStatus['Done'] ?? 0);
-  const archived = (ta.byStatus['Abandoned'] ?? 0) + (ta.byStatus['Superseded'] ?? 0) + (ta.byStatus['Blocked'] ?? 0);
-  const backlog = (ta.byStatus['Backlog'] ?? 0);
+  const inReview = ta.byStatus['In Review'] ?? 0;
+  const done = ta.byStatus.Done ?? 0;
+  const archived = (ta.byStatus.Abandoned ?? 0) + (ta.byStatus.Superseded ?? 0) + (ta.byStatus.Blocked ?? 0);
+  const backlog = ta.byStatus.Backlog ?? 0;
 
   return `
     <div class="flex flex-col gap-3 h-full">

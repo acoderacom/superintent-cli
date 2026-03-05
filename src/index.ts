@@ -1,14 +1,14 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dashboardCommand } from './commands/dashboard.js';
 import { initCommand } from './commands/init.js';
+import { knowledgeCommand } from './commands/knowledge.js';
+import { specCommand } from './commands/spec.js';
 import { statusCommand } from './commands/status.js';
 import { ticketCommand } from './commands/ticket.js';
-import { knowledgeCommand } from './commands/knowledge.js';
-import { dashboardCommand } from './commands/dashboard.js';
-import { specCommand } from './commands/spec.js';
 
 // Read version from package.json
 const __filename = fileURLToPath(import.meta.url);

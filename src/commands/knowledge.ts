@@ -1,21 +1,32 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Command } from 'commander';
-import { getClient, closeClient } from '../db/client.js';
+import { closeClient, getClient } from '../db/client.js';
 import { parseKnowledgeRow, parseTicketRow } from '../db/parsers.js';
 import { performVectorSearch } from '../db/search.js';
 import { embed } from '../embed/model.js';
-
-import { generateId } from '../utils/id.js';
-import { getProjectNamespace, loadDoctorConfig } from '../utils/config.js';
-import { getGitUsername, getGitBranch } from '../utils/git.js';
-import { validateCitation, computeContentHash } from '../utils/hash.js';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
-import { generateExtractProposals } from './ticket.js';
-import type { Knowledge, SearchResult, KnowledgeInput, CliResponse, KnowledgeCategory, DecisionScope, KnowledgeSource, TicketType, TicketPlan, Citation, ContentVerdictResult } from '../types.js';
+import type {
+  Citation,
+  CliResponse,
+  ContentVerdictResult,
+  DecisionScope,
+  Knowledge,
+  KnowledgeCategory,
+  KnowledgeInput,
+  KnowledgeSource,
+  SearchResult,
+  TicketPlan,
+  TicketType,
+} from '../types.js';
 import { CATEGORY_CONFIDENCE_DEFAULTS } from '../types.js';
+import { getProjectNamespace, loadDoctorConfig } from '../utils/config.js';
+import { getGitBranch, getGitUsername } from '../utils/git.js';
+import { computeContentHash, validateCitation } from '../utils/hash.js';
+import { generateId } from '../utils/id.js';
+import { generateExtractProposals } from './ticket.js';
 
 function clampConfidence(value: number): number {
-  if (isNaN(value)) return 0.8;
+  if (Number.isNaN(value)) return 0.8;
   return Math.max(0.1, Math.min(1.0, value));
 }
 
@@ -122,7 +133,7 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
           }
           const filePath = citationPath.slice(0, colonIdx);
           const lineNum = parseInt(citationPath.slice(colonIdx + 1), 10);
-          if (isNaN(lineNum) || lineNum < 1) {
+          if (Number.isNaN(lineNum) || lineNum < 1) {
             throw new Error(`citations[${i}].path has invalid line number`);
           }
 
@@ -162,8 +173,7 @@ function parseJsonKnowledge(raw: string): KnowledgeJsonInput {
   }
 }
 
-export const knowledgeCommand = new Command('knowledge')
-  .description('Manage knowledge entries');
+export const knowledgeCommand = new Command('knowledge').description('Manage knowledge entries');
 
 // Create subcommand
 knowledgeCommand
@@ -215,7 +225,9 @@ knowledgeCommand
 
         // Category: optional, but if provided must be valid
         if (parsed.category !== undefined && !VALID_CATEGORIES.includes(parsed.category as KnowledgeCategory)) {
-          missing.push(`category: Invalid category '${parsed.category}'. Must be one of: ${VALID_CATEGORIES.join(', ')}`);
+          missing.push(
+            `category: Invalid category '${parsed.category}'. Must be one of: ${VALID_CATEGORIES.join(', ')}`,
+          );
         }
 
         // Source: optional, but if provided must be valid
@@ -224,8 +236,13 @@ knowledgeCommand
         }
 
         // Origin ticket type: optional, but if provided must be valid
-        if (parsed.originTicketType !== undefined && !VALID_TICKET_TYPES.includes(parsed.originTicketType as TicketType)) {
-          missing.push(`originTicketType: Invalid type '${parsed.originTicketType}'. Must be one of: ${VALID_TICKET_TYPES.join(', ')}`);
+        if (
+          parsed.originTicketType !== undefined &&
+          !VALID_TICKET_TYPES.includes(parsed.originTicketType as TicketType)
+        ) {
+          missing.push(
+            `originTicketType: Invalid type '${parsed.originTicketType}'. Must be one of: ${VALID_TICKET_TYPES.join(', ')}`,
+          );
         }
 
         if (missing.length > 0) {
@@ -281,7 +298,7 @@ knowledgeCommand
       const client = await getClient();
       try {
         // Generate embedding from title + content + tags
-        const tagsText = tags?.length ? ' ' + tags.join(' ') : '';
+        const tagsText = tags?.length ? ` ${tags.join(' ')}` : '';
         const textToEmbed = `${title} ${content}${tagsText}`;
         const embedding = await embed(textToEmbed);
 
@@ -420,11 +437,7 @@ knowledgeCommand
 
         const k = parseKnowledgeRow(result.rows[0] as Record<string, unknown>);
 
-        const lines: string[] = [
-          `# ${k.title}`,
-          '',
-          k.content,
-        ];
+        const lines: string[] = [`# ${k.title}`, '', k.content];
 
         const response: CliResponse<{ id: string; preview: string }> = {
           success: true,
@@ -524,9 +537,7 @@ knowledgeCommand
 
         const result = await client.execute({ sql, args });
 
-        const knowledge = result.rows.map((row) =>
-          parseKnowledgeRow(row as Record<string, unknown>)
-        );
+        const knowledge = result.rows.map((row) => parseKnowledgeRow(row as Record<string, unknown>));
 
         const response: CliResponse<Knowledge[]> = {
           success: true,
@@ -668,8 +679,9 @@ knowledgeCommand
             const row = current.rows[0] as Record<string, unknown>;
             const newTitle = options.title || jsonParsed?.title || row.title;
             const newContent = jsonParsed?.content || row.content;
-            const newTags: string[] = options.tags || jsonParsed?.tags || (row.tags ? JSON.parse(row.tags as string) : []);
-            const tagsText = newTags?.length ? ' ' + newTags.join(' ') : '';
+            const newTags: string[] =
+              options.tags || jsonParsed?.tags || (row.tags ? JSON.parse(row.tags as string) : []);
+            const tagsText = newTags?.length ? ` ${newTags.join(' ')}` : '';
             const embedding = await embed(`${newTitle} ${newContent}${tagsText}`);
             updates.push('embedding = vector32(?)');
             args.push(JSON.stringify(embedding));
@@ -873,7 +885,8 @@ knowledgeCommand
         if (!doctorConfig) {
           const response: CliResponse = {
             success: false,
-            error: '--content requires DOCTOR_MODEL in .superintent/.env (e.g. DOCTOR_MODEL="anthropic:claude-sonnet-4-5-20250929")',
+            error:
+              '--content requires DOCTOR_MODEL in .superintent/.env (e.g. DOCTOR_MODEL="anthropic:claude-sonnet-4-5-20250929")',
           };
           console.log(JSON.stringify(response));
           process.exit(1);
@@ -884,7 +897,10 @@ knowledgeCommand
       try {
         let rows;
         if (id) {
-          const ids = id.split(',').map((s) => s.trim()).filter(Boolean);
+          const ids = id
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
           const placeholders = ids.map(() => '?').join(', ');
           const result = await client.execute({
             sql: `SELECT id, title, content, category, confidence, citations FROM knowledge WHERE id IN (${placeholders})`,
@@ -996,6 +1012,7 @@ knowledgeCommand
         }
 
         // --content: LLM-powered content verification + missing resolution
+        const verbose = !!options.verbose;
         let contentVerified = 0;
         let contentUpdated = 0;
         let deactivated = 0;
@@ -1025,7 +1042,9 @@ knowledgeCommand
                 if (!fileContents.has(filePath)) {
                   try {
                     fileContents.set(filePath, readFileSync(resolve(cwd, filePath), 'utf-8'));
-                  } catch { /* file deleted between validate and read */ }
+                  } catch {
+                    /* file deleted between validate and read */
+                  }
                 }
               }
             }
@@ -1034,11 +1053,12 @@ knowledgeCommand
             const LLM_CONCURRENCY = 3;
             const pLimit = (await import('p-limit')).default;
             const limit = pLimit(LLM_CONCURRENCY);
-            const verbose = !!options.verbose;
             let processed = 0;
 
             if (verbose) {
-              process.stderr.write(`\n* LLM content verification: ${healedEntries.length} entries, concurrency ${LLM_CONCURRENCY}\n`);
+              process.stderr.write(
+                `\n* LLM content verification: ${healedEntries.length} entries, concurrency ${LLM_CONCURRENCY}\n`,
+              );
             }
 
             await Promise.all(
@@ -1110,7 +1130,13 @@ For the "reason" field: be brief — just state what specifically changed or was
                     const commentId = generateId('COMMENT');
                     await client.execute({
                       sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                      args: [commentId, 'knowledge', entry.id, 'validate', `Content verification skipped: LLM call failed`],
+                      args: [
+                        commentId,
+                        'knowledge',
+                        entry.id,
+                        'validate',
+                        `Content verification skipped: LLM call failed`,
+                      ],
                     });
                     return;
                   }
@@ -1150,14 +1176,26 @@ For the "reason" field: be brief — just state what specifically changed or was
                     const commentId = generateId('COMMENT');
                     await client.execute({
                       sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                      args: [commentId, 'knowledge', entry.id, 'validate', `Healed (${verdict.verdict}): ${verdict.reason}`],
+                      args: [
+                        commentId,
+                        'knowledge',
+                        entry.id,
+                        'validate',
+                        `Healed (${verdict.verdict}): ${verdict.reason}`,
+                      ],
                     });
                     contentUpdated++;
                   } else {
                     const commentId = generateId('COMMENT');
                     await client.execute({
                       sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
-                      args: [commentId, 'knowledge', entry.id, 'validate', `Flagged (${verdict.verdict}): ${verdict.reason}`],
+                      args: [
+                        commentId,
+                        'knowledge',
+                        entry.id,
+                        'validate',
+                        `Flagged (${verdict.verdict}): ${verdict.reason}`,
+                      ],
                     });
                     contentUpdated++;
                   }
@@ -1167,14 +1205,16 @@ For the "reason" field: be brief — just state what specifically changed or was
           }
 
           // Step 3: Resolve missing citations — any missing = deactivate
-          const verbose = !!options.verbose;
           const missingEntries = entries.filter((e) => e.missing > 0 && !e.healed);
           if (verbose && missingEntries.length > 0) {
             process.stderr.write(`\n* Deactivating ${missingEntries.length} entries with missing citations\n`);
           }
           for (const entry of missingEntries) {
             if (verbose) {
-              const missingPaths = entry.details.filter((d: { status: string }) => d.status === 'missing').map((d: { path: string }) => d.path).join(', ');
+              const missingPaths = entry.details
+                .filter((d: { status: string }) => d.status === 'missing')
+                .map((d: { path: string }) => d.path)
+                .join(', ');
               process.stderr.write(`  ✗ ${entry.id} — missing: ${missingPaths}\n`);
             }
             await client.execute({
@@ -1187,10 +1227,14 @@ For the "reason" field: be brief — just state what specifically changed or was
               args: ['knowledge', entry.id, 'validate'],
             });
             const commentId = generateId('COMMENT');
-            const missingPaths = entry.details.filter((d) => d.status === 'missing').map((d) => d.path).join(', ');
-            const detail = entry.valid === 0
-              ? `Auto-deactivated: all citation source files removed — ${missingPaths}`
-              : `Auto-deactivated: ${entry.missing}/${entry.total} citation source files missing — ${missingPaths}`;
+            const missingPaths = entry.details
+              .filter((d) => d.status === 'missing')
+              .map((d) => d.path)
+              .join(', ');
+            const detail =
+              entry.valid === 0
+                ? `Auto-deactivated: all citation source files removed — ${missingPaths}`
+                : `Auto-deactivated: ${entry.missing}/${entry.total} citation source files missing — ${missingPaths}`;
             await client.execute({
               sql: 'INSERT INTO comments (id, parent_type, parent_id, author, text) VALUES (?, ?, ?, ?, ?)',
               args: [commentId, 'knowledge', entry.id, 'validate', detail],
@@ -1200,7 +1244,6 @@ For the "reason" field: be brief — just state what specifically changed or was
         }
 
         // Strip content from response entries to keep output concise
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const responseEntries = entries.map(({ content: _, ...rest }) => rest);
 
         const response: CliResponse<{
@@ -1285,7 +1328,7 @@ knowledgeCommand
 
           // Usage-based growth
           if (usageCount > 10) {
-            adjustment += 0.10;
+            adjustment += 0.1;
             reasons.push(`high usage (${usageCount}): +0.10`);
           } else if (usageCount > 5) {
             adjustment += 0.05;
@@ -1296,16 +1339,14 @@ knowledgeCommand
           const slowDecay = category === 'truth' || category === 'architecture';
           const referenceDate = lastUsedAt || createdAt;
           if (referenceDate) {
-            const daysSince = Math.floor(
-              (now.getTime() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24)
-            );
+            const daysSince = Math.floor((now.getTime() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24));
 
             if (daysSince > 180) {
-              const penalty = slowDecay ? 0.05 : 0.20;
+              const penalty = slowDecay ? 0.05 : 0.2;
               adjustment -= penalty;
               reasons.push(`very stale (${daysSince}d): -${penalty.toFixed(2)}`);
             } else if (daysSince > 90) {
-              const penalty = slowDecay ? 0.02 : 0.10;
+              const penalty = slowDecay ? 0.02 : 0.1;
               adjustment -= penalty;
               reasons.push(`stale (${daysSince}d): -${penalty.toFixed(2)}`);
             }
@@ -1412,7 +1453,7 @@ knowledgeCommand
           ticketType: options.ticketType as string | undefined,
           tags: options.tags as string[] | undefined,
           author: options.author as string | undefined,
-          branch: options.branchAuto ? undefined : options.branch as string | undefined,
+          branch: options.branchAuto ? undefined : (options.branch as string | undefined),
           branches,
           minScore: parseFloat(options.minScore as string),
           limit: parseInt(options.limit as string, 10),
@@ -1461,54 +1502,54 @@ knowledgeCommand
     try {
       const client = await getClient();
       try {
-      const result = await client.execute({
-        sql: 'SELECT * FROM tickets WHERE id = ?',
-        args: [ticketId],
-      });
+        const result = await client.execute({
+          sql: 'SELECT * FROM tickets WHERE id = ?',
+          args: [ticketId],
+        });
 
-      if (result.rows.length === 0) {
-        const response: CliResponse = {
-          success: false,
-          error: `Ticket ${ticketId} not found`,
+        if (result.rows.length === 0) {
+          const response: CliResponse = {
+            success: false,
+            error: `Ticket ${ticketId} not found`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const ticket = parseTicketRow(result.rows[0] as Record<string, unknown>);
+
+        if (ticket.status !== 'Done') {
+          const response: CliResponse = {
+            success: false,
+            error: `Ticket ${ticketId} is not Done (status: ${ticket.status}). Only completed tickets can have knowledge extracted.`,
+          };
+          console.log(JSON.stringify(response));
+          process.exit(1);
+        }
+
+        const namespace = options.namespace || getProjectNamespace();
+        const suggestions: KnowledgeInput[] = await generateExtractProposals(ticket, namespace, client);
+
+        const proposal: ExtractProposal = {
+          action: 'propose',
+          ticketId,
+          namespace,
+          ticket: {
+            intent: ticket.intent,
+            context: ticket.context || null,
+            assumptions: ticket.assumptions || null,
+            constraints_use: ticket.constraints_use || null,
+            constraints_avoid: ticket.constraints_avoid || null,
+            plan: ticket.plan || null,
+          },
+          suggestedKnowledge: suggestions,
+        };
+
+        const response: CliResponse<ExtractProposal> = {
+          success: true,
+          data: proposal,
         };
         console.log(JSON.stringify(response));
-        process.exit(1);
-      }
-
-      const ticket = parseTicketRow(result.rows[0] as Record<string, unknown>);
-
-      if (ticket.status !== 'Done') {
-        const response: CliResponse = {
-          success: false,
-          error: `Ticket ${ticketId} is not Done (status: ${ticket.status}). Only completed tickets can have knowledge extracted.`,
-        };
-        console.log(JSON.stringify(response));
-        process.exit(1);
-      }
-
-      const namespace = options.namespace || getProjectNamespace();
-      const suggestions: KnowledgeInput[] = await generateExtractProposals(ticket, namespace, client);
-
-      const proposal: ExtractProposal = {
-        action: 'propose',
-        ticketId,
-        namespace,
-        ticket: {
-          intent: ticket.intent,
-          context: ticket.context || null,
-          assumptions: ticket.assumptions || null,
-          constraints_use: ticket.constraints_use || null,
-          constraints_avoid: ticket.constraints_avoid || null,
-          plan: ticket.plan || null,
-        },
-        suggestedKnowledge: suggestions,
-      };
-
-      const response: CliResponse<ExtractProposal> = {
-        success: true,
-        data: proposal,
-      };
-      console.log(JSON.stringify(response));
       } finally {
         closeClient();
       }

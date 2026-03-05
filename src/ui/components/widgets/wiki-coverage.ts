@@ -1,5 +1,5 @@
 // Wiki Coverage widget — shows code-to-knowledge coverage stats
-import type { WidgetDefinition, DashboardData } from '../dashboard.js';
+import type { DashboardData, WidgetDefinition } from '../dashboard.js';
 
 function renderWikiCoverage(data: DashboardData): string {
   const wc = data.wikiCoverage;
@@ -29,9 +29,7 @@ function renderWikiCoverage(data: DashboardData): string {
   const pctColor = `text-${barColor}-600 dark:text-${barColor}-400`;
 
   // Last indexed
-  const lastIndexed = wc.lastIndexedAt
-    ? new Date(wc.lastIndexedAt).toLocaleString()
-    : 'Unknown';
+  const lastIndexed = wc.lastIndexedAt ? new Date(wc.lastIndexedAt).toLocaleString() : 'Unknown';
 
   return `
     <div class="flex flex-col gap-3 h-full">

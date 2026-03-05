@@ -1,20 +1,19 @@
 import type { Hono } from 'hono';
 import { getClient } from '../../db/client.js';
 import { parseSpecRow } from '../../db/parsers.js';
-import { emitSSE } from '../sse.js';
 import { getGitUsername } from '../../utils/git.js';
-import { fetchComments } from './shared.js';
 import {
-  renderSpecView,
-  renderSpecList,
-  renderSpecMore,
-  renderSpecModal,
-  renderNewSpecModal,
   renderEditSpecModal,
+  renderNewSpecModal,
+  renderSpecList,
+  renderSpecModal,
+  renderSpecMore,
+  renderSpecView,
 } from '../components/index.js';
+import { emitSSE } from '../sse.js';
+import { fetchComments } from './shared.js';
 
 export function registerSpecRoutes(app: Hono) {
-
   // ── API Routes ──────────────────────────────────────────────────
 
   // List all specs (JSON)
@@ -94,7 +93,7 @@ export function registerSpecRoutes(app: Hono) {
         sql: 'SELECT id, title, status FROM tickets WHERE origin_spec_id = ? ORDER BY created_at DESC',
         args: [id],
       });
-      const relatedTickets = ticketResult.rows.map(row => ({
+      const relatedTickets = ticketResult.rows.map((row) => ({
         id: row.id as string,
         title: row.title as string | undefined,
         status: row.status as string,
@@ -284,7 +283,7 @@ export function registerSpecRoutes(app: Hono) {
         sql: 'SELECT id, title, status FROM tickets WHERE origin_spec_id = ? ORDER BY created_at DESC',
         args: [id],
       });
-      const relatedTickets = ticketResult.rows.map(row => ({
+      const relatedTickets = ticketResult.rows.map((row) => ({
         id: row.id as string,
         title: row.title as string | undefined,
         status: row.status as string,

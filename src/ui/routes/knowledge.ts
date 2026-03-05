@@ -1,22 +1,22 @@
-import type { Hono } from 'hono';
 import type { InValue } from '@libsql/client';
+import type { Hono } from 'hono';
 import { getClient } from '../../db/client.js';
 import { parseKnowledgeRow } from '../../db/parsers.js';
 import { performVectorSearch } from '../../db/search.js';
 import { embed } from '../../embed/model.js';
-import { emitSSE } from '../sse.js';
-import { fetchComments, classifyHealth } from './shared.js';
 import type { HealthStatus } from '../components/dashboard.js';
-import { renderHealthEntriesModal } from '../components/widgets/knowledge-health-summary.js';
 import {
-  renderSearchView,
-  renderSearchResults,
-  renderKnowledgeView,
-  renderKnowledgeList,
-  renderKnowledgeMore,
-  renderKnowledgeModal,
   renderGraphView,
+  renderKnowledgeList,
+  renderKnowledgeModal,
+  renderKnowledgeMore,
+  renderKnowledgeView,
+  renderSearchResults,
+  renderSearchView,
 } from '../components/index.js';
+import { renderHealthEntriesModal } from '../components/widgets/knowledge-health-summary.js';
+import { emitSSE } from '../sse.js';
+import { classifyHealth, fetchComments } from './shared.js';
 
 // Helper: build knowledge query conditions from filter params
 function buildKnowledgeConditions(c: { req: { query: (key: string) => string | undefined } }) {
@@ -38,12 +38,30 @@ function buildKnowledgeConditions(c: { req: { query: (key: string) => string | u
     conditions.push('active = 0');
   }
 
-  if (category) { conditions.push('category = ?'); args.push(category); }
-  if (namespace) { conditions.push('namespace = ?'); args.push(namespace); }
-  if (scope) { conditions.push('decision_scope = ?'); args.push(scope); }
-  if (sourceFilter) { conditions.push('source = ?'); args.push(sourceFilter); }
-  if (author) { conditions.push('author LIKE ?'); args.push(`%${author}%`); }
-  if (branch) { conditions.push('branch LIKE ?'); args.push(`%${branch}%`); }
+  if (category) {
+    conditions.push('category = ?');
+    args.push(category);
+  }
+  if (namespace) {
+    conditions.push('namespace = ?');
+    args.push(namespace);
+  }
+  if (scope) {
+    conditions.push('decision_scope = ?');
+    args.push(scope);
+  }
+  if (sourceFilter) {
+    conditions.push('source = ?');
+    args.push(sourceFilter);
+  }
+  if (author) {
+    conditions.push('author LIKE ?');
+    args.push(`%${author}%`);
+  }
+  if (branch) {
+    conditions.push('branch LIKE ?');
+    args.push(`%${branch}%`);
+  }
 
   const orderByMap: Record<string, string> = {
     newest: 'created_at DESC',
@@ -61,7 +79,6 @@ function buildKnowledgeConditions(c: { req: { query: (key: string) => string | u
 }
 
 export function registerKnowledgeRoutes(app: Hono) {
-
   // ── API Routes ──────────────────────────────────────────────────
 
   // Toggle knowledge active status
@@ -117,9 +134,18 @@ export function registerKnowledgeRoutes(app: Hono) {
         conditions.push('active = 0');
       }
 
-      if (category) { conditions.push('category = ?'); args.push(category); }
-      if (namespace) { conditions.push('namespace = ?'); args.push(namespace); }
-      if (scope) { conditions.push('decision_scope = ?'); args.push(scope); }
+      if (category) {
+        conditions.push('category = ?');
+        args.push(category);
+      }
+      if (namespace) {
+        conditions.push('namespace = ?');
+        args.push(namespace);
+      }
+      if (scope) {
+        conditions.push('decision_scope = ?');
+        args.push(scope);
+      }
 
       const limit = parseInt(c.req.query('limit') || '20', 10) || 20;
       const offset = parseInt(c.req.query('offset') || '0', 10) || 0;
@@ -177,7 +203,10 @@ export function registerKnowledgeRoutes(app: Hono) {
       const client = await getClient();
       const queryEmbedding = await embed(query, true);
       const results = await performVectorSearch(client, queryEmbedding, {
-        namespace, category, limit, trackUsage: false,
+        namespace,
+        category,
+        limit,
+        trackUsage: false,
       });
       return c.json({ success: true, data: { query, results } });
     } catch (error) {
@@ -200,12 +229,18 @@ export function registerKnowledgeRoutes(app: Hono) {
         title: row.title as string,
         category: (row.category as string) || 'architecture',
         confidence: (row.confidence as number) || 0.5,
-        tags: (() => { try { return JSON.parse((row.tags as string) || '[]'); } catch { return []; } })() as string[],
+        tags: (() => {
+          try {
+            return JSON.parse((row.tags as string) || '[]');
+          } catch {
+            return [];
+          }
+        })() as string[],
       }));
 
       const nodes = entries.map((e) => ({
         id: e.id,
-        label: e.title.length > 30 ? e.title.slice(0, 30) + '...' : e.title,
+        label: e.title.length > 30 ? `${e.title.slice(0, 30)}...` : e.title,
         category: e.category,
         confidence: e.confidence,
         tags: e.tags,
@@ -254,7 +289,10 @@ export function registerKnowledgeRoutes(app: Hono) {
       const client = await getClient();
       const queryEmbedding = await embed(query, true);
       const results = await performVectorSearch(client, queryEmbedding, {
-        namespace, category, limit, trackUsage: false,
+        namespace,
+        category,
+        limit,
+        trackUsage: false,
       });
       return c.html(renderSearchResults(results));
     } catch (error) {

@@ -1,10 +1,9 @@
 import { Command } from 'commander';
-import { getClient, closeClient } from '../db/client.js';
+import { closeClient, getClient } from '../db/client.js';
 import { parseSpecRow } from '../db/parsers.js';
-
-import { generateId } from '../utils/id.js';
+import type { CliResponse, Spec } from '../types.js';
 import { getGitUsername } from '../utils/git.js';
-import type { Spec, CliResponse } from '../types.js';
+import { generateId } from '../utils/id.js';
 
 interface SpecInput {
   title?: string;
@@ -44,8 +43,7 @@ function parseJsonSpec(raw: string): SpecInput {
   }
 }
 
-export const specCommand = new Command('spec')
-  .description('Manage specs');
+export const specCommand = new Command('spec').description('Manage specs');
 
 // Create subcommand
 specCommand
@@ -193,11 +191,7 @@ specCommand
 
         const spec = parseSpecRow(result.rows[0] as Record<string, unknown>);
 
-        const lines: string[] = [
-          `# ${spec.title}`,
-          '',
-          spec.content,
-        ];
+        const lines: string[] = [`# ${spec.title}`, '', spec.content];
 
         const response: CliResponse<{ id: string; preview: string }> = {
           success: true,
@@ -232,9 +226,7 @@ specCommand
           args: [parseInt(options.limit, 10), parseInt(options.offset, 10)],
         });
 
-        const specs = result.rows.map((row) =>
-          parseSpecRow(row as Record<string, unknown>)
-        );
+        const specs = result.rows.map((row) => parseSpecRow(row as Record<string, unknown>));
 
         const response: CliResponse<Spec[]> = {
           success: true,

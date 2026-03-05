@@ -1,25 +1,25 @@
-import { Client } from '@libsql/client';
+import type { Client } from '@libsql/client';
 import {
-  CREATE_TICKETS_TABLE,
-  CREATE_TICKETS_INDEXES,
-  CREATE_KNOWLEDGE_TABLE,
-  CREATE_KNOWLEDGE_INDEXES,
-  CREATE_VECTOR_INDEX,
-  CREATE_SPECS_TABLE,
-  CREATE_SPECS_INDEXES,
-  CREATE_COMMENTS_TABLE,
   CREATE_COMMENTS_INDEXES,
-  CREATE_WIKI_PAGES_TABLE,
-  CREATE_WIKI_PAGES_INDEXES,
-  CREATE_WIKI_CITATIONS_TABLE,
+  CREATE_COMMENTS_TABLE,
+  CREATE_KNOWLEDGE_INDEXES,
+  CREATE_KNOWLEDGE_TABLE,
+  CREATE_SPECS_INDEXES,
+  CREATE_SPECS_TABLE,
+  CREATE_TICKETS_INDEXES,
+  CREATE_TICKETS_TABLE,
+  CREATE_VECTOR_INDEX,
   CREATE_WIKI_CITATIONS_INDEXES,
+  CREATE_WIKI_CITATIONS_TABLE,
+  CREATE_WIKI_PAGES_INDEXES,
+  CREATE_WIKI_PAGES_TABLE,
 } from './schema.js';
 
 export async function initSchema(client: Client): Promise<void> {
   // Create tickets table
   await client.execute(CREATE_TICKETS_TABLE);
 
-  const ticketIndexes = CREATE_TICKETS_INDEXES.split(';').filter(s => s.trim());
+  const ticketIndexes = CREATE_TICKETS_INDEXES.split(';').filter((s) => s.trim());
   for (const stmt of ticketIndexes) {
     await client.execute(stmt);
   }
@@ -27,7 +27,7 @@ export async function initSchema(client: Client): Promise<void> {
   // Create knowledge table
   await client.execute(CREATE_KNOWLEDGE_TABLE);
 
-  const knowledgeIndexes = CREATE_KNOWLEDGE_INDEXES.split(';').filter(s => s.trim());
+  const knowledgeIndexes = CREATE_KNOWLEDGE_INDEXES.split(';').filter((s) => s.trim());
   for (const stmt of knowledgeIndexes) {
     await client.execute(stmt);
   }
@@ -42,7 +42,7 @@ export async function initSchema(client: Client): Promise<void> {
   // Create specs table
   await client.execute(CREATE_SPECS_TABLE);
 
-  const specIndexes = CREATE_SPECS_INDEXES.split(';').filter(s => s.trim());
+  const specIndexes = CREATE_SPECS_INDEXES.split(';').filter((s) => s.trim());
   for (const stmt of specIndexes) {
     await client.execute(stmt);
   }
@@ -50,7 +50,7 @@ export async function initSchema(client: Client): Promise<void> {
   // Create comments table
   await client.execute(CREATE_COMMENTS_TABLE);
 
-  const commentIndexes = CREATE_COMMENTS_INDEXES.split(';').filter(s => s.trim());
+  const commentIndexes = CREATE_COMMENTS_INDEXES.split(';').filter((s) => s.trim());
   for (const stmt of commentIndexes) {
     await client.execute(stmt);
   }
@@ -65,7 +65,7 @@ export async function initSchema(client: Client): Promise<void> {
     // Column already exists
   }
 
-  const wikiPagesIndexes = CREATE_WIKI_PAGES_INDEXES.split(';').filter(s => s.trim());
+  const wikiPagesIndexes = CREATE_WIKI_PAGES_INDEXES.split(';').filter((s) => s.trim());
   for (const stmt of wikiPagesIndexes) {
     await client.execute(stmt);
   }
@@ -73,9 +73,8 @@ export async function initSchema(client: Client): Promise<void> {
   // Create wiki citations table
   await client.execute(CREATE_WIKI_CITATIONS_TABLE);
 
-  const wikiCitationsIndexes = CREATE_WIKI_CITATIONS_INDEXES.split(';').filter(s => s.trim());
+  const wikiCitationsIndexes = CREATE_WIKI_CITATIONS_INDEXES.split(';').filter((s) => s.trim());
   for (const stmt of wikiCitationsIndexes) {
     await client.execute(stmt);
   }
-
 }

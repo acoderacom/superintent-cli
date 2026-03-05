@@ -1,20 +1,19 @@
 import type { Hono } from 'hono';
 import { getClient } from '../../db/client.js';
-import { scanProject } from '../../wiki/scanner.js';
 import { scanCache } from '../../wiki/cache.js';
-import { indexProject, indexProjectIncremental, getCoverageStats, getCitationsForFile } from '../../wiki/indexer.js';
+import { getCitationsForFile, getCoverageStats, indexProject, indexProjectIncremental } from '../../wiki/indexer.js';
+import { scanProject } from '../../wiki/scanner.js';
 import type { WikiSearchHit } from '../components/index.js';
 import {
-  renderWikiView,
-  renderWikiTree,
-  renderWikiOverview,
   renderWikiDirectory,
   renderWikiFile,
+  renderWikiOverview,
   renderWikiSearchResults,
+  renderWikiTree,
+  renderWikiView,
 } from '../components/index.js';
 
 export function registerWikiRoutes(app: Hono) {
-
   // ── Partial Routes ──────────────────────────────────────────────
 
   // Wiki view shell
@@ -54,7 +53,7 @@ export function registerWikiRoutes(app: Hono) {
     try {
       const dirPath = c.req.param('path');
       const scan = await scanProject(process.cwd());
-      const files = scan.files.filter(f => {
+      const files = scan.files.filter((f) => {
         const fileDirParts = f.relativePath.split('/');
         fileDirParts.pop(); // Remove filename
         const fileDir = fileDirParts.join('/');
@@ -63,7 +62,7 @@ export function registerWikiRoutes(app: Hono) {
 
       // Find immediate subdirectories
       const subdirSet = new Set<string>();
-      const prefix = dirPath + '/';
+      const prefix = `${dirPath}/`;
       for (const file of scan.files) {
         if (file.relativePath.startsWith(prefix)) {
           const rest = file.relativePath.slice(prefix.length);
@@ -85,7 +84,7 @@ export function registerWikiRoutes(app: Hono) {
     try {
       const filePath = c.req.param('path');
       const scan = await scanProject(process.cwd());
-      const file = scan.files.find(f => f.relativePath === filePath);
+      const file = scan.files.find((f) => f.relativePath === filePath);
 
       if (!file) {
         return c.html('<div class="text-red-500 p-4">File not found</div>');
@@ -171,7 +170,7 @@ export function registerWikiRoutes(app: Hono) {
         }
 
         // Match constants and variables
-        for (const v of (file.variables || [])) {
+        for (const v of file.variables || []) {
           if (hits.length >= MAX_RESULTS) break;
           if (v.name.toLowerCase().includes(q)) {
             hits.push({
@@ -185,7 +184,7 @@ export function registerWikiRoutes(app: Hono) {
         }
 
         // Match interfaces
-        for (const iface of (file.interfaces || [])) {
+        for (const iface of file.interfaces || []) {
           if (hits.length >= MAX_RESULTS) break;
           if (iface.name.toLowerCase().includes(q)) {
             hits.push({
@@ -194,7 +193,10 @@ export function registerWikiRoutes(app: Hono) {
               filePath: file.relativePath,
               line: iface.line,
               endLine: iface.endLine,
-              detail: iface.properties.length > 0 ? `${iface.properties.length} prop${iface.properties.length !== 1 ? 's' : ''}` : undefined,
+              detail:
+                iface.properties.length > 0
+                  ? `${iface.properties.length} prop${iface.properties.length !== 1 ? 's' : ''}`
+                  : undefined,
             });
           }
         }
@@ -250,9 +252,7 @@ export function registerWikiRoutes(app: Hono) {
     try {
       const full = c.req.query('full') === 'true';
       const client = await getClient();
-      const stats = full
-        ? await indexProject(client)
-        : await indexProjectIncremental(client);
+      const stats = full ? await indexProject(client) : await indexProjectIncremental(client);
       c.header('HX-Trigger', 'refresh');
       return c.json(stats);
     } catch (error) {

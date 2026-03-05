@@ -1,5 +1,5 @@
-import { escapeHtml } from './utils.js';
 import type { Comment, CommentParentType } from '../../types.js';
+import { escapeHtml } from './utils.js';
 
 /**
  * Render the full comments section: list + inline add form.
@@ -9,9 +9,10 @@ export function renderCommentsSection(comments: Comment[], parentType: CommentPa
     <div class="mb-4" id="comments-section">
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Comments</h3>
       <div class="space-y-2 mb-3">
-        ${comments.length > 0
-          ? comments.map(c => renderCommentCard(c)).join('')
-          : '<p class="text-xs text-gray-400 dark:text-gray-500">No comments yet</p>'
+        ${
+          comments.length > 0
+            ? comments.map((c) => renderCommentCard(c)).join('')
+            : '<p class="text-xs text-gray-400 dark:text-gray-500">No comments yet</p>'
         }
       </div>
       ${renderInlineCommentForm(parentType, parentId)}
@@ -23,7 +24,10 @@ export function renderCommentsSection(comments: Comment[], parentType: CommentPa
  * Render a single comment card with edit/delete actions.
  */
 function renderCommentCard(comment: Comment): string {
-  const isAi = !comment.author || comment.author === 'anonymous' || ['claude', 'openai', 'gemini', 'gpt'].some(a => comment.author.toLowerCase().includes(a));
+  const isAi =
+    !comment.author ||
+    comment.author === 'anonymous' ||
+    ['claude', 'openai', 'gemini', 'gpt'].some((a) => comment.author.toLowerCase().includes(a));
   const authorBadge = isAi
     ? `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">${escapeHtml(comment.author)}</span>`
     : `<span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200">${escapeHtml(comment.author)}</span>`;

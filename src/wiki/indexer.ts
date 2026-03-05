@@ -1,12 +1,12 @@
 // Wiki indexer — orchestrates scan + match + persist to DB
 
 import type { Client } from '@libsql/client';
-import { scanProject, collectFilesWithMtimes, scanFiles, getMtimeForFile, buildScanResult } from './scanner.js';
-import { scanCache } from './cache.js';
-import { matchKnowledgeToProject } from './matcher.js';
-import type { WikiCitation } from './matcher.js';
 import { generateId } from '../utils/id.js';
+import { scanCache } from './cache.js';
+import type { WikiCitation } from './matcher.js';
+import { matchKnowledgeToProject } from './matcher.js';
 import type { ASTFileResult } from './scanner.js';
+import { buildScanResult, collectFilesWithMtimes, getMtimeForFile, scanFiles, scanProject } from './scanner.js';
 
 export interface IndexStats {
   totalCitations: number;
@@ -99,7 +99,7 @@ export async function indexProjectIncremental(client: Client): Promise<Increment
 
   // 1. Collect current filesystem state with mtimes
   const currentFiles = collectFilesWithMtimes(rootPath);
-  const currentPathSet = new Set(currentFiles.map(f => f.relativePath));
+  const currentPathSet = new Set(currentFiles.map((f) => f.relativePath));
 
   // 2. Load stored wiki_pages with their mtimes from DB
   const storedResult = await client.execute({
@@ -194,9 +194,7 @@ export async function indexProjectIncremental(client: Client): Promise<Increment
   }
 
   // 7. Delete old citations for changed files only, then re-match
-  const changedPageIds = toScanRelative
-    .map(rp => pageIdMap.get(rp))
-    .filter((id): id is string => !!id);
+  const changedPageIds = toScanRelative.map((rp) => pageIdMap.get(rp)).filter((id): id is string => !!id);
 
   for (const pageId of changedPageIds) {
     await client.execute({ sql: 'DELETE FROM wiki_citations WHERE wiki_page_id = ?', args: [pageId] });
@@ -275,7 +273,7 @@ export async function getCoverageStats(client: Client): Promise<CoverageStats> {
   const totalFiles = fileIds.size;
   const coveredFiles = coveredFileIds.size;
   const coveredElements = coveredElementKeys.size;
-  const coveragePercent = totalElements > 0 ? Math.round(coveredElements / totalElements * 100) : 0;
+  const coveragePercent = totalElements > 0 ? Math.round((coveredElements / totalElements) * 100) : 0;
 
   return { totalFiles, coveredFiles, totalElements, coveredElements, coveragePercent };
 }
@@ -294,7 +292,7 @@ export async function getCitationsForFile(client: Client, filePath: string): Pro
     args: [filePath],
   });
 
-  return result.rows.map(row => ({
+  return result.rows.map((row) => ({
     id: row.id as string,
     wiki_page_id: row.wiki_page_id as string,
     knowledge_id: row.knowledge_id as string,

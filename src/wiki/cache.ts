@@ -61,5 +61,5 @@ export class WikiCache<T> {
 
 // Singleton cache for project scan results
 // Typed as `any` to avoid circular import with scanner.ts
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: avoid circular import with scanner.ts
 export const scanCache = new WikiCache<any>();

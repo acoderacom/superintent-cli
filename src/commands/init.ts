@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import { createClientWithConfig } from '../db/client.js';
 import { initSchema } from '../db/init-schema.js';
-import { saveConfig, loadConfig } from '../utils/config.js';
 import type { CliResponse } from '../types.js';
+import { loadConfig, saveConfig } from '../utils/config.js';
 
 export const initCommand = new Command('init')
   .description('Create database tables (reads credentials from .superintent/.env or env vars)')

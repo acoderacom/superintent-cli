@@ -1,42 +1,53 @@
 // Ticket-related UI components
-import { escapeHtml, ColumnData, renderMarkdownEditor } from './utils.js';
-import { renderCommentsSection } from './comments.js';
+
 import type { Comment } from '../../types.js';
+import { renderCommentsSection } from './comments.js';
+import { type ColumnData, escapeHtml, renderMarkdownEditor } from './utils.js';
 
 // Helper to render a ticket card
-export function renderTicketCard(ticket: {
-  id: string;
-  type?: string;
-  title?: string;
-  intent: string;
-  change_class?: string;
-  change_class_reason?: string;
-  plan?: { taskSteps?: { task: string; steps: string[]; done: boolean }[] };
-}, options?: { isBacklog?: boolean }): string {
+export function renderTicketCard(
+  ticket: {
+    id: string;
+    type?: string;
+    title?: string;
+    intent: string;
+    change_class?: string;
+    change_class_reason?: string;
+    plan?: { taskSteps?: { task: string; steps: string[]; done: boolean }[] };
+  },
+  options?: { isBacklog?: boolean },
+): string {
   const isBacklog = options?.isBacklog ?? false;
   const taskCount = ticket.plan?.taskSteps?.length || 0;
-  const doneCount = ticket.plan?.taskSteps?.filter(t => t.done).length || 0;
+  const doneCount = ticket.plan?.taskSteps?.filter((t) => t.done).length || 0;
   const progress = taskCount > 0 ? Math.round((doneCount / taskCount) * 100) : 0;
 
   const remaining = taskCount - doneCount;
   const isComplete = taskCount > 0 && progress === 100;
 
   const classColors: Record<string, { bg: string; text: string }> = {
-    'A': { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
-    'B': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300' },
-    'C': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
+    A: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
+    B: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300' },
+    C: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
   };
-  const classStyle = ticket.change_class ? classColors[ticket.change_class] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
+  const classStyle = ticket.change_class
+    ? classColors[ticket.change_class] || {
+        bg: 'bg-gray-100 dark:bg-gray-700',
+        text: 'text-gray-600 dark:text-gray-300',
+      }
+    : null;
 
   const typeColors: Record<string, { bg: string; text: string }> = {
-    'feature': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
-    'bugfix': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
-    'refactor': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
-    'docs': { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-300' },
-    'chore': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-200' },
-    'test': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
+    feature: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
+    bugfix: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
+    refactor: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+    docs: { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-300' },
+    chore: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-200' },
+    test: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
   };
-  const typeStyle = ticket.type ? typeColors[ticket.type] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
+  const typeStyle = ticket.type
+    ? typeColors[ticket.type] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' }
+    : null;
 
   // Use title if available, otherwise use intent for display
   const displayTitle = ticket.title || ticket.intent;
@@ -52,7 +63,9 @@ export function renderTicketCard(ticket: {
          onclick="showModal()">
       <div class="flex items-start justify-between mb-1">
         <div class="text-xs font-mono text-gray-400 dark:text-gray-500">${escapeHtml(ticket.id)}</div>
-        ${isBacklog ? `
+        ${
+          isBacklog
+            ? `
           <button class="opacity-0 group-hover:opacity-100 p-1 -mt-1 -mr-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-all cursor-pointer"
                   title="Edit ticket"
                   hx-get="/partials/edit-ticket-modal/${encodeURIComponent(ticket.id)}"
@@ -63,10 +76,14 @@ export function renderTicketCard(ticket: {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
             </svg>
           </button>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
       <div class="text-sm font-medium text-gray-800 dark:text-gray-100 line-clamp-2">${escapeHtml(displayTitle)}</div>
-      ${taskCount > 0 ? `
+      ${
+        taskCount > 0
+          ? `
         <div class="mt-2">
           <div class="flex items-center justify-between text-xs mb-1">
             <span class="${isComplete ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-500 dark:text-gray-400'}">${isComplete ? 'Complete' : `${remaining} remaining`}</span>
@@ -76,7 +93,9 @@ export function renderTicketCard(ticket: {
             <div class="h-full bg-${isComplete ? 'green' : 'blue'}-500 rounded-full transition-all" style="width: ${progress}%"></div>
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
       <div class="mt-2 flex gap-1 flex-wrap">
         ${ticket.type && typeStyle ? `<span class="px-2 py-0.5 text-xs font-medium rounded ${typeStyle.bg} ${typeStyle.text}">${ticket.type}</span>` : ''}
         ${ticket.change_class && classStyle ? `<span class="px-2 py-0.5 text-xs font-medium rounded ${classStyle.bg} ${classStyle.text}">Class ${ticket.change_class}</span>` : ''}
@@ -95,33 +114,85 @@ export function renderKanbanView(): string {
 
 // Helper to render kanban columns with pagination
 export function renderKanbanColumns(columns: ColumnData[]): string {
-  const columnStyles: Record<string, { color: string; bg: string; badgeBg?: string; badgeText?: string; headingText?: string }> = {
-    'Backlog': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', badgeBg: 'bg-gray-200 dark:bg-gray-600', badgeText: 'text-gray-600 dark:text-gray-300', headingText: 'text-gray-700 dark:text-gray-200' },
-    'In Progress': { color: 'yellow', bg: 'bg-yellow-50 dark:bg-yellow-900/20', badgeBg: 'bg-yellow-100 dark:bg-yellow-900/30', badgeText: 'text-yellow-600 dark:text-yellow-300', headingText: 'text-yellow-700 dark:text-yellow-300' },
-    'In Review': { color: 'blue', bg: 'bg-blue-50 dark:bg-blue-900/20', badgeBg: 'bg-blue-100 dark:bg-blue-900/30', badgeText: 'text-blue-600 dark:text-blue-300', headingText: 'text-blue-700 dark:text-blue-300' },
-    'Done': { color: 'green', bg: 'bg-green-50 dark:bg-green-900/20', badgeBg: 'bg-green-100 dark:bg-green-900/30', badgeText: 'text-green-600 dark:text-green-300', headingText: 'text-green-700 dark:text-green-300' },
-    'Blocked': { color: 'red', bg: 'bg-red-50 dark:bg-red-900/20', badgeBg: 'bg-red-100 dark:bg-red-900/30', badgeText: 'text-red-600 dark:text-red-300' },
-    'Abandoned': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', headingText: 'text-gray-700 dark:text-gray-200' },
-    'Superseded': { color: 'purple', bg: 'bg-purple-50 dark:bg-purple-900/20', badgeBg: 'bg-purple-100 dark:bg-purple-900/30', badgeText: 'text-purple-600 dark:text-purple-300' },
-    'Archived': { color: 'gray', bg: 'bg-gray-100 dark:bg-gray-700/50', badgeBg: 'bg-gray-200 dark:bg-gray-600', badgeText: 'text-gray-600 dark:text-gray-300', headingText: 'text-gray-700 dark:text-gray-200' },
+  const columnStyles: Record<
+    string,
+    { color: string; bg: string; badgeBg?: string; badgeText?: string; headingText?: string }
+  > = {
+    Backlog: {
+      color: 'gray',
+      bg: 'bg-gray-100 dark:bg-gray-700/50',
+      badgeBg: 'bg-gray-200 dark:bg-gray-600',
+      badgeText: 'text-gray-600 dark:text-gray-300',
+      headingText: 'text-gray-700 dark:text-gray-200',
+    },
+    'In Progress': {
+      color: 'yellow',
+      bg: 'bg-yellow-50 dark:bg-yellow-900/20',
+      badgeBg: 'bg-yellow-100 dark:bg-yellow-900/30',
+      badgeText: 'text-yellow-600 dark:text-yellow-300',
+      headingText: 'text-yellow-700 dark:text-yellow-300',
+    },
+    'In Review': {
+      color: 'blue',
+      bg: 'bg-blue-50 dark:bg-blue-900/20',
+      badgeBg: 'bg-blue-100 dark:bg-blue-900/30',
+      badgeText: 'text-blue-600 dark:text-blue-300',
+      headingText: 'text-blue-700 dark:text-blue-300',
+    },
+    Done: {
+      color: 'green',
+      bg: 'bg-green-50 dark:bg-green-900/20',
+      badgeBg: 'bg-green-100 dark:bg-green-900/30',
+      badgeText: 'text-green-600 dark:text-green-300',
+      headingText: 'text-green-700 dark:text-green-300',
+    },
+    Blocked: {
+      color: 'red',
+      bg: 'bg-red-50 dark:bg-red-900/20',
+      badgeBg: 'bg-red-100 dark:bg-red-900/30',
+      badgeText: 'text-red-600 dark:text-red-300',
+    },
+    Abandoned: {
+      color: 'gray',
+      bg: 'bg-gray-100 dark:bg-gray-700/50',
+      headingText: 'text-gray-700 dark:text-gray-200',
+    },
+    Superseded: {
+      color: 'purple',
+      bg: 'bg-purple-50 dark:bg-purple-900/20',
+      badgeBg: 'bg-purple-100 dark:bg-purple-900/30',
+      badgeText: 'text-purple-600 dark:text-purple-300',
+    },
+    Archived: {
+      color: 'gray',
+      bg: 'bg-gray-100 dark:bg-gray-700/50',
+      badgeBg: 'bg-gray-200 dark:bg-gray-600',
+      badgeText: 'text-gray-600 dark:text-gray-300',
+      headingText: 'text-gray-700 dark:text-gray-200',
+    },
   };
 
   return `
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-      ${columns.map(col => {
-        const style = columnStyles[col.status] || { color: 'gray', bg: 'bg-gray-50' };
-        const statusSlug = col.status.toLowerCase().replace(/ /g, '-');
-        const isBacklog = col.status === 'Backlog';
-        const isArchive = col.status === 'Archived';
-        // Archived column is not a drop target (can't drag to Archived directly)
-        const dragHandlers = isArchive ? '' : `ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${col.status}')"`;
-        return `
+      ${columns
+        .map((col) => {
+          const style = columnStyles[col.status] || { color: 'gray', bg: 'bg-gray-50' };
+          const statusSlug = col.status.toLowerCase().replace(/ /g, '-');
+          const isBacklog = col.status === 'Backlog';
+          const isArchive = col.status === 'Archived';
+          // Archived column is not a drop target (can't drag to Archived directly)
+          const dragHandlers = isArchive
+            ? ''
+            : `ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event, '${col.status}')"`;
+          return `
           <div class="rounded-lg ${style.bg} p-4 flex flex-col max-h-[calc(100vh-105px)]"
                ${dragHandlers}>
             <div class="flex items-center justify-between mb-3 shrink-0">
               <h2 class="font-semibold ${style.headingText || `text-${style.color}-700`}">${col.status}</h2>
               <div class="flex items-center gap-2">
-                ${isBacklog ? `
+                ${
+                  isBacklog
+                    ? `
                   <button class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded transition-colors cursor-pointer"
                           hx-get="/partials/new-ticket-modal"
                           hx-target="#modal-content"
@@ -129,23 +200,30 @@ export function renderKanbanColumns(columns: ColumnData[]): string {
                           onclick="showModal()">
                     + Add
                   </button>
-                ` : ''}
+                `
+                    : ''
+                }
                 <span class="text-xs ${style.badgeText || `text-${style.color}-500`} ${style.badgeBg || `bg-${style.color}-100`} px-2 py-0.5 rounded-full">${col.tickets.length}${col.hasMore ? '+' : ''}</span>
               </div>
             </div>
             <div id="tickets-${statusSlug}" class="space-y-3 overflow-y-auto flex-1 min-h-0 -mx-1 px-1 py-1">
-              ${col.tickets.map(t => renderTicketCard(t, { isBacklog })).join('')}
-              ${col.hasMore ? `
+              ${col.tickets.map((t) => renderTicketCard(t, { isBacklog })).join('')}
+              ${
+                col.hasMore
+                  ? `
                 <button class="w-full px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors shrink-0 cursor-pointer"
                         hx-get="/partials/kanban-column/${encodeURIComponent(col.status)}?offset=12"
                         hx-swap="outerHTML">
                   Load More
                 </button>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           </div>
         `;
-      }).join('')}
+        })
+        .join('')}
     </div>
   `;
 }
@@ -163,10 +241,10 @@ export function renderColumnMore(
   }[],
   status: string,
   nextOffset: number,
-  hasMore: boolean
+  hasMore: boolean,
 ): string {
   const isBacklog = status === 'Backlog';
-  const cards = tickets.map(t => renderTicketCard(t, { isBacklog })).join('');
+  const cards = tickets.map((t) => renderTicketCard(t, { isBacklog })).join('');
 
   if (!hasMore) {
     return cards;
@@ -183,61 +261,71 @@ export function renderColumnMore(
 }
 
 // Helper to render ticket modal
-export function renderTicketModal(ticket: {
-  id: string;
-  type?: string;
-  title?: string;
-  status: string;
-  intent: string;
-  context?: string;
-  constraints_use?: string[];
-  constraints_avoid?: string[];
-  assumptions?: string[];
-  change_class?: string;
-  change_class_reason?: string;
-  origin_spec_id?: string;
-  plan?: {
-    files: string[];
-    taskSteps: { task: string; steps: string[]; done: boolean }[];
-    dodVerification: { dod: string; verify: string; done: boolean }[];
-    decisions: { choice: string; reason: string }[];
-    tradeOffs: { considered: string; rejected: string }[];
-    rollback?: { steps: string[]; reversibility: 'full' | 'partial' | 'none' };
-    irreversibleActions: string[];
-    edgeCases: string[];
-  };
-  derived_knowledge?: string[];
-  author?: string;
-  created_at?: string;
-  updated_at?: string;
-}, comments?: Comment[]): string {
+export function renderTicketModal(
+  ticket: {
+    id: string;
+    type?: string;
+    title?: string;
+    status: string;
+    intent: string;
+    context?: string;
+    constraints_use?: string[];
+    constraints_avoid?: string[];
+    assumptions?: string[];
+    change_class?: string;
+    change_class_reason?: string;
+    origin_spec_id?: string;
+    plan?: {
+      files: string[];
+      taskSteps: { task: string; steps: string[]; done: boolean }[];
+      dodVerification: { dod: string; verify: string; done: boolean }[];
+      decisions: { choice: string; reason: string }[];
+      tradeOffs: { considered: string; rejected: string }[];
+      rollback?: { steps: string[]; reversibility: 'full' | 'partial' | 'none' };
+      irreversibleActions: string[];
+      edgeCases: string[];
+    };
+    derived_knowledge?: string[];
+    author?: string;
+    created_at?: string;
+    updated_at?: string;
+  },
+  comments?: Comment[],
+): string {
   const statusColors: Record<string, string> = {
-    'Backlog': 'gray',
+    Backlog: 'gray',
     'In Progress': 'yellow',
     'In Review': 'blue',
-    'Done': 'green',
-    'Blocked': 'red',
-    'Abandoned': 'gray',
-    'Superseded': 'purple',
+    Done: 'green',
+    Blocked: 'red',
+    Abandoned: 'gray',
+    Superseded: 'purple',
   };
   const color = statusColors[ticket.status] || 'gray';
 
   const typeColors: Record<string, { bg: string; text: string }> = {
-    'feature': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
-    'bugfix': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
-    'refactor': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
-    'docs': { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-300' },
-    'chore': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-200' },
-    'test': { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
+    feature: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300' },
+    bugfix: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
+    refactor: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300' },
+    docs: { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-700 dark:text-cyan-300' },
+    chore: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-200' },
+    test: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
   };
-  const typeStyle = ticket.type ? typeColors[ticket.type] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
+  const typeStyle = ticket.type
+    ? typeColors[ticket.type] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' }
+    : null;
 
   const modalClassColors: Record<string, { bg: string; text: string }> = {
-    'A': { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
-    'B': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300' },
-    'C': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
+    A: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300' },
+    B: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300' },
+    C: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' },
   };
-  const classStyle = ticket.change_class ? modalClassColors[ticket.change_class] || { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' } : null;
+  const classStyle = ticket.change_class
+    ? modalClassColors[ticket.change_class] || {
+        bg: 'bg-gray-100 dark:bg-gray-700',
+        text: 'text-gray-600 dark:text-gray-300',
+      }
+    : null;
 
   return `
     <div class="p-6">
@@ -265,40 +353,58 @@ export function renderTicketModal(ticket: {
         </button>
       </div>
 
-      ${ticket.context ? `
+      ${
+        ticket.context
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Context</h3>
           <div class="text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700/50 rounded-lg p-3 whitespace-pre-wrap">${escapeHtml(ticket.context)}</div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${ticket.constraints_use?.length || ticket.constraints_avoid?.length ? `
+      ${
+        ticket.constraints_use?.length || ticket.constraints_avoid?.length
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Constraints</h3>
           <div class="text-sm text-gray-700 dark:text-gray-200 space-y-1">
-            ${ticket.constraints_use?.length ? `<p><span class="text-green-600 dark:text-green-400 font-medium">Use:</span> ${ticket.constraints_use.map(c => escapeHtml(c)).join(', ')}</p>` : ''}
-            ${ticket.constraints_avoid?.length ? `<p><span class="text-red-600 dark:text-red-400 font-medium">Avoid:</span> ${ticket.constraints_avoid.map(c => escapeHtml(c)).join(', ')}</p>` : ''}
+            ${ticket.constraints_use?.length ? `<p><span class="text-green-600 dark:text-green-400 font-medium">Use:</span> ${ticket.constraints_use.map((c) => escapeHtml(c)).join(', ')}</p>` : ''}
+            ${ticket.constraints_avoid?.length ? `<p><span class="text-red-600 dark:text-red-400 font-medium">Avoid:</span> ${ticket.constraints_avoid.map((c) => escapeHtml(c)).join(', ')}</p>` : ''}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${ticket.assumptions?.length ? `
+      ${
+        ticket.assumptions?.length
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Assumptions</h3>
           <ul class="text-sm text-gray-700 dark:text-gray-200 list-disc list-inside">
-            ${ticket.assumptions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+            ${ticket.assumptions.map((a) => `<li>${escapeHtml(a)}</li>`).join('')}
           </ul>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${ticket.change_class ? `
+      ${
+        ticket.change_class
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Change Class</h3>
           <div class="text-sm text-gray-700 dark:text-gray-200">Class ${ticket.change_class}${ticket.change_class_reason ? ` - ${escapeHtml(ticket.change_class_reason)}` : ''}</div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${ticket.origin_spec_id ? `
+      ${
+        ticket.origin_spec_id
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Origin Spec</h3>
           <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 cursor-pointer font-mono font-medium"
@@ -311,25 +417,36 @@ export function renderTicketModal(ticket: {
             ${escapeHtml(ticket.origin_spec_id)}
           </span>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${ticket.plan ? `
+      ${
+        ticket.plan
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Plan</h3>
           <div class="text-sm space-y-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-            ${ticket.plan.files?.length ? `
+            ${
+              ticket.plan.files?.length
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Files to Edit:</span>
-                <span class="text-gray-700 dark:text-gray-200">${ticket.plan.files.map(f => escapeHtml(f)).join(', ')}</span>
+                <span class="text-gray-700 dark:text-gray-200">${ticket.plan.files.map((f) => escapeHtml(f)).join(', ')}</span>
               </div>
-            ` : ''}
-            ${ticket.plan.taskSteps?.length ? `
+            `
+                : ''
+            }
+            ${
+              ticket.plan.taskSteps?.length
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Tasks → Steps:</span>
                 <div class="mt-1 space-y-2">
-                  ${ticket.plan.taskSteps.map((ts, i) => {
-                    const isDone = ts.done ?? false;
-                    return `
+                  ${ticket.plan.taskSteps
+                    .map((ts, i) => {
+                      const isDone = ts.done ?? false;
+                      return `
                     <div class="ml-1">
                       <div class="flex items-center gap-2">
                         <input type="checkbox" ${isDone ? 'checked' : ''}
@@ -339,23 +456,34 @@ export function renderTicketModal(ticket: {
                                hx-swap="none">
                         <span class="${isDone ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'}">${escapeHtml(ts.task)}</span>
                       </div>
-                      ${ts.steps?.length ? `
+                      ${
+                        ts.steps?.length
+                          ? `
                         <ol class="ml-8 mt-1 list-decimal text-gray-500 dark:text-gray-400 text-xs">
-                          ${ts.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+                          ${ts.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}
                         </ol>
-                      ` : ''}
+                      `
+                          : ''
+                      }
                     </div>
-                  `;}).join('')}
+                  `;
+                    })
+                    .join('')}
                 </div>
               </div>
-            ` : ''}
-            ${ticket.plan.dodVerification?.length ? `
+            `
+                : ''
+            }
+            ${
+              ticket.plan.dodVerification?.length
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Definition of Done → Verification:</span>
                 <div class="mt-1 space-y-1">
-                  ${ticket.plan.dodVerification.map((dv, i) => {
-                    const isDone = dv.done ?? false;
-                    return `
+                  ${ticket.plan.dodVerification
+                    .map((dv, i) => {
+                      const isDone = dv.done ?? false;
+                      return `
                     <div class="flex items-start gap-2 ml-1">
                       <input type="checkbox" ${isDone ? 'checked' : ''}
                              name="dod-${i}"
@@ -364,27 +492,41 @@ export function renderTicketModal(ticket: {
                              hx-swap="none">
                       <span class="${isDone ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'}">${escapeHtml(dv.dod)} → ${escapeHtml(dv.verify)}</span>
                     </div>
-                  `;}).join('')}
+                  `;
+                    })
+                    .join('')}
                 </div>
               </div>
-            ` : ''}
-            ${ticket.plan.decisions?.length ? `
+            `
+                : ''
+            }
+            ${
+              ticket.plan.decisions?.length
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Decisions:</span>
                 <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
-                  ${ticket.plan.decisions.map(d => `<li>${escapeHtml(d.choice)}${d.reason ? ` — ${escapeHtml(d.reason)}` : ''}</li>`).join('')}
+                  ${ticket.plan.decisions.map((d) => `<li>${escapeHtml(d.choice)}${d.reason ? ` — ${escapeHtml(d.reason)}` : ''}</li>`).join('')}
                 </ul>
               </div>
-            ` : ''}
-            ${ticket.plan.tradeOffs?.length ? `
+            `
+                : ''
+            }
+            ${
+              ticket.plan.tradeOffs?.length
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Trade-offs:</span>
                 <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
-                  ${ticket.plan.tradeOffs.map(t => `<li>${escapeHtml(t.considered)}${t.rejected ? ` — ${escapeHtml(t.rejected)}` : ''}</li>`).join('')}
+                  ${ticket.plan.tradeOffs.map((t) => `<li>${escapeHtml(t.considered)}${t.rejected ? ` — ${escapeHtml(t.rejected)}` : ''}</li>`).join('')}
                 </ul>
               </div>
-            ` : ''}
-            ${ticket.plan.rollback ? `
+            `
+                : ''
+            }
+            ${
+              ticket.plan.rollback
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Rollback:</span>
                 <div class="mt-1 ml-4 text-gray-700 dark:text-gray-200">
@@ -392,39 +534,59 @@ export function renderTicketModal(ticket: {
                     <span class="font-medium">Reversibility:</span>
                     <span class="${ticket.plan.rollback.reversibility === 'full' ? 'text-green-600' : ticket.plan.rollback.reversibility === 'partial' ? 'text-yellow-600' : 'text-red-600'}">${ticket.plan.rollback.reversibility}</span>
                   </div>
-                  ${ticket.plan.rollback.steps?.length ? `
+                  ${
+                    ticket.plan.rollback.steps?.length
+                      ? `
                     <ul class="list-disc ml-4">
-                      ${ticket.plan.rollback.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+                      ${ticket.plan.rollback.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}
                     </ul>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
               </div>
-            ` : ''}
-            ${ticket.plan.irreversibleActions?.length ? `
+            `
+                : ''
+            }
+            ${
+              ticket.plan.irreversibleActions?.length
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Irreversible Actions:</span>
                 <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
-                  ${ticket.plan.irreversibleActions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+                  ${ticket.plan.irreversibleActions.map((a) => `<li>${escapeHtml(a)}</li>`).join('')}
                 </ul>
               </div>
-            ` : ''}
-            ${ticket.plan.edgeCases?.length ? `
+            `
+                : ''
+            }
+            ${
+              ticket.plan.edgeCases?.length
+                ? `
               <div>
                 <span class="font-medium text-blue-700 dark:text-blue-300">Edge Cases:</span>
                 <ul class="mt-1 ml-4 list-disc text-gray-700 dark:text-gray-200">
-                  ${ticket.plan.edgeCases.map(e => `<li>${escapeHtml(e)}</li>`).join('')}
+                  ${ticket.plan.edgeCases.map((e) => `<li>${escapeHtml(e)}</li>`).join('')}
                 </ul>
               </div>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${ticket.derived_knowledge?.length ? `
+      ${
+        ticket.derived_knowledge?.length
+          ? `
         <div class="mb-4">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Derived Knowledge</h3>
           <div class="flex flex-wrap gap-2">
-            ${ticket.derived_knowledge.map(kid => `
+            ${ticket.derived_knowledge
+              .map(
+                (kid) => `
               <span class="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 cursor-pointer"
                     hx-get="/partials/knowledge-modal/${encodeURIComponent(kid)}"
                     hx-target="#modal-content"
@@ -434,10 +596,14 @@ export function renderTicketModal(ticket: {
                 </svg>
                 ${escapeHtml(kid)}
               </span>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <div class="mb-4">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Status</h3>
@@ -474,12 +640,16 @@ export function renderTicketModal(ticket: {
         </script>
       </div>
 
-      ${ticket.author ? `
+      ${
+        ticket.author
+          ? `
       <div class="mb-4">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Author</h3>
         <div class="text-sm text-gray-700 dark:text-gray-200">${escapeHtml(ticket.author)}</div>
       </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       ${renderCommentsSection(comments || [], 'ticket', ticket.id)}
 
@@ -489,7 +659,9 @@ export function renderTicketModal(ticket: {
           <span class="ml-4">Updated: ${ticket.updated_at || 'N/A'}</span>
         </div>
         <div class="flex gap-2">
-          ${ticket.status === 'Backlog' ? `
+          ${
+            ticket.status === 'Backlog'
+              ? `
             <button type="button"
                     class="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                     hx-get="/partials/edit-ticket-modal/${encodeURIComponent(ticket.id)}"
@@ -497,7 +669,9 @@ export function renderTicketModal(ticket: {
                     hx-trigger="click">
               Edit
             </button>
-          ` : ''}
+          `
+              : ''
+          }
           <button type="button"
                   class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                   onclick="if(confirm('Delete this ticket?${ticket.derived_knowledge?.length ? ' Derived knowledge will be orphaned but preserved.' : ''}')) { fetch('/api/tickets/${encodeURIComponent(ticket.id)}', {method:'DELETE'}).then(r=>r.json()).then(d=>{if(d.success){hideModal();htmx.trigger('#kanban-columns','refresh');}else{alert(d.error||'Delete failed');}}).catch(e=>alert('Error: '+e)); }">
@@ -545,7 +719,7 @@ export function renderNewTicketModal(): string {
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Type <span class="text-red-500">*</span></label>
             <select name="type" required
                     class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-              ${ticketTypes.map(t => `<option value="${t.value}">${t.label} - ${t.desc}</option>`).join('')}
+              ${ticketTypes.map((t) => `<option value="${t.value}">${t.label} - ${t.desc}</option>`).join('')}
             </select>
           </div>
 
@@ -571,12 +745,7 @@ export function renderNewTicketModal(): string {
 }
 
 // Helper to render edit ticket modal
-export function renderEditTicketModal(ticket: {
-  id: string;
-  type?: string;
-  title?: string;
-  intent: string;
-}): string {
+export function renderEditTicketModal(ticket: { id: string; type?: string; title?: string; intent: string }): string {
   const ticketTypes = [
     { value: 'feature', label: 'Feature', desc: 'New functionality' },
     { value: 'bugfix', label: 'Bugfix', desc: 'Fix an issue' },
@@ -614,7 +783,7 @@ export function renderEditTicketModal(ticket: {
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Type <span class="text-red-500">*</span></label>
             <select name="type" required
                     class="w-full px-3 py-2 border dark:border-dark-border rounded-lg text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-              ${ticketTypes.map(t => `<option value="${t.value}"${ticket.type === t.value ? ' selected' : ''}>${t.label} - ${t.desc}</option>`).join('')}
+              ${ticketTypes.map((t) => `<option value="${t.value}"${ticket.type === t.value ? ' selected' : ''}>${t.label} - ${t.desc}</option>`).join('')}
             </select>
           </div>
 

@@ -1,5 +1,5 @@
 // Knowledge Health Summary widget — stats panel with usage & citation health groups
-import type { WidgetDefinition, DashboardData, HealthStatus, UsageHealth, CitationHealth } from '../dashboard.js';
+import type { CitationHealth, DashboardData, HealthStatus, UsageHealth, WidgetDefinition } from '../dashboard.js';
 import { escapeHtml } from '../utils.js';
 
 const usageLabels: Record<UsageHealth, { label: string; color: string; dot: string }> = {
@@ -20,7 +20,7 @@ const allStatusLabels: Record<HealthStatus, { label: string; color: string; dot:
 
 /** Largest-remainder rounding so percentages always sum to 100% */
 function roundToHundred(values: number[]): number[] {
-  const floored = values.map(v => Math.floor(v));
+  const floored = values.map((v) => Math.floor(v));
   let remainder = 100 - floored.reduce((a, b) => a + b, 0);
   const fractions = values.map((v, i) => ({ i, f: v - floored[i] }));
   fractions.sort((a, b) => b.f - a.f);
@@ -39,7 +39,7 @@ function renderHealthBars<T extends string>(
   showPct = true,
 ): string {
   const keys = Object.keys(labels) as T[];
-  const rawPcts = keys.map(s => total > 0 ? ((counts[s] || 0) / total) * 100 : 0);
+  const rawPcts = keys.map((s) => (total > 0 ? ((counts[s] || 0) / total) * 100 : 0));
   const pcts = total > 0 ? roundToHundred(rawPcts) : rawPcts.map(() => 0);
 
   return keys
@@ -73,21 +73,23 @@ function renderKnowledgeHealthSummary(data: DashboardData): string {
   const noIssuesRatio = kh.active > 0 ? Math.max(0, (kh.active - issueCount) / kh.active) : 0;
   const recentRatio = kh.active > 0 ? Math.min(kh.recentCount / kh.active, 1) : 0;
   const healthScore = Math.round(
-    (activeRatio * 0.3 + kh.avgConfidence * 0.3 + noIssuesRatio * 0.25 + recentRatio * 0.15) * 100
+    (activeRatio * 0.3 + kh.avgConfidence * 0.3 + noIssuesRatio * 0.25 + recentRatio * 0.15) * 100,
   );
 
   // Health score color
-  const scoreColor = healthScore >= 70
-    ? 'text-green-600 dark:text-green-400'
-    : healthScore >= 40
-      ? 'text-yellow-600 dark:text-yellow-400'
-      : 'text-red-600 dark:text-red-400';
+  const scoreColor =
+    healthScore >= 70
+      ? 'text-green-600 dark:text-green-400'
+      : healthScore >= 40
+        ? 'text-yellow-600 dark:text-yellow-400'
+        : 'text-red-600 dark:text-red-400';
 
-  const scoreBg = healthScore >= 70
-    ? 'bg-green-50 dark:bg-green-900/20'
-    : healthScore >= 40
-      ? 'bg-yellow-50 dark:bg-yellow-900/20'
-      : 'bg-red-50 dark:bg-red-900/20';
+  const scoreBg =
+    healthScore >= 70
+      ? 'bg-green-50 dark:bg-green-900/20'
+      : healthScore >= 40
+        ? 'bg-yellow-50 dark:bg-yellow-900/20'
+        : 'bg-red-50 dark:bg-red-900/20';
 
   // Health status breakdowns by group
   const usageBars = renderHealthBars(usageLabels, kh.byUsageHealth, kh.active);
@@ -173,7 +175,8 @@ function renderCitationHealthInline(byCitationHealth: Record<CitationHealth, num
 /** Render citation health results — returned by the on-demand validation endpoint */
 export function renderCitationHealthSection(byCitationHealth: Record<CitationHealth, number>): string {
   const citationTotal = (byCitationHealth.needsValidation || 0) + (byCitationHealth.missing || 0);
-  const citationBars = citationTotal > 0 ? renderHealthBars(citationLabels, byCitationHealth, citationTotal, false) : '';
+  const citationBars =
+    citationTotal > 0 ? renderHealthBars(citationLabels, byCitationHealth, citationTotal, false) : '';
 
   return `
     <div id="citation-health-section">
@@ -212,14 +215,22 @@ export function renderHealthEntriesModal(
 ): string {
   const info = allStatusLabels[status];
   const categoryColors: Record<string, string> = {
-    pattern: 'purple', truth: 'green', principle: 'orange',
-    architecture: 'blue', gotcha: 'red', convention: 'cyan',
-    decision: 'indigo', reference: 'gray', workflow: 'slate', insight: 'yellow',
+    pattern: 'purple',
+    truth: 'green',
+    principle: 'orange',
+    architecture: 'blue',
+    gotcha: 'red',
+    convention: 'cyan',
+    decision: 'indigo',
+    reference: 'gray',
+    workflow: 'slate',
+    insight: 'yellow',
   };
 
-  const rows = entries.map(e => {
-    const catColor = categoryColors[e.category] || 'gray';
-    return `
+  const rows = entries
+    .map((e) => {
+      const catColor = categoryColors[e.category] || 'gray';
+      return `
       <div class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer border-b border-gray-100 dark:border-dark-border last:border-b-0"
            hx-get="/partials/knowledge-modal/${encodeURIComponent(e.id)}"
            hx-target="#modal-content"
@@ -238,7 +249,8 @@ export function renderHealthEntriesModal(
           </svg>
         </button>
       </div>`;
-  }).join('');
+    })
+    .join('');
 
   return `
     <div class="p-6 max-w-2xl mx-auto">
@@ -247,9 +259,10 @@ export function renderHealthEntriesModal(
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">${info.label}</h2>
         <span class="text-sm text-gray-500 dark:text-gray-400">${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}</span>
       </div>
-      ${entries.length > 0
-        ? `<div class="border border-gray-200 dark:border-dark-border rounded-lg overflow-hidden">${rows}</div>`
-        : '<p class="text-sm text-gray-500 dark:text-gray-400">No entries in this category.</p>'
+      ${
+        entries.length > 0
+          ? `<div class="border border-gray-200 dark:border-dark-border rounded-lg overflow-hidden">${rows}</div>`
+          : '<p class="text-sm text-gray-500 dark:text-gray-400">No entries in this category.</p>'
       }
     </div>`;
 }

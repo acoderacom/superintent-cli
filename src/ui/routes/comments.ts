@@ -1,18 +1,14 @@
 import type { Hono } from 'hono';
 import { getClient } from '../../db/client.js';
 import { parseCommentRow } from '../../db/parsers.js';
-import { generateId } from '../../utils/id.js';
+import type { Comment } from '../../types.js';
 import { getGitUsername } from '../../utils/git.js';
+import { generateId } from '../../utils/id.js';
+import { renderCommentsSection, renderEditCommentForm } from '../components/index.js';
 import { emitSSE } from '../sse.js';
 import { fetchComments } from './shared.js';
-import type { Comment } from '../../types.js';
-import {
-  renderCommentsSection,
-  renderEditCommentForm,
-} from '../components/index.js';
 
 export function registerCommentRoutes(app: Hono) {
-
   // ── API Routes ──────────────────────────────────────────────────
 
   // Create comment

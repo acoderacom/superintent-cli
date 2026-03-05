@@ -1,7 +1,7 @@
 import type { Client } from '@libsql/client';
+import type { SearchResult } from '../types.js';
 import { parseSearchRow } from './parsers.js';
 import { trackUsage } from './usage.js';
-import type { SearchResult } from '../types.js';
 
 export interface VectorSearchOptions {
   namespace?: string;
@@ -22,9 +22,8 @@ export async function performVectorSearch(
   options: VectorSearchOptions,
 ): Promise<SearchResult[]> {
   const { minScore = 0 } = options;
-  const safeLimit = Number.isFinite(options.limit) && options.limit >= 1
-    ? Math.min(Math.floor(options.limit), 100)
-    : 10;
+  const safeLimit =
+    Number.isFinite(options.limit) && options.limit >= 1 ? Math.min(Math.floor(options.limit), 100) : 10;
   const topK = safeLimit * 2;
 
   const conditions: string[] = ['k.active = 1'];

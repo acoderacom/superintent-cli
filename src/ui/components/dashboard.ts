@@ -1,8 +1,8 @@
 // Dashboard component
 import { escapeHtml } from './utils.js';
 import { knowledgeHealthSummaryWidget } from './widgets/knowledge-health-summary.js';
-import { wikiCoverageWidget } from './widgets/wiki-coverage.js';
 import { ticketActivityWidget } from './widgets/ticket-activity.js';
+import { wikiCoverageWidget } from './widgets/wiki-coverage.js';
 
 // ============ Widget Architecture ============
 
@@ -75,11 +75,7 @@ const sizeToGridClasses: Record<WidgetSize, string> = {
 // ============ Widget Registry ============
 // To add a widget: import it and push here. No other changes needed.
 
-const widgetRegistry: WidgetDefinition[] = [
-  knowledgeHealthSummaryWidget,
-  wikiCoverageWidget,
-  ticketActivityWidget,
-];
+const widgetRegistry: WidgetDefinition[] = [knowledgeHealthSummaryWidget, wikiCoverageWidget, ticketActivityWidget];
 
 // ============ Dashboard View (HTMX shell) ============
 
@@ -123,7 +119,7 @@ export function renderDashboardView(): string {
 // ============ Dashboard Grid Renderer ============
 
 export function renderDashboardGrid(data: DashboardData): string {
-  const widgets = widgetRegistry.map(widget => {
+  const widgets = widgetRegistry.map((widget) => {
     const gridClasses = sizeToGridClasses[widget.size];
     return `
       <div class="${gridClasses} bg-white dark:bg-dark-surface border border-gray-200 dark:border-dark-border rounded-lg shadow-xs overflow-hidden flex flex-col">
